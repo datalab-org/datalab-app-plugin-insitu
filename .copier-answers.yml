@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 03f1af5
+_src_path: https://github.com/datalab-org/datalab-app-plugin-template
+author_email: bc630@cam.ac.uk
+author_fullname: Ben Charmes
+copyright_date: '2024'
+copyright_holder: datalab-org
+copyright_holder_email: bc630@cam.ac.uk
+package_name: datalab_app_plugin_nmr_insitu
+project_long_name: Datalab Plugin for In Situ NMR
+project_name: datalab-app-plugin-nmr-insitu
+repository_name: datalab-app-plugin-nmr-insitu
+repository_namespace: datalab-org
+short_description: Datalab plugin for In Situ NMR
+
