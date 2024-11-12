@@ -1,1 +1,75 @@
+# Datalab database dirs - these can be removed once we have a better place for them
+files/
+uploads/
+ssh_config
+logs/
+site/
+
+# App testing files
+webapp/cypress/screenshots
+webapp/cypress/videos
+
+#starting material files
+greyGroup_chemInventory*
+
+pydatalab/Pipfile
+
+
+*.sublime-workspace
+*.sublime-project
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+.vscode
+vetur.config.js
 .DS_Store
+vetur.config.js
+
+*~
+\#.*\#
+
+node_modules
+
+## Python files
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache
+
+# Ignore any *additional* pipfile/pyprojects that get updated
+pydatalab/pyproject.toml
+Pipfile
+Pipfile.lock
+
+## Packaging
+build/
+dist/
+eggs/
+.eggs/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+
+# Pip logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+htmlcov/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+.pytest-cache/
+
+# Envs
+.python-version
+.env
+.venv
+.env.local
+env/
+venv/
+ENV/
+.matplotlibrc
+matplotlibrc

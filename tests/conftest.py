@@ -1,4 +1,8 @@
+import os
 import pytest
+from datalab_api import DatalabClient
+
+DATALAB_API_URL = "https://demo.datalab-org.io"
 
 
 @pytest.fixture(scope="session")
@@ -61,3 +65,20 @@ def tmp_dir():
 @pytest.fixture(scope="session")
 def debug_mode():
     return False
+
+
+@pytest.fixture()
+def test_data_path(tmpdir):
+    """Download test data from the datalab instance."""
+
+    client = DatalabClient(DATALAB_API_URL)
+
+    os.chdir(tmpdir)
+    client.get_item_files("demo-data")
+
+    test_path = tmpdir / "test_data.csv"
+    assert test_path.exists()
+    yield test_path
+
+    # Clean up tmp data after test
+    test_path.remove()

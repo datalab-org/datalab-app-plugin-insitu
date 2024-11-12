@@ -61,6 +61,42 @@ for x in range(1, M_Li.shape[1]):
 norm_intensity_peak1 = [x/max(env_peak1) for x in env_peak1]
 norm_intensity_peak2 = [x/max(env_peak2) for x in env_peak2]
 
+
+def data_fitted(tNMR, peak_intensity, norm_intensity):
+    result = pd.DataFrame({
+        'time': tNMR,
+        'intensity': peak_intensity,
+        'norm_intensity': norm_intensity,
+    })
+    return result
+
+
+df_peakfit1 = data_fitted(tNMR, env_peak1, norm_intensity_peak1)
+df_peakfit2 = data_fitted(tNMR, env_peak2, norm_intensity_peak2)
+
+df_all = {
+    "data_df": {
+        "time": data_df["time"].tolist(),
+        "intensity": data_df["intensity"].tolist(),
+        "norm_intensity": data_df["norm_intensity"].tolist()
+    },
+    "df_peakfit1": {
+        "time": df_peakfit1["time"].tolist(),
+        "intensity": df_peakfit1["intensity"].tolist(),
+        "norm_intensity": df_peakfit1["norm_intensity"].tolist()
+    },
+    "df_peakfit2": {
+        "time": df_peakfit2["time"].tolist(),
+        "intensity": df_peakfit2["intensity"].tolist(),
+        "norm_intensity": df_peakfit2["norm_intensity"].tolist()
+    }
+}
+
+file_name = "_df_all.json"
+file_path = f"{data_subDir}/{data_name}{file_name}"
+with open(file_path, 'w') as f:
+    json.dump(df_all, f, indent=4)
+
 plt.figure(figsize=(6, 10))
 plt.plot(tNMR, norm_intensity, label='Total intensity', color='blue')
 plt.plot(tNMR, norm_intensity_peak1, label='Peak 1', color='red')

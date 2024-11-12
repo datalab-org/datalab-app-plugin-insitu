@@ -1,6 +1,5 @@
 """Datalab plugin for In Situ NMR"""
+from importlib.metadata import PackageNotFoundError, version
 
-from importlib import metadata
-
-__version__ = metadata("datalab_app_plugin_nmr_insitu").version
+__version__ = version("datalab_app_plugin_nmr_insitu")
 __all__ = ("__version__",)
