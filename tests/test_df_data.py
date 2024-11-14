@@ -1,12 +1,10 @@
-import unittest
 import os
 import zipfile
-import pytest
 import pyreadr
 import pandas as pd
 import random
 
-TOLERANCE_PERCENT = 2
+TOLERANCE_PERCENT = 0.01
 
 
 def percentage_difference(val1, val2):
