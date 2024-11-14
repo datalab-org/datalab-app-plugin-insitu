@@ -2,7 +2,7 @@ import os
 import pytest
 from datalab_api import DatalabClient
 
-DATALAB_API_URL = "https://demo.datalab-org.io"
+DATALAB_API_URL = "https://demo-api.datalab-org.io"
 
 
 @pytest.fixture(scope="session")
@@ -68,15 +68,15 @@ def debug_mode():
 
 
 @pytest.fixture()
-def test_data_path(tmpdir):
+def get_demo_data(tmpdir):
     """Download test data from the datalab instance."""
 
     client = DatalabClient(DATALAB_API_URL)
 
     os.chdir(tmpdir)
-    client.get_item_files("demo-data")
+    client.get_item_files("bc_nmr_insitu")
 
-    test_path = tmpdir / "test_data.csv"
+    test_path = tmpdir / "demo_data_nmr_insitu.zip"
     assert test_path.exists()
     yield test_path
 
