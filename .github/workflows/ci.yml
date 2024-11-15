@@ -77,3 +77,5 @@ jobs:
       - name: Run all tests
         run: |
           uv run pytest -rs -vvv ./tests
+        env:
+          DATALAB_API_KEY: ${{ secrets.DATALAB_API_KEY }}
