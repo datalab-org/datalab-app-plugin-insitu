@@ -26,7 +26,7 @@ def get_data(zip_path):
     file_1_df = file_1_data[None]
     file_1_df['time'] = file_1_df['time'] / 3600
 
-    file2_path = "/Users/Ben/Desktop/datalab-app-plugin-nmr-insitu/example_data/LiLiTEGDMEinsitu_02/dfenv_LiLiTEGDMEinsitu_02.json"
+    file2_path = "../example_data/LiLiTEGDMEinsitu_02/dfenv_LiLiTEGDMEinsitu_02.json"
     file_2_df = pd.read_json(file2_path)
 
     return file_1_df, file_2_df

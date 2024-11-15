@@ -40,7 +40,7 @@ def get_data(zip_path):
     for key, df in file_1_reconstructed_df.items():
         df['time'] = df['time'] / 3600
 
-    file2_path = "/Users/Ben/Desktop/datalab-app-plugin-nmr-insitu/example_data/LiLiTEGDMEinsitu_02/LiLiTEGDMEinsitu_02_df_all.json"
+    file2_path = "../example_data/LiLiTEGDMEinsitu_02/LiLiTEGDMEinsitu_02_df_all.json"
     file_2_df = pd.read_json(file2_path)
 
     return file_1_reconstructed_df, file_2_df
