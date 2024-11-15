@@ -31,7 +31,8 @@ dependencies = [
     "pyreadr>=0.5.2",
     "matplotlib>=3.9.2",
     "lmfit>=1.3.2", 
-    "scipy>=1.14.1", 
+    "scipy>=1.14.1",
+    "datalab_api>=0.2.7",
 ]
 
 [project.urls]
