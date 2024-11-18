@@ -1,6 +1,7 @@
 import os
 import pytest
 from datalab_api import DatalabClient
+import zipfile
 
 DATALAB_API_URL = "https://demo-api.datalab-org.io"
 
@@ -73,12 +74,24 @@ def get_demo_data(tmpdir):
 
     client = DatalabClient(DATALAB_API_URL)
 
-    os.chdir(tmpdir)
-    client.get_item_files("bc_nmr_insitu")
+    data_dir_1 = tmpdir.mkdir("data_1")
+    data_dir_2 = tmpdir.mkdir("data_2")
 
-    test_path = tmpdir / "demo_data_nmr_insitu.zip"
-    assert test_path.exists()
-    yield test_path
+    os.chdir(data_dir_1)
+    client.get_item_files("bc_nmr_insitu")
+    test_path_1 = data_dir_1 / "demo_data_nmr_insitu.zip"
+
+    os.chdir(data_dir_2)
+    client.get_item_files("bc_nmr_insitu_2")
+    test_path_2 = data_dir_2 / "demo_data_nmr_insitu_python.zip"
+
+    assert test_path_1.exists(
+    ), f"File {test_path_1} does not exist"
+    assert test_path_2.exists(
+    ), f"File {test_path_2} does not exist"
+
+    yield test_path_1, test_path_2
 
     # Clean up tmp data after test
-    test_path.remove()
+    test_path_1.remove()
+    test_path_2.remove()
