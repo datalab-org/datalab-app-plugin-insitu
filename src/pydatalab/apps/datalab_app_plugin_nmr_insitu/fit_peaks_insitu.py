@@ -26,6 +26,9 @@ tNMR = data_df['time']
 env = data_df['intensity']
 norm_intensity = data_df['norm_intensity']
 
+# 897670 1239488
+# 248.046601 266.036578
+
 for x in range(1, M_Li.shape[1]):
     intensity = M_Li.iloc[:, x]
 
@@ -35,13 +38,13 @@ for x in range(1, M_Li.shape[1]):
     model = model1 + model2
 
     params = model.make_params()
-    params['peak1_amplitude'].set(value=8.976e5, min=1e5, max=6e6)
+    params['peak1_amplitude'].set(value=8.976e5, min=1e5, max=6e7)
     params['peak1_center'].set(value=248.0, min=244.0, max=252.5)
     params['peak1_sigma'].set(value=5, min=0.5, max=6.5)
     params['peak1_fraction'].set(value=0.3, min=0.2, max=1)
 
-    params['peak2_amplitude'].set(value=0, min=0, max=5e7)
-    params['peak2_center'].set(value=272.0, min=257.0, max=277)
+    params['peak2_amplitude'].set(value=12.394e5, min=0, max=5e7)
+    params['peak2_center'].set(value=266.0, min=256.0, max=276)
     params['peak2_sigma'].set(value=5, min=0.5, max=6.5)
     params['peak2_fraction'].set(value=0.3, min=0.2, max=1)
 
@@ -58,8 +61,10 @@ for x in range(1, M_Li.shape[1]):
     env_peak1.append(abs(np.trapz(peak1_intensity, x=ppm)))
     env_peak2.append(abs(np.trapz(peak2_intensity, x=ppm)))
 
-norm_intensity_peak1 = [x/max(env_peak1) for x in env_peak1]
-norm_intensity_peak2 = [x/max(env_peak2) for x in env_peak2]
+    print(x)
+
+norm_intensity_peak1 = [x/max(env) for x in env_peak1]
+norm_intensity_peak2 = [x/max(env) for x in env_peak2]
 
 
 def data_fitted(tNMR, peak_intensity, norm_intensity):
