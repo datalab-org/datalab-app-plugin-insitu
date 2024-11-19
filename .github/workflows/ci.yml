@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: List repository files
+        run: ls -R
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -31,9 +34,6 @@ jobs:
         with:
           version: "0.4.x"
           enable-cache: true
-
-      - name: List all files in repository
-        run: ls -R
 
       - name: Install dependencies
         working-directory: ./pydatalab
