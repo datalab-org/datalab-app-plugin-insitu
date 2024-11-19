@@ -2,7 +2,6 @@ import os
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-import lmfit
 from lmfit.models import PseudoVoigtModel
 import numpy as np
 from scipy.signal import find_peaks
@@ -38,7 +37,7 @@ for x in range(1, M_Li.shape[1]):
     model = model1 + model2
 
     params = model.make_params()
-    params['peak1_amplitude'].set(value=8.976e5, min=1e5, max=6e7)
+    params['peak1_amplitude'].set(value=8.976e5, min=1e4, max=6e7)
     params['peak1_center'].set(value=248.0, min=244.0, max=252.5)
     params['peak1_sigma'].set(value=5, min=0.5, max=6.5)
     params['peak1_fraction'].set(value=0.3, min=0.2, max=1)
