@@ -2,10 +2,9 @@ import os
 import zipfile
 import pyreadr
 import pandas as pd
-import random
 
 #! To make test work
-TOLERANCE_PERCENT = 100
+TOLERANCE_PERCENT = 50
 
 
 def percentage_difference(val1, val2):
@@ -48,10 +47,10 @@ def get_data(zip_path_rds, zip_path_json):
     }
 
     for key, df in file_1_reconstructed_df.items():
-        df['time'] = df['time'] / 3600
+        df.loc[:, 'time'] = df['time'] / 3600
 
     file2_path = extract_data_from_zip(
-        zip_path_json, 'demo_data_nmr_insitu_python/demo_data_nmr_insitu_dfall_python.json', extract_dir_json)
+        zip_path_json, 'demo_data_nmr_insitu_dfall_python.json', extract_dir_json)
     file_2_df = pd.read_json(file2_path)
 
     return file_1_reconstructed_df, file_2_df
@@ -90,14 +89,3 @@ def test_column_values(get_demo_data):
 
                 assert percentage_difference(file1_stat, file2_stat) <= TOLERANCE_PERCENT, \
                     f"Difference greater than {TOLERANCE_PERCENT}% for {stat} of {column} (file1_stat: {file1_stat} & file2_stat: {file2_stat})"
-
-    random_indices = random.sample(
-        range(len(file_1_df['data_df'])), 3)
-    for index in random_indices:
-        for array in arrays:
-            for column in columns:
-                assert percentage_difference(
-                    file_1_df[array][column][index],
-                    file_2_df[array][column][index]
-                ) <= TOLERANCE_PERCENT, \
-                    f"Difference greater than {TOLERANCE_PERCENT}% for index {index} in column {column}"

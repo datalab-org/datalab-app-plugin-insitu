@@ -15,8 +15,6 @@ def percentage_difference(val1, val2):
 
 def extract_data_from_zip(zip_path, file_name, extract_dir):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        print(f"Files in {zip_path}:", zip_ref.namelist())
-
         if file_name not in zip_ref.namelist():
             raise FileNotFoundError(f"{file_name} not found in {zip_path}")
         zip_ref.extract(file_name, path=extract_dir)
@@ -34,7 +32,7 @@ def get_data(zip_path_rds, zip_path_json):
     file_1_df['time'] = file_1_df['time'] / 3600
 
     file2_path = extract_data_from_zip(
-        zip_path_json, 'demo_data_nmr_insitu_python/demo_data_nmr_insitu_df_python.json', extract_dir_json)
+        zip_path_json, 'demo_data_nmr_insitu_df_python.json', extract_dir_json)
 
     file_2_df = pd.read_json(file2_path)
 
@@ -70,5 +68,10 @@ def test_column_values(get_demo_data):
     random_indices = random.sample(range(len(file_1_df)), 3)
     for index in random_indices:
         for column in columns:
-            assert percentage_difference(file_1_df[column][index], file_2_df[column][index]) <= TOLERANCE_PERCENT, \
-                f"Difference greater than {TOLERANCE_PERCENT}% for index {index} in column {column}"
+            for stat in stats:
+                file1_stat = getattr(file_1_df[column][index], stat)()
+                file2_stat = getattr(
+                    pd.Series(file_2_df[column][index]), stat)()
+
+                assert percentage_difference(file1_stat, file2_stat) <= TOLERANCE_PERCENT, \
+                    f"Difference greater than {TOLERANCE_PERCENT}% for {stat} of {column} at index {index} (file1_stat: {file1_stat} & file2_stat: {file2_stat})"
