@@ -21,9 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: List repository files
-        run: ls -R
-
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -39,9 +36,6 @@ jobs:
         working-directory: ./src/pydatalab
         run: |
           uv sync --locked --all-extras --dev
-
-      - name: Check for pre-commit config
-        run: ls -a
 
       - name: Run pre-commit
         working-directory: ./src/pydatalab
