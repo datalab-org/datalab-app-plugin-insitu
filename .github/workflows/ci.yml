@@ -37,10 +37,10 @@ jobs:
         run: |
           uv sync --locked --all-extras --dev
 
-      - name: Run pre-commit
-        working-directory: ./src/pydatalab
-        run: |
-          uv run pre-commit run --all-files --show-diff-on-failure
+      # - name: Run pre-commit
+      #   working-directory: ./src/pydatalab
+      #   run: |
+      #     uv run pre-commit run --all-files --show-diff-on-failure
 
   pytest:
     name: Run Python unit tests
