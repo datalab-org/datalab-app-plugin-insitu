@@ -4,7 +4,7 @@ import pyreadr
 import pandas as pd
 
 #! To make test work
-TOLERANCE_PERCENT = 50
+TOLERANCE_PERCENT = 26
 
 
 def percentage_difference(val1, val2):

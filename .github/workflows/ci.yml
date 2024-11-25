@@ -33,7 +33,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: ./src/pydatalab
+        working-directory: ./src/datalab_app_plugin_nmr_insitu
         run: |
           uv sync --locked --all-extras --dev
 
