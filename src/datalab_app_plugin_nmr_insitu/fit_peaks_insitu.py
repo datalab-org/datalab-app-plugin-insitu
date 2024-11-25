@@ -28,6 +28,15 @@ norm_intensity = data_df['norm_intensity']
 # 897670 1239488
 # 248.046601 266.036578
 
+test_1 = []
+test_2 = []
+test_1_bis = []
+test_2_bis = []
+test_1_bis_bis = []
+test_2_bis_bis = []
+test_1_bis_bis_bis = []
+test_2_bis_bis_bis = []
+
 for x in range(1, M_Li.shape[1]):
     intensity = M_Li.iloc[:, x]
 
@@ -47,6 +56,16 @@ for x in range(1, M_Li.shape[1]):
     params['peak2_sigma'].set(value=5, min=0.5, max=6.5)
     params['peak2_fraction'].set(value=0.3, min=0.2, max=1)
 
+    # params['peak1_amplitude'].set(value=8.976e5, min=1e5, max=6e6)
+    # params['peak1_center'].set(value=248.0, min=244.0, max=252.5)
+    # params['peak1_sigma'].set(value=5, min=0.5, max=6.5)
+    # params['peak1_fraction'].set(value=0.3, min=0.2, max=1)
+
+    # params['peak2_amplitude'].set(value=0, min=0, max=5e7)
+    # params['peak2_center'].set(value=272.0, min=257.0, max=277)
+    # params['peak2_sigma'].set(value=5, min=0.5, max=6.5)
+    # params['peak2_fraction'].set(value=0.3, min=0.2, max=1)
+
     result = model.fit(intensity, x=ppm, params=params)
 
     peak1_params = {name: param for name, param in result.params.items()
@@ -57,6 +76,19 @@ for x in range(1, M_Li.shape[1]):
     peak1_intensity = model1.eval(params=peak1_params, x=ppm)
     peak2_intensity = model2.eval(params=peak2_params, x=ppm)
 
+    if x == 464:
+        test_1 = peak1_intensity
+        test_2 = peak2_intensity
+    if x == 465:
+        test_1_bis_bis = peak1_intensity
+        test_2_bis_bis = peak2_intensity
+    if x == 10:
+        test_1_bis = peak1_intensity
+        test_2_bis = peak2_intensity
+    if x == 590:
+        test_1_bis_bis_bis = peak1_intensity
+        test_2_bis_bis_bis = peak2_intensity
+
     env_peak1.append(abs(np.trapz(peak1_intensity, x=ppm)))
     env_peak2.append(abs(np.trapz(peak2_intensity, x=ppm)))
 
@@ -64,6 +96,8 @@ for x in range(1, M_Li.shape[1]):
 
 norm_intensity_peak1 = [x/max(env) for x in env_peak1]
 norm_intensity_peak2 = [x/max(env) for x in env_peak2]
+
+print(norm_intensity_peak1.index(min(norm_intensity_peak1)))
 
 
 def data_fitted(tNMR, peak_intensity, norm_intensity):
@@ -107,6 +141,67 @@ plt.plot(tNMR, norm_intensity_peak1, label='Peak 1', color='red')
 plt.plot(tNMR, norm_intensity_peak2, label='Peak 2', color='green')
 plt.xlabel('tNMR (Hrs)')
 plt.ylabel('Normalize intensity')
+plt.grid(True, linestyle='--', color='lightgray')
 plt.legend()
 printname = os.path.join(data_subDir, "df_all.png")
+plt.savefig(printname)
+
+experience_index = 464
+test_total = M_Li.iloc[:, experience_index]
+
+plt.figure(figsize=(8, 6))
+plt.gca().invert_xaxis()
+plt.xlabel('ppm')
+plt.ylabel('Intensity')
+plt.plot(ppm, test_total, label='Total', color='blue')
+plt.plot(ppm, test_1, label='Peak 1', color='red')
+plt.plot(ppm, test_2, label='Peak 2', color='green')
+plt.legend()
+
+printname = os.path.join(data_subDir, "test_1.png")
+plt.savefig(printname)
+
+experience_index = 465
+test_total = M_Li.iloc[:, experience_index]
+
+plt.figure(figsize=(8, 6))
+plt.gca().invert_xaxis()
+plt.xlabel('ppm')
+plt.ylabel('Intensity')
+plt.plot(ppm, test_total, label='Total', color='blue')
+plt.plot(ppm, test_1_bis_bis, label='Peak 1', color='red')
+plt.plot(ppm, test_2_bis_bis, label='Peak 2', color='green')
+plt.legend()
+
+printname = os.path.join(data_subDir, "test_2.png")
+plt.savefig(printname)
+
+experience_index = 10
+test_total = M_Li.iloc[:, experience_index]
+
+plt.figure(figsize=(8, 6))
+plt.gca().invert_xaxis()
+plt.xlabel('ppm')
+plt.ylabel('Intensity')
+plt.plot(ppm, test_total, label='Total', color='blue')
+plt.plot(ppm, test_1_bis, label='Peak 1', color='red')
+plt.plot(ppm, test_2_bis, label='Peak 2', color='green')
+plt.legend()
+
+printname = os.path.join(data_subDir, "test_3.png")
+plt.savefig(printname)
+
+experience_index = 590
+test_total = M_Li.iloc[:, experience_index]
+
+plt.figure(figsize=(8, 6))
+plt.gca().invert_xaxis()
+plt.xlabel('ppm')
+plt.ylabel('Intensity')
+plt.plot(ppm, test_total, label='Total', color='blue')
+plt.plot(ppm, test_1_bis_bis_bis, label='Peak 1', color='red')
+plt.plot(ppm, test_2_bis_bis_bis, label='Peak 2', color='green')
+plt.legend()
+
+printname = os.path.join(data_subDir, "test_4.png")
 plt.savefig(printname)

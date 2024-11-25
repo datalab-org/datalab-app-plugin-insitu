@@ -140,6 +140,7 @@ insituLi_data.to_json(file_path)
 
 plt.figure(figsize=(6, 10))
 plt.scatter(tNMR, norm_intensity)
+plt.grid(True, linestyle='--', color='lightgray')
 plt.xlabel("Time (hrs)")
 plt.ylabel("Normalized Intensity")
 
