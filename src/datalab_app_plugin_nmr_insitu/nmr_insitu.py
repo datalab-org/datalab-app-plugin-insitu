@@ -1,14 +1,17 @@
 import os
+import re
 import zipfile
 import tempfile
 
 from datalab_api import DatalabClient
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime
+from lmfit.models import PseudoVoigtModel
+from numpy import exp
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import re
 
 
 def process_data(
@@ -120,8 +123,12 @@ def process_data(
                 nmr_data = nmr_data[(nmr_data.iloc[:, 0] > ppm1) &
                                     (nmr_data.iloc[:, 0] < ppm2)]
 
+                # Rename col ppm
+                nmr_data = nmr_data.rename(
+                    columns={nmr_data.columns[0]: 'ppm'})
+
                 # Calculate intensities
-                ppm = nmr_data.iloc[:, 0].values
+                ppm = nmr_data['ppm']
                 intensities = []
 
                 for m in range(1, nmr_data.shape[1]):
@@ -137,14 +144,108 @@ def process_data(
                     'norm_intensity': norm_intensities,
                 })
 
-                return df
+                return nmr_data, df
 
             # Process data
             spec_paths, acqu_paths = setup_paths()
             time_points = process_time_data(acqu_paths)
-            df = process_spectral_data(spec_paths, time_points)
+            nmr_data, df = process_spectral_data(spec_paths, time_points)
 
-            return df
+            return nmr_data, df
 
         except Exception as e:
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
+
+
+def fitting_data(
+        nmr_data: pd.DataFrame,
+        df: pd.DataFrame,
+) -> Dict:
+    """
+    Perform fitting using pseudo-Voigt Model on insitu NMR data.
+
+    Args:
+        nmr_data (pd.DataFrame): Raw NMR spectral data from previous processing
+        df (pd.DataFrame): Time, Intensities and Normalised intensities data from previous processing
+
+    Returns:
+        Dict: Fitting results and processed data
+    """
+    try:
+
+        ppm = np.array(nmr_data['ppm'], dtype=float)
+        tNMR = np.array(df['time'], dtype=float)
+        env = np.array(df['intensity'], dtype=float)
+        env_peak1 = []
+        env_peak2 = []
+
+        for x in range(1, nmr_data.shape[1]):
+            intensity = np.array(nmr_data.iloc[:, x], dtype=float)
+
+            model1 = PseudoVoigtModel(prefix='peak1_')
+            model2 = PseudoVoigtModel(prefix='peak2_')
+
+            model = model1 + model2
+
+            params = model.make_params()
+            params['peak1_amplitude'].set(value=8.976e5, min=1e4, max=6e7)
+            params['peak1_center'].set(value=248.0, min=244.0, max=252.5)
+            params['peak1_sigma'].set(value=5, min=0.5, max=6.5)
+            params['peak1_fraction'].set(value=0.3, min=0.2, max=1)
+
+            params['peak2_amplitude'].set(value=12.394e5, min=0, max=5e7)
+            params['peak2_center'].set(value=266.0, min=256.0, max=276)
+            params['peak2_sigma'].set(value=5, min=0.5, max=6.5)
+            params['peak2_fraction'].set(value=0.3, min=0.2, max=1)
+
+            result = model.fit(intensity, x=ppm, params=params)
+
+            peak1_params = {name: param for name, param in result.params.items()
+                            if name.startswith('peak1_')}
+            peak2_params = {name: param for name, param in result.params.items()
+                            if name.startswith('peak2_')}
+
+            peak1_intensity = model1.eval(
+                params=peak1_params, x=ppm)
+            peak2_intensity = model2.eval(
+                params=peak2_params, x=ppm)
+
+            env_peak1.append(abs(np.trapz(peak1_intensity, x=ppm)))
+            env_peak2.append(abs(np.trapz(peak2_intensity, x=ppm)))
+
+        norm_intensity_peak1 = [x/max(env) for x in env_peak1]
+        norm_intensity_peak2 = [x/max(env) for x in env_peak2]
+
+        def data_fitted(tNMR, peak_intensity, norm_intensity):
+            result = pd.DataFrame({
+                'time': tNMR,
+                'intensity': peak_intensity,
+                'norm_intensity': norm_intensity,
+            })
+            return result
+
+        df_peakfit1 = data_fitted(tNMR, env_peak1, norm_intensity_peak1)
+        df_peakfit2 = data_fitted(tNMR, env_peak2, norm_intensity_peak2)
+
+        df_fit = {
+            "data_df": {
+                "time": df["time"].tolist(),
+                "intensity": df["intensity"].tolist(),
+                "norm_intensity": df["norm_intensity"].tolist()
+            },
+            "df_peakfit1": {
+                "time": df_peakfit1["time"].tolist(),
+                "intensity": df_peakfit1["intensity"].tolist(),
+                "norm_intensity": df_peakfit1["norm_intensity"].tolist()
+            },
+            "df_peakfit2": {
+                "time": df_peakfit2["time"].tolist(),
+                "intensity": df_peakfit2["intensity"].tolist(),
+                "norm_intensity": df_peakfit2["norm_intensity"].tolist()
+            }
+        }
+
+        return df_fit
+
+    except Exception as e:
+        raise RuntimeError(f"Error fitting NMR data: {str(e)}")
