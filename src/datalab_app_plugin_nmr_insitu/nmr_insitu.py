@@ -40,13 +40,15 @@ def process_data(
     client = DatalabClient(DATALAB_API_URL)
 
     print("#$%$#%$#%$#%$#%#$%#$%#$%$#")
-    print(client.base_url)
-    print("#$%$#%$#%$#%$#%#$%#$%#$%$#")
     print(client.get_info())
     print("#$%$#%$#%$#%$#%#$%#$%#$%$#")
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        print("1")
+
         try:
+
+            print("2")
 
             os.chdir(tmpdir)
 
