@@ -52,7 +52,12 @@ def process_data(
 
             os.chdir(tmpdir)
 
+            print("3")
+            print(item_id)
+
             client.get_item_files(item_id=item_id)
+
+            print(4)
 
             zip_path = os.path.join(tmpdir, file_name)
 
