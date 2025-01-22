@@ -54,6 +54,8 @@ def process_data(
 
             print("3")
             print(item_id)
+            print(client.get_item_files(item_id=item_id))
+            print("3")
 
             try:
                 print("before")
