@@ -38,6 +38,11 @@ def process_data(
 
     DATALAB_API_URL = "http://localhost:5001"
     client = DatalabClient(DATALAB_API_URL)
+    print("#$%#$%$#%$#%$")
+    print(DATALAB_API_URL)
+    print("#$%#$%$#%$#%$")
+    print(client)
+    print("#$%#$%$#%$#%$")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
