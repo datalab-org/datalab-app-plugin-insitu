@@ -55,9 +55,12 @@ def process_data(
             print("3")
             print(item_id)
 
-            client.get_item_files(item_id=item_id)
-
-            print(4)
+            try:
+                client.get_item_files(item_id=item_id)
+                print(4)
+            except Exception as e:
+                print(f"Erreur lors de l'appel API: {e}")
+                        print(4)
 
             zip_path = os.path.join(tmpdir, file_name)
 
