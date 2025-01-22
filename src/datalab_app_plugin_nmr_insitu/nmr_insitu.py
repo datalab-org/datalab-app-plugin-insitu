@@ -56,6 +56,10 @@ def process_data(
             print(item_id)
 
             try:
+                print("before")
+                print(client.get_info())
+                print(item_id)
+                print(client.get_item_files(item_id=item_id))
                 client.get_item_files(item_id=item_id)
                 print(4)
             except Exception as e:
