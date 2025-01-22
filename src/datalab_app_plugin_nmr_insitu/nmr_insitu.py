@@ -60,7 +60,7 @@ def process_data(
                 print(4)
             except Exception as e:
                 print(f"Erreur lors de l'appel API: {e}")
-                        print(4)
+            print(4)
 
             zip_path = os.path.join(tmpdir, file_name)
 
