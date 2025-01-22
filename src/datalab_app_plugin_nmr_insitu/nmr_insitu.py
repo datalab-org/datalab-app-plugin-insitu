@@ -53,11 +53,19 @@ def process_data(
 
             zip_path = os.path.join(tmpdir, file_name)
 
+            print(zip_path)
+            print("#$%#$%$#%$#%$")
+
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
 
             folder_name = os.path.splitext(file_name)[0]
             folder_path = os.path.join(tmpdir, folder_name)
+
+            print(folder_name)
+            print("#$%#$%$#%$#%$")
+            print(folder_path)
+            print("#$%#$%$#%$#%$")
 
             def extract_date_from_acqus(path: str) -> Optional[datetime]:
                 """Extract date from acqus file."""
