@@ -36,7 +36,7 @@ def process_data(
         pandas.DataFrame: A dataframe with insitu NMR data: time, intensities and normalised intensities
     """
 
-    DATALAB_API_URL = "http://localhost:5001"
+    DATALAB_API_URL = "localhost:5001"
     client = DatalabClient(DATALAB_API_URL)
 
     print("#$%$#%$#%$#%$#%#$%#$%#$%$#")
