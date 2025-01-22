@@ -36,7 +36,7 @@ def process_data(
         pandas.DataFrame: A dataframe with insitu NMR data: time, intensities and normalised intensities
     """
 
-    DATALAB_API_URL = "https://demo-api.datalab-org.io"
+    DATALAB_API_URL = "http://localhost:5001"
     client = DatalabClient(DATALAB_API_URL)
 
     with tempfile.TemporaryDirectory() as tmpdir:
