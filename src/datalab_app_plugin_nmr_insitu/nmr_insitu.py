@@ -39,16 +39,6 @@ def process_data(
     # DATALAB_API_URL = "http://localhost:5001/"
     DATALAB_API_URL = "https://demo.datalab-org.io/"
     client = DatalabClient(DATALAB_API_URL)
-    test = client.get_info()
-    print("test")
-    print(test)
-    test_2 = client.get_item(item_id=item_id)
-    print("test_2")
-    print(test_2)
-    test_3 = client.get_item_files(item_id=item_id)
-    print("test_3")
-    print(test_3)
-
 
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
@@ -56,7 +46,7 @@ def process_data(
             try:
                 client.get_item_files(item_id=item_id)
             except Exception as e:
-                print(f"Erreur lors de l'appel API: {e}")
+                print(f"API error: {e}")
 
             zip_path = os.path.join(tmpdir, file_name)
 
