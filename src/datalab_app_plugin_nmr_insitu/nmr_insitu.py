@@ -163,38 +163,7 @@ def process_data(
             time_points = process_time_data(acqu_paths)
             nmr_data, df = process_spectral_data(spec_paths, time_points)
 
-            #! TEMP TEST
-            required_keys = (
-                "Time",
-                "Voltage",
-                "Capacity",
-                "Current",
-                "dqdv",
-                "dvdq",
-                "half cycle",
-                "full cycle",
-            )
-
-            keys_with_units = {
-                "Time": "time (s)",
-                "Voltage": "voltage (V)",
-                "Capacity": "capacity (mAh)",
-                "Current": "current (mA)",
-                "Charge Capacity": "charge capacity (mAh)",
-                "Discharge Capacity": "discharge capacity (mAh)",
-                "dqdv": "dQ/dV (mA/V)",
-                "dvdq": "dV/dQ (V/mA)",
-            }
-
-            echem_full_path = os.path.join(echem_folder_path, 'echem')
-            pattern = os.path.join(echem_full_path, '*GCPL*.mpr')
-            gcpl_files = glob.glob(pattern)
-
-            raw_echem_df = ec.echem_file_loader(gcpl_files)
-            raw_echem_df = raw_echem_df.filter(required_keys)
-            raw_echem_df.rename(columns=keys_with_units, inplace=True)
-
-            return nmr_data, df, raw_echem_df
+            return nmr_data, df
 
         except Exception as e:
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
