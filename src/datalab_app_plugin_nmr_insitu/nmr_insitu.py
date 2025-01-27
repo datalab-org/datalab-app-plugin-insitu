@@ -16,7 +16,9 @@ import pandas as pd
 
 def process_data(
     item_id: str,
-    file_name: str,
+    folder_name: str,
+    nmr_folder_name: str,
+    echem_folder_name: str,
     ppm1: float,
     ppm2: float,
     start_at: int = 1,
@@ -26,7 +28,9 @@ def process_data(
     Process NMR spectroscopy data from multiple experiments.
 
     Args:
-        folder_path (str): Base folder containing experiments
+        folder_name (str): Base folder
+        nmr_folder_name (str): Folder containing NMR experiments,
+        echem_folder_name (str): Folder containing Echem data,
         ppm1 (float): Lower PPM range limit
         ppm2 (float): Upper PPM range limit
         start_at (int, optional): Starting experiment number. Defaults to 1
@@ -48,13 +52,14 @@ def process_data(
             except Exception as e:
                 print(f"API error: {e}")
 
-            zip_path = os.path.join(tmpdir, file_name)
+            zip_path = os.path.join(tmpdir, folder_name)
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
 
-            folder_name = os.path.splitext(file_name)[0]
-            folder_path = os.path.join(tmpdir, folder_name)
+            folder_name = os.path.splitext(folder_name)[0]
+            nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
+            folder_path = os.path.join(tmpdir, folder_name, nmr_folder_name)
 
             def extract_date_from_acqus(path: str) -> Optional[datetime]:
                 """Extract date from acqus file."""
