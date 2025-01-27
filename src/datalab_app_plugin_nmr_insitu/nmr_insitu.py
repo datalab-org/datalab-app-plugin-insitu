@@ -1,5 +1,4 @@
 import os
-import glob
 import re
 import zipfile
 import tempfile
@@ -9,7 +8,6 @@ from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from lmfit.models import PseudoVoigtModel
 from numpy import exp
-from navani import echem as ec
 
 import matplotlib.pyplot as plt
 import numpy as np
