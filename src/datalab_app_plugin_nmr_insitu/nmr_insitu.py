@@ -1,4 +1,5 @@
 import os
+import glob
 import re
 import zipfile
 import tempfile
@@ -8,6 +9,7 @@ from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from lmfit.models import PseudoVoigtModel
 from numpy import exp
+from navani import echem as ec
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -59,7 +61,10 @@ def process_data(
 
             folder_name = os.path.splitext(folder_name)[0]
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
-            folder_path = os.path.join(tmpdir, folder_name, nmr_folder_name)
+            nmr_folder_path = os.path.join(
+                tmpdir, folder_name, nmr_folder_name)
+            echem_folder_path = os.path.join(
+                tmpdir, folder_name, echem_folder_name)
 
             def extract_date_from_acqus(path: str) -> Optional[datetime]:
                 """Extract date from acqus file."""
@@ -82,7 +87,7 @@ def process_data(
 
                 # Get number of experiments
                 nos_experiments = len([d for d in os.listdir(
-                    folder_path) if os.path.isdir(os.path.join(folder_path, d))])
+                    nmr_folder_path) if os.path.isdir(os.path.join(nmr_folder_path, d))])
 
                 # Generate experiment list
                 exp_folder = [exp for exp in range(
@@ -90,9 +95,9 @@ def process_data(
 
                 # Generate paths
                 spec_paths = [
-                    f"{folder_path}/{exp}/pdata/1/ascii-spec.txt" for exp in exp_folder]
+                    f"{nmr_folder_path}/{exp}/pdata/1/ascii-spec.txt" for exp in exp_folder]
                 acqu_paths = [
-                    f"{folder_path}/{exp}/acqus" for exp in exp_folder]
+                    f"{nmr_folder_path}/{exp}/acqus" for exp in exp_folder]
 
                 return spec_paths, acqu_paths
 
@@ -158,7 +163,38 @@ def process_data(
             time_points = process_time_data(acqu_paths)
             nmr_data, df = process_spectral_data(spec_paths, time_points)
 
-            return nmr_data, df
+            #! TEMP TEST
+            required_keys = (
+                "Time",
+                "Voltage",
+                "Capacity",
+                "Current",
+                "dqdv",
+                "dvdq",
+                "half cycle",
+                "full cycle",
+            )
+
+            keys_with_units = {
+                "Time": "time (s)",
+                "Voltage": "voltage (V)",
+                "Capacity": "capacity (mAh)",
+                "Current": "current (mA)",
+                "Charge Capacity": "charge capacity (mAh)",
+                "Discharge Capacity": "discharge capacity (mAh)",
+                "dqdv": "dQ/dV (mA/V)",
+                "dvdq": "dV/dQ (V/mA)",
+            }
+
+            echem_full_path = os.path.join(echem_folder_path, 'echem')
+            pattern = os.path.join(echem_full_path, '*GCPL*.mpr')
+            gcpl_files = glob.glob(pattern)
+
+            raw_echem_df = ec.echem_file_loader(gcpl_files)
+            raw_echem_df = raw_echem_df.filter(required_keys)
+            raw_echem_df.rename(columns=keys_with_units, inplace=True)
+
+            return nmr_data, df, raw_echem_df
 
         except Exception as e:
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
