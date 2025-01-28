@@ -8,6 +8,8 @@ from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from lmfit.models import PseudoVoigtModel
 from numpy import exp
+from navani import echem as ec
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,8 +63,6 @@ def process_data(
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
-            echem_folder_path = os.path.join(
-                tmpdir, folder_name, echem_folder_name)
 
             def extract_date_from_acqus(path: str) -> Optional[datetime]:
                 """Extract date from acqus file."""
@@ -154,7 +154,28 @@ def process_data(
                     'norm_intensity': norm_intensities,
                 })
 
-                return nmr_data, df
+                #! Temp test for echem
+                echem_folder_path = os.path.join(
+                    tmpdir, folder_name, echem_folder_name, 'echem')
+
+                gcpl_full_paths = []
+
+                for filename in os.listdir(echem_folder_path):
+                    if "GCPL" in filename and filename.endswith(".mpr"):
+                        full_path = os.path.join(echem_folder_path, filename)
+                        gcpl_full_paths.append(full_path)
+
+                all_echem_df = []
+
+                for path in gcpl_full_paths:
+                    raw_df = ec.echem_file_loader(path)
+                    all_echem_df.append(raw_df)
+
+                print("#%$#%$#%$#%#$%")
+                print(all_echem_df)
+                print("#%$#%$#%$#%#$%")
+
+                return nmr_data, df, all_echem_df
 
             # Process data
             spec_paths, acqu_paths = setup_paths()
