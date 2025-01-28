@@ -121,13 +121,13 @@ def process_data(
 
                 # Create matrix for all data
                 nmr_data = pd.DataFrame(index=range(
-                    len(ppm_values)), columns=range(len(spec_paths) + 1))
-                nmr_data.iloc[:, 0] = ppm_values
+                    len(ppm_values)), columns=['ppm'] + [str(i) for i in range(1, len(spec_paths) + 1)])
+                nmr_data['ppm'] = ppm_values
 
                 # Fill matrix with intensity values
                 for i, path in enumerate(spec_paths):
                     data = pd.read_csv(path, header=None, skiprows=1)
-                    nmr_data.iloc[:, i + 1] = data.iloc[:, 1]
+                    nmr_data[str(i + 1)] = data.iloc[:, 1]
 
                 # Filter by PPM range
                 nmr_data = nmr_data[(nmr_data.iloc[:, 0] > ppm1) &
