@@ -171,9 +171,12 @@ def process_data(
                     raw_df = ec.echem_file_loader(path)
                     all_echem_df.append(raw_df)
 
-                print("#%$#%$#%$#%#$%")
-                print(all_echem_df)
-                print("#%$#%$#%$#%#$%")
+                merged_df = pd.concat(all_echem_df, axis=0)
+                merged_df = merged_df.sort_index()
+
+                print("#$%$%$#%$#%$#%$#%$%$%$#")
+                print(merged_df)
+                print("#$%$%$#%$#%$#%$#%$%$%$#")
 
                 return nmr_data, df, all_echem_df
 
