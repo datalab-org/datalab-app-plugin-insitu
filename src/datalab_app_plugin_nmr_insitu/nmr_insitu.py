@@ -154,38 +154,35 @@ def process_data(
                     'norm_intensity': norm_intensities,
                 })
 
-                #! Temp test for echem
+                return nmr_data, df
+
+            def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> pd.DataFrame:
                 echem_folder_path = os.path.join(
                     tmpdir, folder_name, echem_folder_name, 'echem')
 
                 gcpl_full_paths = []
-
                 for filename in os.listdir(echem_folder_path):
                     if "GCPL" in filename and filename.endswith(".mpr"):
-                        full_path = os.path.join(echem_folder_path, filename)
+                        full_path = os.path.join(
+                            echem_folder_path, filename)
                         gcpl_full_paths.append(full_path)
 
                 all_echem_df = []
-
                 for path in gcpl_full_paths:
                     raw_df = ec.echem_file_loader(path)
                     all_echem_df.append(raw_df)
 
                 merged_df = pd.concat(all_echem_df, axis=0)
-                merged_df = merged_df.sort_index()
-
-                print("#$%$%$#%$#%$#%$#%$%$%$#")
-                print(merged_df)
-                print("#$%$%$#%$#%$#%$#%$%$%$#")
-
-                return nmr_data, df, all_echem_df
+                return merged_df.sort_index()
 
             # Process data
             spec_paths, acqu_paths = setup_paths()
             time_points = process_time_data(acqu_paths)
             nmr_data, df = process_spectral_data(spec_paths, time_points)
+            merged_df = process_echem_data(
+                tmpdir, folder_name, echem_folder_name)
 
-            return nmr_data, df
+            return nmr_data, df, merged_df
 
         except Exception as e:
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
