@@ -113,6 +113,9 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
 
 
 def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.DataFrame) -> Dict:
+    print("$%#$#$#%$#%$#%#$#%$#")
+    print(echem_df)
+    print("$%#$#$#%$#%$#%#$#%$#")
     return {
         "metadata": {
             "ppm_range": {
