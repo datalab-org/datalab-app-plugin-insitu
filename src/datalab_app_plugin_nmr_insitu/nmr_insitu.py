@@ -96,6 +96,10 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
     echem_folder_path = os.path.join(
         tmpdir, folder_name, echem_folder_name, 'echem')
 
+    if not os.path.exists(echem_folder_path):
+        raise FileNotFoundError(
+            f"The specified folder does not exist: {echem_folder_name}")
+
     gcpl_full_paths = []
     for filename in os.listdir(echem_folder_path):
         if "GCPL" in filename and filename.endswith(".mpr"):
@@ -188,6 +192,10 @@ def process_data(
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
+
+            if not os.path.exists(nmr_folder_path):
+                raise FileNotFoundError(
+                    f"The specified folder does not exist: {nmr_folder_name}")
 
             # Process data
             spec_paths, acqu_paths = setup_paths(
