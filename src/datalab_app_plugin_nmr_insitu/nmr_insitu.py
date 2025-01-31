@@ -112,7 +112,7 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
     return merged_df.sort_index()
 
 
-def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.DataFrame, fit_results: Dict) -> Dict:
+def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.DataFrame) -> Dict:
     return {
         "metadata": {
             "ppm_range": {
