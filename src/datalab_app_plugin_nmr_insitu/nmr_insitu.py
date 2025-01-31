@@ -135,7 +135,8 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.Dat
             ]
         },
         "echem": {
-            echem_df
+            "Voltage": echem_df["Voltage"].tolist(),
+            "time": (echem_df["time/s"] / 3600).tolist()
         }
     }
 
