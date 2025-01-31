@@ -34,6 +34,7 @@ dependencies = [
     "scipy>=1.14.1",
     "datalab_api>=0.2.7",
     "nmrglue>=0.11",
+    "navani @ git+https://github.com/the-grey-group/navani.git@v0.1.7",
 ]
 
 [project.urls]

@@ -7,16 +7,141 @@ from datalab_api import DatalabClient
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from lmfit.models import PseudoVoigtModel
-from numpy import exp
 from navani import echem as ec
 
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 
+def extract_date_from_acqus(path: str) -> Optional[datetime]:
+    """Extract date from acqus file."""
+    try:
+        with open(path, 'r') as file:
+            for line in file:
+                if line.startswith('$$'):
+                    match = re.search(
+                        r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})', line)
+                    if match:
+                        date_str = match.group(1)
+                        return datetime.strptime(
+                            date_str, '%Y-%m-%d %H:%M:%S.%f %z')
+    except Exception as e:
+        print(f"Warning: Could not extract date from {path}: {e}")
+    return None
+
+
+def setup_paths(nmr_folder_path: str, start_at: int, exclude_exp: Optional[List[int]]) -> Tuple[List[str], List[str]]:
+    """Setup experiment paths and create output directory."""
+
+    nos_experiments = len([d for d in os.listdir(
+        nmr_folder_path) if os.path.isdir(os.path.join(nmr_folder_path, d))])
+
+    exp_folder = [exp for exp in range(
+        start_at, nos_experiments + 1) if exp not in (exclude_exp or [])]
+
+    spec_paths = [
+        f"{nmr_folder_path}/{exp}/pdata/1/ascii-spec.txt" for exp in exp_folder]
+    acqu_paths = [
+        f"{nmr_folder_path}/{exp}/acqus" for exp in exp_folder]
+
+    return spec_paths, acqu_paths
+
+
+def process_time_data(acqu_paths: List[str]) -> List[float]:
+    """Process time data from acqus files."""
+    timestamps = []
+    for path in acqu_paths:
+        date_time = extract_date_from_acqus(path)
+        if date_time:
+            timestamps.append(date_time.timestamp() / 3600)
+        else:
+            raise ValueError(f"Could not extract date from {path}")
+
+    time_points = [t - timestamps[0] for t in timestamps]
+    return time_points
+
+
+def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Process spectral data from ascii-spec files with PPM range filtering."""
+    first_data = pd.read_csv(spec_paths[0], header=None, skiprows=1)
+    ppm_values = first_data.iloc[:, 3].values
+
+    nmr_data = pd.DataFrame(index=range(len(ppm_values)),
+                            columns=['ppm'] + [str(i) for i in range(1, len(spec_paths) + 1)])
+    nmr_data['ppm'] = ppm_values
+
+    for i, path in enumerate(spec_paths):
+        data = pd.read_csv(path, header=None, skiprows=1)
+        nmr_data[str(i + 1)] = data.iloc[:, 1]
+
+    nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
+
+    intensities = []
+    for m in range(1, nmr_data.shape[1]):
+        y = nmr_data.iloc[:, m].values
+        intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
+
+    norm_intensities = [x/max(intensities) for x in intensities]
+
+    df = pd.DataFrame({
+        'time': time_points,
+        'intensity': intensities,
+        'norm_intensity': norm_intensities,
+    })
+
+    return nmr_data, df
+
+
+def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> pd.DataFrame:
+    echem_folder_path = os.path.join(
+        tmpdir, folder_name, echem_folder_name, 'echem')
+
+    gcpl_full_paths = []
+    for filename in os.listdir(echem_folder_path):
+        if "GCPL" in filename and filename.endswith(".mpr"):
+            full_path = os.path.join(
+                echem_folder_path, filename)
+            gcpl_full_paths.append(full_path)
+
+    all_echem_df = []
+    for path in gcpl_full_paths:
+        raw_df = ec.echem_file_loader(path)
+        all_echem_df.append(raw_df)
+
+    merged_df = pd.concat(all_echem_df, axis=0)
+    return merged_df.sort_index()
+
+
+def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.DataFrame, fit_results: Dict) -> Dict:
+    return {
+        "metadata": {
+            "ppm_range": {
+                "start": nmr_data['ppm'].min(),
+                "end": nmr_data['ppm'].max()
+            },
+            "time_range": {
+                "start": df['time'].min(),
+                "end": df['time'].max()
+            }
+        },
+        "nmr_spectra": {
+            "ppm": nmr_data["ppm"].tolist(),
+            "spectra": [
+                {
+                    "time": df["time"][i],
+                    "intensity": nmr_data[str(i+1)].tolist()
+                }
+                for i in range(len(df))
+            ]
+        },
+        "echem": {
+            echem_df
+        }
+    }
+
+
 def process_data(
+    api_url: str,
     item_id: str,
     folder_name: str,
     nmr_folder_name: str,
@@ -30,6 +155,7 @@ def process_data(
     Process NMR spectroscopy data from multiple experiments.
 
     Args:
+        api_url (str): URL of the Datalab API
         folder_name (str): Base folder
         nmr_folder_name (str): Folder containing NMR experiments,
         echem_folder_name (str): Folder containing Echem data,
@@ -42,9 +168,7 @@ def process_data(
         pandas.DataFrame: A dataframe with insitu NMR data: time, intensities and normalised intensities
     """
 
-    # DATALAB_API_URL = "http://localhost:5001/"
-    DATALAB_API_URL = "https://demo.datalab-org.io/"
-    client = DatalabClient(DATALAB_API_URL)
+    client = DatalabClient(api_url)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
@@ -64,134 +188,40 @@ def process_data(
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
 
-            def extract_date_from_acqus(path: str) -> Optional[datetime]:
-                """Extract date from acqus file."""
-                try:
-                    with open(path, 'r') as file:
-                        for line in file:
-                            if line.startswith('$$'):
-                                match = re.search(
-                                    r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})', line)
-                                if match:
-                                    date_str = match.group(1)
-                                    return datetime.strptime(
-                                        date_str, '%Y-%m-%d %H:%M:%S.%f %z')
-                except Exception as e:
-                    print(f"Warning: Could not extract date from {path}: {e}")
-                return None
-
-            def setup_paths() -> Tuple[List[str], List[str]]:
-                """Setup experiment paths and create output directory."""
-
-                # Get number of experiments
-                nos_experiments = len([d for d in os.listdir(
-                    nmr_folder_path) if os.path.isdir(os.path.join(nmr_folder_path, d))])
-
-                # Generate experiment list
-                exp_folder = [exp for exp in range(
-                    start_at, nos_experiments + 1) if exp not in (exclude_exp or [])]
-
-                # Generate paths
-                spec_paths = [
-                    f"{nmr_folder_path}/{exp}/pdata/1/ascii-spec.txt" for exp in exp_folder]
-                acqu_paths = [
-                    f"{nmr_folder_path}/{exp}/acqus" for exp in exp_folder]
-
-                return spec_paths, acqu_paths
-
-            def process_time_data(acqu_paths: List[str]) -> List[float]:
-                """Process time data from acqus files."""
-                timestamps = []
-                for path in acqu_paths:
-                    date_time = extract_date_from_acqus(path)
-                    if date_time:
-                        timestamps.append(date_time.timestamp() / 3600)
-                    else:
-                        raise ValueError(f"Could not extract date from {path}")
-
-                time_points = [t - timestamps[0] for t in timestamps]
-                return time_points
-
-            def process_spectral_data(spec_paths: List[str], time_points: List[float]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-                """Process spectral data from ascii-spec files."""
-                # Read first file to get PPM values
-                first_data = pd.read_csv(
-                    spec_paths[0], header=None, skiprows=1)
-                ppm_values = first_data.iloc[:, 3].values
-
-                # Create matrix for all data
-                nmr_data = pd.DataFrame(index=range(
-                    len(ppm_values)), columns=['ppm'] + [str(i) for i in range(1, len(spec_paths) + 1)])
-                nmr_data['ppm'] = ppm_values
-
-                # Fill matrix with intensity values
-                for i, path in enumerate(spec_paths):
-                    data = pd.read_csv(path, header=None, skiprows=1)
-                    nmr_data[str(i + 1)] = data.iloc[:, 1]
-
-                # Filter by PPM range
-                nmr_data = nmr_data[(nmr_data.iloc[:, 0] > ppm1) &
-                                    (nmr_data.iloc[:, 0] < ppm2)]
-
-                # Rename col ppm
-                nmr_data = nmr_data.rename(
-                    columns={nmr_data.columns[0]: 'ppm'})
-
-                # Calculate intensities
-                ppm = nmr_data['ppm']
-                intensities = []
-
-                for m in range(1, nmr_data.shape[1]):
-                    y = nmr_data.iloc[:, m].values
-                    intensities.append(abs(np.trapz(y, x=ppm)))
-
-                norm_intensities = [x/max(intensities) for x in intensities]
-
-                # Create time series DataFrame
-                df = pd.DataFrame({
-                    'time': time_points,
-                    'intensity': intensities,
-                    'norm_intensity': norm_intensities,
-                })
-
-                return nmr_data, df
-
-            def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> pd.DataFrame:
-                echem_folder_path = os.path.join(
-                    tmpdir, folder_name, echem_folder_name, 'echem')
-
-                gcpl_full_paths = []
-                for filename in os.listdir(echem_folder_path):
-                    if "GCPL" in filename and filename.endswith(".mpr"):
-                        full_path = os.path.join(
-                            echem_folder_path, filename)
-                        gcpl_full_paths.append(full_path)
-
-                all_echem_df = []
-                for path in gcpl_full_paths:
-                    raw_df = ec.echem_file_loader(path)
-                    all_echem_df.append(raw_df)
-
-                merged_df = pd.concat(all_echem_df, axis=0)
-                return merged_df.sort_index()
-
             # Process data
-            spec_paths, acqu_paths = setup_paths()
+            spec_paths, acqu_paths = setup_paths(
+                nmr_folder_path, start_at, exclude_exp)
             time_points = process_time_data(acqu_paths)
-            nmr_data, df = process_spectral_data(spec_paths, time_points)
+            nmr_data, df = process_spectral_data(
+                spec_paths, time_points, ppm1, ppm2)
             merged_df = process_echem_data(
                 tmpdir, folder_name, echem_folder_name)
+            result = prepare_for_bokeh(nmr_data, df, merged_df)
 
-            return nmr_data, df, merged_df
+            return result
 
         except Exception as e:
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
 
 
-def fitting_data(
-        nmr_data: pd.DataFrame,
-        df: pd.DataFrame,
-) -> Dict:
+#! Will need to be handle by UI at some point if we want to keep fitting
+FITTING_CONFIG = {
+    'peak1': {
+        'amplitude': {'value': 8.976e5, 'min': 1e4, 'max': 6e7},
+        'center': {'value': 248.0, 'min': 244.0, 'max': 252.5},
+        'sigma': {'value': 5, 'min': 0.5, 'max': 6.5},
+        'fraction': {'value': 0.3, 'min': 0.2, 'max': 1}
+    },
+    'peak2': {
+        'amplitude': {'value': 12.394e5, 'min': 0, 'max': 5e7},
+        'center': {'value': 266.0, 'min': 256.0, 'max': 276},
+        'sigma': {'value': 5, 'min': 0.5, 'max': 6.5},
+        'fraction': {'value': 0.3, 'min': 0.2, 'max': 1}
+    }
+}
+
+
+def fitting_data(nmr_data: pd.DataFrame, df: pd.DataFrame, config: dict = FITTING_CONFIG) -> Dict:
     """
     Perform fitting using pseudo-Voigt Model on insitu NMR data.
 
@@ -219,15 +249,10 @@ def fitting_data(
             model = model1 + model2
 
             params = model.make_params()
-            params['peak1_amplitude'].set(value=8.976e5, min=1e4, max=6e7)
-            params['peak1_center'].set(value=248.0, min=244.0, max=252.5)
-            params['peak1_sigma'].set(value=5, min=0.5, max=6.5)
-            params['peak1_fraction'].set(value=0.3, min=0.2, max=1)
-
-            params['peak2_amplitude'].set(value=12.394e5, min=0, max=5e7)
-            params['peak2_center'].set(value=266.0, min=256.0, max=276)
-            params['peak2_sigma'].set(value=5, min=0.5, max=6.5)
-            params['peak2_fraction'].set(value=0.3, min=0.2, max=1)
+            for param, settings in config['peak1'].items():
+                params[f'peak1_{param}'].set(**settings)
+            for param, settings in config['peak2'].items():
+                params[f'peak2_{param}'].set(**settings)
 
             result = model.fit(intensity, x=ppm, params=params)
 
