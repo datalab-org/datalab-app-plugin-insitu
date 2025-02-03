@@ -173,6 +173,9 @@ def process_data(
         pandas.DataFrame: A dataframe with insitu NMR data: time, intensities and normalised intensities
     """
 
+    if not all([folder_name, nmr_folder_name, echem_folder_name]):
+        raise ValueError("All folder names are required")
+
     client = DatalabClient(api_url)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -181,9 +184,12 @@ def process_data(
             try:
                 client.get_item_files(item_id=item_id)
             except Exception as e:
-                print(f"API error: {e}")
+                raise RuntimeError(f"API error: {e}")
 
             zip_path = os.path.join(tmpdir, folder_name)
+
+            if not os.path.exists(zip_path):
+                raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
@@ -192,10 +198,16 @@ def process_data(
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
+            echem_folder_path = os.path.join(
+                tmpdir, folder_name, echem_folder_name)
 
             if not os.path.exists(nmr_folder_path):
                 raise FileNotFoundError(
-                    f"The specified folder does not exist: {nmr_folder_name}")
+                    f"NMR folder not found: {nmr_folder_name}")
+
+            if not os.path.exists(echem_folder_path):
+                raise FileNotFoundError(
+                    f"Echem folder not found: {echem_folder_name}")
 
             # Process data
             spec_paths, acqu_paths = setup_paths(
