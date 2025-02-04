@@ -2,6 +2,8 @@ import os
 import re
 import zipfile
 import tempfile
+import warnings
+
 
 from datalab_api import DatalabClient
 from typing import List, Optional, Dict, Tuple
@@ -92,32 +94,40 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     return nmr_data, df
 
 
-def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> pd.DataFrame:
+def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
+    """Process electrochemical data if available."""
     echem_folder_path = os.path.join(
         tmpdir, folder_name, echem_folder_name, 'echem')
 
     if not os.path.exists(echem_folder_path):
-        raise FileNotFoundError(
-            f"The specified folder does not exist: {echem_folder_name}")
+        warnings.warn(
+            f"Echem folder not found: {echem_folder_name}. Continuing without echem data.")
+        return None
 
-    gcpl_full_paths = []
-    for filename in os.listdir(echem_folder_path):
-        if "GCPL" in filename and filename.endswith(".mpr"):
-            full_path = os.path.join(
-                echem_folder_path, filename)
-            gcpl_full_paths.append(full_path)
+    try:
+        gcpl_full_paths = []
+        for filename in os.listdir(echem_folder_path):
+            if "GCPL" in filename and filename.endswith(".mpr"):
+                full_path = os.path.join(
+                    echem_folder_path, filename)
+                gcpl_full_paths.append(full_path)
 
-    all_echem_df = []
-    for path in gcpl_full_paths:
-        raw_df = ec.echem_file_loader(path)
-        all_echem_df.append(raw_df)
+        all_echem_df = []
+        for path in gcpl_full_paths:
+            raw_df = ec.echem_file_loader(path)
+            all_echem_df.append(raw_df)
 
-    merged_df = pd.concat(all_echem_df, axis=0)
-    return merged_df.sort_index()
+        merged_df = pd.concat(all_echem_df, axis=0)
+        return merged_df.sort_index()
+    except Exception as e:
+        warnings.warn(
+            f"Error processing echem data: {str(e)}. Continuing without echem data.")
+        return None
 
 
-def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.DataFrame) -> Dict:
-    return {
+def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame]) -> Dict:
+    """Prepare data for Bokeh visualization, with optional echem data."""
+    result = {
         "metadata": {
             "ppm_range": {
                 "start": nmr_data['ppm'].min(),
@@ -137,12 +147,16 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: pd.Dat
                 }
                 for i in range(len(df))
             ]
-        },
-        "echem": {
+        }
+    }
+
+    if echem_df is not None:
+        result["echem"] = {
             "Voltage": echem_df["Voltage"].tolist(),
             "time": (echem_df["time/s"] / 3600).tolist()
         }
-    }
+
+    return result
 
 
 def process_data(
@@ -173,8 +187,8 @@ def process_data(
         pandas.DataFrame: A dataframe with insitu NMR data: time, intensities and normalised intensities
     """
 
-    if not all([folder_name, nmr_folder_name, echem_folder_name]):
-        raise ValueError("All folder names are required")
+    if not all([folder_name, nmr_folder_name]):
+        raise ValueError("Folder names for NMR data are required")
 
     client = DatalabClient(api_url)
 
@@ -198,6 +212,7 @@ def process_data(
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
+
             echem_folder_path = os.path.join(
                 tmpdir, folder_name, echem_folder_name)
 
@@ -206,7 +221,7 @@ def process_data(
                     f"NMR folder not found: {nmr_folder_name}")
 
             if not os.path.exists(echem_folder_path):
-                raise FileNotFoundError(
+                warnings.warn(
                     f"Echem folder not found: {echem_folder_name}")
 
             # Process data
@@ -216,7 +231,7 @@ def process_data(
             nmr_data, df = process_spectral_data(
                 spec_paths, time_points, ppm1, ppm2)
             merged_df = process_echem_data(
-                tmpdir, folder_name, echem_folder_name)
+                tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
             result = prepare_for_bokeh(nmr_data, df, merged_df)
 
             return result
