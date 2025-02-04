@@ -17,31 +17,57 @@ import pandas as pd
 
 def check_nmr_dimension(nmr_folder_path: str) -> str:
     """
-    Check if NMR data is 1D or pseudo 2D by looking for acqu2s file in experiment 1.
+    Check if NMR data is 1D or pseudo 2D based on:
+    - Single experiment folder: must have both acqus and acqu2s (pseudo2D)
+    - Multiple experiment folders: must have only acqus, no acqu2s (1D)
 
     Args:
         nmr_folder_path (str): Path to the NMR data folder containing numbered experiment folders
 
     Returns:
-        str: 'pseudo2D' if acqu2s file is found, '1D' otherwise
+        str: 'pseudo2D' for single experiment with acqu2s, '1D' for multiple experiments
 
     Raises:
-        FileNotFoundError: If experiment 1 folder or acqus file doesn't exist
-        RuntimeError: If there's an error accessing the files
+        FileNotFoundError: If required files are missing
+        RuntimeError: If there's an error accessing the files or invalid configuration
     """
     try:
-        exp1_path = os.path.join(nmr_folder_path, "1")
-        if not os.path.exists(exp1_path):
-            raise FileNotFoundError(
-                "'1' folder not found in NMR data")
+        exp_folders = [d for d in os.listdir(nmr_folder_path)
+                       if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
 
-        acqus_path = os.path.join(exp1_path, "acqus")
-        if not os.path.exists(acqus_path):
-            raise FileNotFoundError("acqus file not found in '1'")
+        if not exp_folders:
+            raise FileNotFoundError("No experiment folders found in NMR data")
 
-        acqu2s_path = os.path.join(exp1_path, "acqu2s")
+        if len(exp_folders) == 1:
+            exp_path = os.path.join(nmr_folder_path, exp_folders[0])
+            acqus_path = os.path.join(exp_path, "acqus")
+            acqu2s_path = os.path.join(exp_path, "acqu2s")
 
-        return "pseudo2D" if os.path.exists(acqu2s_path) else "1D"
+            if not os.path.exists(acqus_path):
+                raise FileNotFoundError(
+                    f"acqus file not found in experiment {exp_folders[0]}")
+
+            if not os.path.exists(acqu2s_path):
+                raise FileNotFoundError(
+                    f"acqu2s file not found in experiment {exp_folders[0]} - required for pseudo2D")
+
+            return "pseudo2D"
+
+        else:
+            for exp_folder in exp_folders:
+                exp_path = os.path.join(nmr_folder_path, exp_folder)
+                acqus_path = os.path.join(exp_path, "acqus")
+                acqu2s_path = os.path.join(exp_path, "acqu2s")
+
+                if not os.path.exists(acqus_path):
+                    raise FileNotFoundError(
+                        f"acqus file not found in experiment {exp_folder}")
+
+                if os.path.exists(acqu2s_path):
+                    raise RuntimeError(
+                        f"acqu2s file found in experiment {exp_folder} - not allowed for 1D experiments")
+
+            return "1D"
 
     except Exception as e:
         raise RuntimeError(f"Error checking NMR dimension: {str(e)}")
