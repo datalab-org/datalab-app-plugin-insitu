@@ -227,12 +227,18 @@ def process_data(
             # Process data
             spec_paths, acqu_paths = setup_paths(
                 nmr_folder_path, start_at, exclude_exp)
+            print("1")
             time_points = process_time_data(acqu_paths)
+            print("2")
             nmr_data, df = process_spectral_data(
                 spec_paths, time_points, ppm1, ppm2)
+            print("3")
             merged_df = process_echem_data(
                 tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
+            print("4")
             result = prepare_for_bokeh(nmr_data, df, merged_df)
+            print("5")
+            print(result)
 
             return result
 
