@@ -15,6 +15,38 @@ import numpy as np
 import pandas as pd
 
 
+def check_nmr_dimension(nmr_folder_path: str) -> str:
+    """
+    Check if NMR data is 1D or pseudo 2D by looking for acqu2s file in experiment 1.
+
+    Args:
+        nmr_folder_path (str): Path to the NMR data folder containing numbered experiment folders
+
+    Returns:
+        str: 'pseudo2D' if acqu2s file is found, '1D' otherwise
+
+    Raises:
+        FileNotFoundError: If experiment 1 folder or acqus file doesn't exist
+        RuntimeError: If there's an error accessing the files
+    """
+    try:
+        exp1_path = os.path.join(nmr_folder_path, "1")
+        if not os.path.exists(exp1_path):
+            raise FileNotFoundError(
+                "'1' folder not found in NMR data")
+
+        acqus_path = os.path.join(exp1_path, "acqus")
+        if not os.path.exists(acqus_path):
+            raise FileNotFoundError("acqus file not found in '1'")
+
+        acqu2s_path = os.path.join(exp1_path, "acqu2s")
+
+        return "pseudo2D" if os.path.exists(acqu2s_path) else "1D"
+
+    except Exception as e:
+        raise RuntimeError(f"Error checking NMR dimension: {str(e)}")
+
+
 def extract_date_from_acqus(path: str) -> Optional[datetime]:
     """Extract date from acqus file."""
     try:
@@ -225,14 +257,22 @@ def process_data(
                     f"Echem folder not found: {echem_folder_name}")
 
             # Process data
-            spec_paths, acqu_paths = setup_paths(
-                nmr_folder_path, start_at, exclude_exp)
-            time_points = process_time_data(acqu_paths)
-            nmr_data, df = process_spectral_data(
-                spec_paths, time_points, ppm1, ppm2)
-            merged_df = process_echem_data(
-                tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
-            result = prepare_for_bokeh(nmr_data, df, merged_df)
+            nmr_dimension = check_nmr_dimension(nmr_folder_path)
+
+            if nmr_dimension == '1D':
+                spec_paths, acqu_paths = setup_paths(
+                    nmr_folder_path, start_at, exclude_exp)
+                time_points = process_time_data(acqu_paths)
+                nmr_data, df = process_spectral_data(
+                    spec_paths, time_points, ppm1, ppm2)
+                merged_df = process_echem_data(
+                    tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
+                result = prepare_for_bokeh(nmr_data, df, merged_df)
+            elif nmr_dimension == 'pseudo2D':
+                print(nmr_dimension)
+            else:
+                raise ValueError(
+                    f"Unknown NMR dimension type: {nmr_dimension}")
 
             return result
 
