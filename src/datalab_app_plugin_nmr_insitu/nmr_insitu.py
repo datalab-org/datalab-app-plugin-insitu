@@ -189,52 +189,16 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process pseudo-2D spectral data from Bruker files using nmrglue."""
-    dic, data = ng.bruker.read(exp_dir)
 
-    print(exp_dir)
+    a_dic, a_data = ng.fileio.bruker.read(str(exp_dir))
     exp_dir = Path(exp_dir)
     pdata_path = exp_dir / "pdata" / "1"
-    print(pdata_path)
-
     p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
 
-    print("#%$#$#$%#$#%$#%$#")
-    print(p_dic)
-    print("#%$#$#$%#$#%$#%$#")
-    print(p_data)
-    print("#%$#$#$%#$#%$#%$#")
-
-    td = int(dic['acqus'].get('TD', 0)) // 2
-    td_indirect = int(dic['acqu2s'].get('TD', 0))
-
-    data = data.reshape(td_indirect, -1)
-
-    sw_hz = float(dic['acqus'].get('SW_h', 0))
-    sf = float(dic['acqus'].get('SF', 1))
-    o1p = float(dic['acqus'].get('O1', 0)) / sf
-
-    ppm_scale = np.linspace(
-        o1p + (sw_hz / (2 * sf)),
-        o1p - (sw_hz / (2 * sf)),
-        td
-    )
-
-    acqus_path = os.path.join(exp_dir, "acqus")
-    time_points = process_time_data([acqus_path] * td_indirect)
-
-    nmr_data = pd.DataFrame(
-        index=range(td),
-        columns=['ppm'] + [str(i) for i in range(1, td_indirect + 1)]
-    )
-    nmr_data['ppm'] = ppm_scale
-
-    for i in range(td_indirect):
-        nmr_data[str(i + 1)] = data[i][:td]
+    td = int(a_dic['acqus'].get('TD', 0))
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
-    intensities = [abs(np.trapz(nmr_data[str(i+1)].values, x=nmr_data['ppm']))
-                   for i in range(td_indirect)]
     norm_intensities = [x / max(intensities) for x in intensities]
 
     df = pd.DataFrame({
