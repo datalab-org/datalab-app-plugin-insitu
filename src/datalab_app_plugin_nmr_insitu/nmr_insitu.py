@@ -198,7 +198,11 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
     """
 
+    print("Start process pseudo 2D")
     dic, data = ng.bruker.read(exp_dir)
+    print(f"Dic: {dic}")
+    print(f"Data: {data}")
+    print(f"Data shape: {data.shape}")
     td_value = data.shape[0]
     points_per_exp = data.shape[1]
 
