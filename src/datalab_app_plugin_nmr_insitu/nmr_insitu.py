@@ -13,6 +13,7 @@ from navani import echem as ec
 
 import numpy as np
 import pandas as pd
+import nmrglue as ng
 
 
 def check_nmr_dimension(nmr_folder_path: str) -> str:
@@ -183,13 +184,12 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     return nmr_data, df
 
 
-def process_pseudo2d_spectral_data(spec_path: str, td_value: int, time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def process_pseudo2d_spectral_data(exp_dir: str, time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Process pseudo-2D spectral data from a single ascii-spec file.
+    Process pseudo-2D spectral data from Bruker files using nmrglue.
 
     Args:
-        spec_path (str): Path to the ascii-spec file
-        td_value (int): Number of experiments from TD parameter
+        dir_path (str): Path to the Bruker experiment folder
         time_points (List[float]): List of time points for each experiment
         ppm1 (float): Lower PPM range limit
         ppm2 (float): Upper PPM range limit
@@ -197,20 +197,25 @@ def process_pseudo2d_spectral_data(spec_path: str, td_value: int, time_points: L
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
     """
-    data = pd.read_csv(spec_path, header=None, skiprows=1)
-    ppm_values = data.iloc[:, 3].values
-    intensities_all = data.iloc[:, 1].values
 
-    points_per_exp = len(intensities_all) // td_value
+    dic, data = ng.bruker.read(exp_dir)
+    td_value = data.shape[0]
+    points_per_exp = data.shape[1]
 
-    intensity_matrix = intensities_all.reshape(td_value, points_per_exp).T
+    udic = ng.bruker.guess_udic(dic, data)
+    ppm_scale = np.linspace(udic[0]['car'] - (udic[0]['sw'] / 2),
+                            udic[0]['car'] + (udic[0]['sw'] / 2),
+                            points_per_exp)
+
+    acqus_path = os.path.join(exp_dir, "acqus")
+    time_points = process_time_data([acqus_path] * td_value)
 
     nmr_data = pd.DataFrame(index=range(points_per_exp),
                             columns=['ppm'] + [str(i) for i in range(1, td_value + 1)])
-    nmr_data['ppm'] = ppm_values[:points_per_exp]
+    nmr_data['ppm'] = ppm_scale
 
     for i in range(td_value):
-        nmr_data[str(i + 1)] = intensity_matrix[:, i]
+        nmr_data[str(i + 1)] = data[i, :]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
@@ -219,7 +224,7 @@ def process_pseudo2d_spectral_data(spec_path: str, td_value: int, time_points: L
         y = nmr_data.iloc[:, m].values
         intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
 
-    norm_intensities = [x/max(intensities) for x in intensities]
+    norm_intensities = [x / max(intensities) for x in intensities]
 
     df = pd.DataFrame({
         'time': time_points,
@@ -391,12 +396,10 @@ def process_data(
                     raise ValueError(
                         "Could not extract TD value from acqus file")
 
-                print("td_indirect:")
-                print(td_indirect)
                 time_points = process_time_data([acqus_path] * td_value)
 
                 nmr_data, df = process_pseudo2d_spectral_data(
-                    spec_path, td_value, time_points, ppm1, ppm2)
+                    exp_folder, ppm1, ppm2)
 
                 #! echem data in pseudo-2d ?
 
