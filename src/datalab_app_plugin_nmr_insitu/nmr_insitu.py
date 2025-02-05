@@ -187,45 +187,53 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Process pseudo-2D spectral data from Bruker files using nmrglue.
-
-    Args:
-        exp_dir (str): Path to the Bruker experiment folder
-        ppm1 (float): Lower PPM range limit
-        ppm2 (float): Upper PPM range limit
-
-    Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
     """
-
+    # Read raw data and print shapes
     dic, data = ng.bruker.read(exp_dir)
+    print(f"Data shape: {data.shape}")
+    print(f"Dictionary keys: {dic.keys()}")
+    print(f"Acqus keys: {dic['acqus'].keys()}")
 
     td_value = data.shape[0]
     points_per_exp = data.shape[1]
 
-    sw_hz = float(dic['acqus']['SW_h'])
-    sf = float(dic['acqus']['SF'])
-    o1p = float(dic['acqus']['O1']) / sf
+    # Safely get parameters
+    try:
+        sw_hz = float(dic['acqus'].get('SW_h', 0))
+        sf = float(dic['acqus'].get('SF', 1))
+        o1p = float(dic['acqus'].get('O1', 0)) / sf if sf != 0 else 0
 
-    ppm_scale = np.linspace(
-        o1p + (sw_hz / (2 * sf)),
-        o1p - (sw_hz / (2 * sf)),
-        points_per_exp
-    )
+        print(f"SW_h: {sw_hz}, SF: {sf}, O1: {o1p}")
 
+        ppm_scale = np.linspace(
+            o1p + (sw_hz / (2 * sf)),
+            o1p - (sw_hz / (2 * sf)),
+            points_per_exp
+        )
+    except Exception as e:
+        print(f"Error calculating PPM scale: {e}")
+        raise
+
+    # Get time points
     acqus_path = os.path.join(exp_dir, "acqus")
     time_points = process_time_data([acqus_path] * td_value)
+    print(f"Time points length: {len(time_points)}")
 
+    # Create dataframe
     nmr_data = pd.DataFrame(
         index=range(points_per_exp),
         columns=['ppm'] + [str(i) for i in range(1, td_value + 1)]
     )
     nmr_data['ppm'] = ppm_scale
 
+    # Fill data
     for i in range(td_value):
         nmr_data[str(i + 1)] = data[i]
 
+    # Filter PPM range
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
+    # Calculate intensities
     intensities = []
     for m in range(1, nmr_data.shape[1]):
         y = nmr_data.iloc[:, m].values
