@@ -184,7 +184,7 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     return nmr_data, df
 
 
-def process_pseudo2d_spectral_data(exp_dir: str, time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Process pseudo-2D spectral data from Bruker files using nmrglue.
 
