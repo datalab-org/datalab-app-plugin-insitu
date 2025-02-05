@@ -203,6 +203,17 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     print(f"Dic: {dic}")
     print(f"Data: {data}")
     print(f"Data shape: {data.shape}")
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+
+    a_dic, a_data = ng.fileio.bruker.read(str(exp_dir))
+    print(a_dic)
+    print(a_data)
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+
     td_value = data.shape[0]
     points_per_exp = data.shape[1]
 
