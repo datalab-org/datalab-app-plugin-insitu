@@ -198,24 +198,16 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
     """
 
-    print("Start process pseudo 2D")
     dic, data = ng.bruker.read(exp_dir)
-    print(f"Dic: {dic}")
-    print(f"Data: {data}")
-    print(f"Data shape: {data.shape}")
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-
-    a_dic, a_data = ng.fileio.bruker.read(str(exp_dir))
-    print(a_dic)
-    print(a_data)
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
 
     td_value = data.shape[0]
     points_per_exp = data.shape[1]
+
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print(td_value)
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    print(points_per_exp)
+    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
 
     udic = ng.bruker.guess_udic(dic, data)
     ppm_scale = np.linspace(udic[0]['car'] - (udic[0]['sw'] / 2),
