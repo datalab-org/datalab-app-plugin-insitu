@@ -185,19 +185,21 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 
 
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Process pseudo-2D spectral data from Bruker files using nmrglue.
-    """
-    # Read raw data
+    """Process pseudo-2D spectral data from Bruker files using nmrglue."""
     dic, data = ng.bruker.read(exp_dir)
 
-    # Get TD and TD_INDIRECT from acqus
-    td_value = int(dic['acqus'].get('TD', 0))
+    # Get dimensions from acqu2s
+    td = int(dic['acqus'].get('TD', 0))
     td_indirect = int(dic['acqu2s'].get('TD', 0))
-    points_per_exp = td_indirect
+    print(f"TD: {td}, TD_INDIRECT: {td_indirect}, Data shape: {data.shape}")
+
+    # Calculate actual dimensions
+    actual_points = data.shape[0]
+    num_exps = td_indirect if td_indirect > 0 else actual_points // td
+    points_per_exp = td
 
     # Reshape data
-    data = data.reshape(td_value, -1)
+    data = data[:num_exps * points_per_exp].reshape(num_exps, points_per_exp)
 
     # Calculate PPM scale
     sw_hz = float(dic['acqus'].get('SW_h', 0))
@@ -210,30 +212,27 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         points_per_exp
     )
 
-    # Get time points
+    # Get time points and ensure matching length
     acqus_path = os.path.join(exp_dir, "acqus")
-    time_points = process_time_data([acqus_path] * td_value)
+    time_points = process_time_data([acqus_path] * num_exps)
 
-    # Create dataframe
+    # Create dataframe with matching dimensions
     nmr_data = pd.DataFrame(
         index=range(points_per_exp),
-        columns=['ppm'] + [str(i) for i in range(1, td_value + 1)]
+        columns=['ppm'] + [str(i) for i in range(1, num_exps + 1)]
     )
     nmr_data['ppm'] = ppm_scale
 
     # Fill data
-    for i in range(td_value):
+    for i in range(num_exps):
         nmr_data[str(i + 1)] = data[i]
 
     # Filter PPM range
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
     # Calculate intensities
-    intensities = []
-    for m in range(1, nmr_data.shape[1]):
-        y = nmr_data.iloc[:, m].values
-        intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
-
+    intensities = [abs(np.trapz(nmr_data[str(i+1)].values,
+                       x=nmr_data['ppm'])) for i in range(num_exps)]
     norm_intensities = [x / max(intensities) for x in intensities]
 
     df = pd.DataFrame({
