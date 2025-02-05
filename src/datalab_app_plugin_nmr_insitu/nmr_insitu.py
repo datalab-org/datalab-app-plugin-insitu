@@ -188,36 +188,31 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     """
     Process pseudo-2D spectral data from Bruker files using nmrglue.
     """
-    # Read raw data and print shapes
+    # Read raw data
     dic, data = ng.bruker.read(exp_dir)
-    print(f"Data shape: {data.shape}")
-    print(f"Dictionary keys: {dic.keys()}")
-    print(f"Acqus keys: {dic['acqus'].keys()}")
 
-    td_value = data.shape[0]
-    points_per_exp = data.shape[1]
+    # Get TD and TD_INDIRECT from acqus
+    td_value = int(dic['acqus'].get('TD', 0))
+    td_indirect = int(dic['acqu2s'].get('TD', 0))
+    points_per_exp = td_indirect
 
-    # Safely get parameters
-    try:
-        sw_hz = float(dic['acqus'].get('SW_h', 0))
-        sf = float(dic['acqus'].get('SF', 1))
-        o1p = float(dic['acqus'].get('O1', 0)) / sf if sf != 0 else 0
+    # Reshape data
+    data = data.reshape(td_value, -1)
 
-        print(f"SW_h: {sw_hz}, SF: {sf}, O1: {o1p}")
+    # Calculate PPM scale
+    sw_hz = float(dic['acqus'].get('SW_h', 0))
+    sf = float(dic['acqus'].get('SF', 1))
+    o1p = float(dic['acqus'].get('O1', 0)) / sf
 
-        ppm_scale = np.linspace(
-            o1p + (sw_hz / (2 * sf)),
-            o1p - (sw_hz / (2 * sf)),
-            points_per_exp
-        )
-    except Exception as e:
-        print(f"Error calculating PPM scale: {e}")
-        raise
+    ppm_scale = np.linspace(
+        o1p + (sw_hz / (2 * sf)),
+        o1p - (sw_hz / (2 * sf)),
+        points_per_exp
+    )
 
     # Get time points
     acqus_path = os.path.join(exp_dir, "acqus")
     time_points = process_time_data([acqus_path] * td_value)
-    print(f"Time points length: {len(time_points)}")
 
     # Create dataframe
     nmr_data = pd.DataFrame(
