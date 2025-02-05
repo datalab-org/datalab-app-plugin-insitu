@@ -86,6 +86,10 @@ def extract_td_parameters(acqus_path: str) -> Tuple[Optional[int], Optional[str]
     td_value = None
     td_indirect = None
 
+    print("acqus_path")
+    print(acqus_path)
+    print("acqus_path")
+
     try:
         with open(acqus_path, 'r') as file:
             lines = file.readlines()
