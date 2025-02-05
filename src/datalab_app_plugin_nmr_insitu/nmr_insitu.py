@@ -191,7 +191,8 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     dic, data = ng.bruker.read(exp_dir)
 
     print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
-    pprint.pprint(data)
+    pp = pprint.PrettyPrinter(width=200, depth=10)
+    pp.pprint(data)
     print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
 
     td = int(dic['acqus'].get('TD', 0)) // 2
