@@ -189,8 +189,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     Process pseudo-2D spectral data from Bruker files using nmrglue.
 
     Args:
-        dir_path (str): Path to the Bruker experiment folder
-        time_points (List[float]): List of time points for each experiment
+        exp_dir (str): Path to the Bruker experiment folder
         ppm1 (float): Lower PPM range limit
         ppm2 (float): Upper PPM range limit
 
@@ -198,34 +197,32 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
     """
 
-    print("start process pseudo-2d")
     dic, data = ng.bruker.read(exp_dir)
-    print("data processed")
+
     td_value = data.shape[0]
-    print("td value")
     points_per_exp = data.shape[1]
-    print("pts per exp value")
 
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print(td_value)
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
-    print(points_per_exp)
-    print("#^%#$^%#$^%#$^%#$^%#$^%#$")
+    sw_hz = float(dic['acqus']['SW_h'])
+    sf = float(dic['acqus']['SF'])
+    o1p = float(dic['acqus']['O1']) / sf
 
-    udic = ng.bruker.guess_udic(dic, data)
-    ppm_scale = np.linspace(udic[0]['car'] - (udic[0]['sw'] / 2),
-                            udic[0]['car'] + (udic[0]['sw'] / 2),
-                            points_per_exp)
+    ppm_scale = np.linspace(
+        o1p + (sw_hz / (2 * sf)),
+        o1p - (sw_hz / (2 * sf)),
+        points_per_exp
+    )
 
     acqus_path = os.path.join(exp_dir, "acqus")
     time_points = process_time_data([acqus_path] * td_value)
 
-    nmr_data = pd.DataFrame(index=range(points_per_exp),
-                            columns=['ppm'] + [str(i) for i in range(1, td_value + 1)])
+    nmr_data = pd.DataFrame(
+        index=range(points_per_exp),
+        columns=['ppm'] + [str(i) for i in range(1, td_value + 1)]
+    )
     nmr_data['ppm'] = ppm_scale
 
     for i in range(td_value):
-        nmr_data[str(i + 1)] = data[i, :]
+        nmr_data[str(i + 1)] = data[i]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
