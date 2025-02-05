@@ -4,6 +4,8 @@ import zipfile
 import tempfile
 import warnings
 
+import pprint
+
 
 from datalab_api import DatalabClient
 from typing import List, Optional, Dict, Tuple
@@ -187,6 +189,10 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process pseudo-2D spectral data from Bruker files using nmrglue."""
     dic, data = ng.bruker.read(exp_dir)
+
+    print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
+    pprint.pprint(data)
+    print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
 
     td = int(dic['acqus'].get('TD', 0)) // 2
     td_indirect = int(dic['acqu2s'].get('TD', 0))
