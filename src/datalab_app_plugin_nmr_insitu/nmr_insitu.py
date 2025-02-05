@@ -190,7 +190,11 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     """Process pseudo-2D spectral data from Bruker files using nmrglue."""
     dic, data = ng.bruker.read(exp_dir)
 
-    p_dic, p_data = ng.fileio.bruker.read_pdata(str(exp_dir))
+    print(exp_dir)
+    pdata_path = exp_dir / "pdata" / "1"
+    print(pdata_path)
+
+    p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
 
     print("#%$#$#$%#$#%$#%$#")
     print(p_dic)
