@@ -5,6 +5,7 @@ import tempfile
 import warnings
 
 import pprint
+from pathlib import Path
 
 
 from datalab_api import DatalabClient
@@ -191,6 +192,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     dic, data = ng.bruker.read(exp_dir)
 
     print(exp_dir)
+    exp_dir = Path(exp_dir)
     pdata_path = exp_dir / "pdata" / "1"
     print(pdata_path)
 
