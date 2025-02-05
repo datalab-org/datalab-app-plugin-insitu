@@ -188,17 +188,11 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     """Process pseudo-2D spectral data from Bruker files using nmrglue."""
     dic, data = ng.bruker.read(exp_dir)
 
-    # Get dimensions from acqus files
-    # Dividing by 2 because of complex data
     td = int(dic['acqus'].get('TD', 0)) // 2
     td_indirect = int(dic['acqu2s'].get('TD', 0))
 
-    print(f"TD: {td}, TD_INDIRECT: {td_indirect}, Data shape: {data.shape}")
-
-    # Reshape data
     data = data.reshape(td_indirect, -1)
 
-    # Calculate PPM scale
     sw_hz = float(dic['acqus'].get('SW_h', 0))
     sf = float(dic['acqus'].get('SF', 1))
     o1p = float(dic['acqus'].get('O1', 0)) / sf
@@ -209,25 +203,20 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         td
     )
 
-    # Get time points
     acqus_path = os.path.join(exp_dir, "acqus")
     time_points = process_time_data([acqus_path] * td_indirect)
 
-    # Create dataframe
     nmr_data = pd.DataFrame(
         index=range(td),
         columns=['ppm'] + [str(i) for i in range(1, td_indirect + 1)]
     )
     nmr_data['ppm'] = ppm_scale
 
-    # Fill data
     for i in range(td_indirect):
         nmr_data[str(i + 1)] = data[i][:td]
 
-    # Filter PPM range
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
-    # Calculate intensities
     intensities = [abs(np.trapz(nmr_data[str(i+1)].values, x=nmr_data['ppm']))
                    for i in range(td_indirect)]
     norm_intensities = [x / max(intensities) for x in intensities]
@@ -387,27 +376,17 @@ def process_data(
 
                 exp_folders = [d for d in os.listdir(nmr_folder_path) if os.path.isdir(
                     os.path.join(nmr_folder_path, d)) and d.isdigit()]
+
                 if not exp_folders:
                     raise FileNotFoundError(
                         "No experience file found in NMR data")
 
                 exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
-
-                acqus_path = os.path.join(exp_folder, "acqus")
-                spec_path = os.path.join(
-                    nmr_folder_path, exp_folder, "pdata/1/ascii-spec.txt")
-
-                td_value, td_indirect = extract_td_parameters(acqus_path)
-                if not td_value:
-                    raise ValueError(
-                        "Could not extract TD value from acqus file")
-
-                time_points = process_time_data([acqus_path] * td_value)
-
                 nmr_data, df = process_pseudo2d_spectral_data(
                     exp_folder, ppm1, ppm2)
 
-                #! echem data in pseudo-2d ?
+                merged_df = process_echem_data(
+                    tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
 
                 result = prepare_for_bokeh(nmr_data, df, merged_df)
 
