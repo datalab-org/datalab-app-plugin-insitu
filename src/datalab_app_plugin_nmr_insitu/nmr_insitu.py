@@ -73,6 +73,37 @@ def check_nmr_dimension(nmr_folder_path: str) -> str:
         raise RuntimeError(f"Error checking NMR dimension: {str(e)}")
 
 
+def extract_td_parameters(acqus_path: str) -> Tuple[Optional[int], Optional[str]]:
+    """
+    Extract TD and TD_INDIRECT parameters from acqus file.
+
+    Args:
+        acqus_path (str): Path to acqus file
+
+    Returns:
+        Tuple[Optional[int], Optional[str]]: TD value and TD_INDIRECT string
+    """
+    td_value = None
+    td_indirect = None
+
+    try:
+        with open(acqus_path, 'r') as file:
+            lines = file.readlines()
+
+            for i, line in enumerate(lines):
+                if line.startswith('##$TD='):
+                    td_value = int(line.split('=')[1].strip())
+                elif line.startswith('##$TD_INDIRECT='):
+                    td_indirect = line.split('=')[1].strip()
+
+                    if td_indirect.endswith('\\'):
+                        td_indirect = td_indirect[:-1] + lines[i + 1].strip()
+
+        return td_value, td_indirect
+    except Exception as e:
+        raise RuntimeError(f"Error extracting TD parameters: {str(e)}")
+
+
 def extract_date_from_acqus(path: str) -> Optional[datetime]:
     """Extract date from acqus file."""
     try:
@@ -133,6 +164,53 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     for i, path in enumerate(spec_paths):
         data = pd.read_csv(path, header=None, skiprows=1)
         nmr_data[str(i + 1)] = data.iloc[:, 1]
+
+    nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
+
+    intensities = []
+    for m in range(1, nmr_data.shape[1]):
+        y = nmr_data.iloc[:, m].values
+        intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
+
+    norm_intensities = [x/max(intensities) for x in intensities]
+
+    df = pd.DataFrame({
+        'time': time_points,
+        'intensity': intensities,
+        'norm_intensity': norm_intensities,
+    })
+
+    return nmr_data, df
+
+
+def process_pseudo2d_spectral_data(spec_path: str, td_value: int, time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Process pseudo-2D spectral data from a single ascii-spec file.
+
+    Args:
+        spec_path (str): Path to the ascii-spec file
+        td_value (int): Number of experiments from TD parameter
+        time_points (List[float]): List of time points for each experiment
+        ppm1 (float): Lower PPM range limit
+        ppm2 (float): Upper PPM range limit
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: NMR data and intensities dataframes
+    """
+    data = pd.read_csv(spec_path, header=None, skiprows=1)
+    ppm_values = data.iloc[:, 3].values
+    intensities_all = data.iloc[:, 1].values
+
+    points_per_exp = len(intensities_all) // td_value
+
+    intensity_matrix = intensities_all.reshape(td_value, points_per_exp).T
+
+    nmr_data = pd.DataFrame(index=range(points_per_exp),
+                            columns=['ppm'] + [str(i) for i in range(1, td_value + 1)])
+    nmr_data['ppm'] = ppm_values[:points_per_exp]
+
+    for i in range(td_value):
+        nmr_data[str(i + 1)] = intensity_matrix[:, i]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
@@ -295,7 +373,27 @@ def process_data(
                     tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
                 result = prepare_for_bokeh(nmr_data, df, merged_df)
             elif nmr_dimension == 'pseudo2D':
-                print(nmr_dimension)
+                exp_folder = os.path.join(nmr_folder_path, "1")
+                acqus_path = os.path.join(exp_folder, "acqus")
+                spec_path = os.path.join(
+                    nmr_folder_path, exp_folder, "pdata/1/ascii-spec.txt")
+
+                td_value, td_indirect = extract_td_parameters(acqus_path)
+                if not td_value:
+                    raise ValueError(
+                        "Could not extract TD value from acqus file")
+
+                print("td_indirect:")
+                print(td_indirect)
+                time_points = process_time_data([acqus_path] * td_value)
+
+                nmr_data, df = process_pseudo2d_spectral_data(
+                    spec_path, td_value, time_points, ppm1, ppm2)
+
+                #! echem data in pseudo-2d ?
+
+                result = prepare_for_bokeh(nmr_data, df, merged_df)
+
             else:
                 raise ValueError(
                     f"Unknown NMR dimension type: {nmr_dimension}")
