@@ -189,11 +189,12 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process pseudo-2D spectral data from Bruker files using nmrglue."""
     dic, data = ng.bruker.read(exp_dir)
+    a_dic, a_data = ng.fileio.bruker.read(str(exp_dir))
 
-    print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
-    pp = pprint.PrettyPrinter(width=200, depth=10)
-    pp.pprint(data)
-    print("%$#$%#$#%$#%$#%$#%$#%$#%$#%$#")
+    print(dic == a_dic)
+    print(data == a_data)
+
+    pprint.pprint(a_data)
 
     td = int(dic['acqus'].get('TD', 0)) // 2
     td_indirect = int(dic['acqu2s'].get('TD', 0))
