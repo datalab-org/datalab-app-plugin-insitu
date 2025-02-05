@@ -39,13 +39,7 @@ def check_nmr_dimension(nmr_folder_path: str) -> str:
             raise FileNotFoundError("No experiment folders found in NMR data")
 
         if len(exp_folders) == 1:
-            exp_folders = [d for d in os.listdir(nmr_folder_path) if os.path.isdir(
-                os.path.join(nmr_folder_path, d)) and d.isdigit()]
-            if exp_folders:
-                exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
-            else:
-                raise FileNotFoundError(
-                    "No experiment folders found in NMR data")
+            exp_path = os.path.join(nmr_folder_path, exp_folders[0])
             acqus_path = os.path.join(exp_path, "acqus")
             acqu2s_path = os.path.join(exp_path, "acqu2s")
 
@@ -71,7 +65,7 @@ def check_nmr_dimension(nmr_folder_path: str) -> str:
 
                 if os.path.exists(acqu2s_path):
                     raise RuntimeError(
-                        f"acqu2s file found in experiment {exp_folder} - not allowed for 1D experiments")
+                        f"acqu2s file found in experiment {exp_folder}")
 
             return "1D"
 
