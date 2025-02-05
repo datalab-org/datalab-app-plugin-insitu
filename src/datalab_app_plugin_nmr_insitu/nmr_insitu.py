@@ -373,7 +373,15 @@ def process_data(
                     tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
                 result = prepare_for_bokeh(nmr_data, df, merged_df)
             elif nmr_dimension == 'pseudo2D':
-                exp_folder = os.path.join(nmr_folder_path, [0])
+
+                exp_folders = [d for d in os.listdir(nmr_folder_path) if os.path.isdir(
+                    os.path.join(nmr_folder_path, d)) and d.isdigit()]
+                if not exp_folders:
+                    raise FileNotFoundError(
+                        "No experience file found in NMR data")
+
+                exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
+
                 acqus_path = os.path.join(exp_folder, "acqus")
                 spec_path = os.path.join(
                     nmr_folder_path, exp_folder, "pdata/1/ascii-spec.txt")
