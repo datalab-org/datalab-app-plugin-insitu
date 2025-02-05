@@ -86,10 +86,6 @@ def extract_td_parameters(acqus_path: str) -> Tuple[Optional[int], Optional[str]
     td_value = None
     td_indirect = None
 
-    print("acqus_path")
-    print(acqus_path)
-    print("acqus_path")
-
     try:
         with open(acqus_path, 'r') as file:
             lines = file.readlines()
@@ -377,7 +373,7 @@ def process_data(
                     tmpdir, folder_name, echem_folder_name) if echem_folder_name else None
                 result = prepare_for_bokeh(nmr_data, df, merged_df)
             elif nmr_dimension == 'pseudo2D':
-                exp_folder = os.path.join(nmr_folder_path, "1")
+                exp_folder = os.path.join(nmr_folder_path, [0])
                 acqus_path = os.path.join(exp_folder, "acqus")
                 spec_path = os.path.join(
                     nmr_folder_path, exp_folder, "pdata/1/ascii-spec.txt")
