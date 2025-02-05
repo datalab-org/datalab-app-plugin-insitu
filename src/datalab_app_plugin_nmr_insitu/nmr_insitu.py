@@ -194,7 +194,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     pdata_path = exp_dir / "pdata" / "1"
     print(pdata_path)
 
-    p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
+    p_dic, p_data = ng.fileio.bruker.read_pdata(pdata_path)
 
     print("#%$#$#$%#$#%$#%$#")
     print(p_dic)
