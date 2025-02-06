@@ -188,7 +188,19 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 
 
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Process pseudo-2D spectral data from Bruker files using nmrglue."""
+    """
+    Process pseudo-2D spectral data from Bruker files using nmrglue.
+
+    Args:
+        exp_dir (str): Directory containing the NMR experiment data
+        ppm1 (float): Lower PPM range limit
+        ppm2 (float): Upper PPM range limit
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: 
+            - First DataFrame contains PPM values and intensities for each experiment
+            - Second DataFrame contains time points and intensity information
+    """
 
     a_dic, a_data = ng.fileio.bruker.read(str(exp_dir))
     exp_dir = Path(exp_dir)
@@ -196,10 +208,49 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
 
     td = int(a_dic['acqus'].get('TD', 0))
+    if td == 0:
+        raise ValueError("Could not find TD parameter in acqus")
+
+    acqu2s_path = exp_dir / "acqu2s"
+    with open(acqu2s_path, 'r') as f:
+        acqu2s_content = f.read()
+        match = re.search(r'##\$TD=(\d+)', acqu2s_content)
+        if not match:
+            raise ValueError("Could not find TD parameter in acqu2s")
+        num_experiments = int(match.group(1))
+
+    udic = ng.bruker.guess_udic(p_dic, p_data)
+    uc = ng.fileiobase.uc_from_udic(udic)
+    ppm_scale = uc.ppm_scale()
+
+    nmr_data = pd.DataFrame(index=range(len(ppm_scale)), columns=[
+                            'ppm'] + [str(i) for i in range(1, num_experiments + 1)])
+    nmr_data['ppm'] = ppm_scale
+
+    reshaped_data = p_data.reshape((num_experiments, -1))
+
+    for i in range(num_experiments):
+        nmr_data[str(i + 1)] = reshaped_data[i]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
-    norm_intensities = [x / max(intensities) for x in intensities]
+    intensities = []
+    for i in range(1, nmr_data.shape[1]):
+        y = nmr_data.iloc[:, i].values
+        intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
+
+    norm_intensities = [x/max(intensities) for x in intensities]
+
+    time_points = []
+    for i in range(num_experiments):
+        date_time = extract_date_from_acqus(str(exp_dir / "acqus"))
+        if date_time:
+            time_points.append(date_time.timestamp() /
+                               3600)
+        else:
+            raise ValueError(f"Could not extract date from experiment {i+1}")
+
+    time_points = [t - time_points[0] for t in time_points]
 
     df = pd.DataFrame({
         'time': time_points,
