@@ -231,6 +231,16 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
     print(nmr_data)
     print(df)
     print(echem_df)
+
+    print(nmr_data['ppm'].min())
+    print(nmr_data['ppm'].max())
+    print(df['time'].min())
+    print(df['time'].max())
+    print(nmr_data["ppm"].tolist())
+    for i in range(len(df)):
+        print(df["time"][i])
+        print(nmr_data[str(i+1)].tolist())
+
     result = {
         "metadata": {
             "ppm_range": {
