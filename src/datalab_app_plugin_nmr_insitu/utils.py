@@ -140,13 +140,13 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     ppm_values = first_data.iloc[:, 3].values
 
     column_names = ['ppm'] + \
-        [f'spectrum_{i+1}' for i in range(len(spec_paths))]
+        [f'{i+1}' for i in range(len(spec_paths))]
     nmr_data = pd.DataFrame(index=range(len(ppm_values)), columns=column_names)
     nmr_data['ppm'] = ppm_values
 
     for i, path in enumerate(spec_paths):
         data = pd.read_csv(path, header=None, skiprows=1)
-        nmr_data[f'spectrum_{i+1}'] = data.iloc[:, 1]
+        nmr_data[f'{i+1}'] = data.iloc[:, 1]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
@@ -174,12 +174,12 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     num_experiments = int(p_data.shape[0])
 
     column_names = ['ppm'] + \
-        [f'spectrum_{i+1}' for i in range(num_experiments)]
+        [f'{i+1}' for i in range(num_experiments)]
     nmr_data = pd.DataFrame(columns=column_names)
     nmr_data['ppm'] = ppm_scale
 
     for i in range(num_experiments):
-        nmr_data[f'spectrum_{i+1}'] = p_data[i]
+        nmr_data[f'{i+1}'] = p_data[i]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
@@ -228,18 +228,6 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
 
 def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame]) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
-    print(nmr_data)
-    print(df)
-    print(echem_df)
-
-    print(nmr_data['ppm'].min())
-    print(nmr_data['ppm'].max())
-    print(df['time'].min())
-    print(df['time'].max())
-    print(nmr_data["ppm"].tolist())
-    for i in range(len(df)):
-        print(df["time"][i])
-        print(nmr_data[str(i+1)].tolist())
 
     result = {
         "metadata": {
@@ -264,27 +252,23 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
         }
     }
 
-    print(result)
-
     if echem_df is not None:
         result["echem"] = {
             "Voltage": echem_df["Voltage"].tolist(),
             "time": (echem_df["time/s"] / 3600).tolist()
         }
 
-    print(result)
-
     return result
 
 
 def calculate_intensities(data: pd.DataFrame, ppm_col: str = 'ppm') -> np.ndarray:
     """Calculate intensities for spectral data using vectorized operations."""
-    spectrum_cols = [col for col in data.columns if col != ppm_col]
+    cols = [col for col in data.columns if col != ppm_col]
     ppm_values = data[ppm_col].values
 
     intensities = np.array([
         abs(np.trapz(data[col].values, x=ppm_values))
-        for col in spectrum_cols
+        for col in cols
     ])
 
     return intensities
