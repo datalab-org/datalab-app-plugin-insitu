@@ -211,6 +211,14 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     if td == 0:
         raise ValueError("Could not find TD parameter in acqus")
 
+    print("#%$$#^%$%^$#%$#^%$#^%#$")
+    print(p_data)
+    print("#%$$#^%$%^$#%$#^%$#^%#$")
+    print(len(p_data))
+    print("#%$$#^%$%^$#%$#^%$#^%#$")
+    print(td)
+    print("#%$$#^%$%^$#%$#^%$#^%#$")
+
     num_experiments = len(p_data) // td
 
     udic = ng.bruker.guess_udic(p_dic, p_data)
