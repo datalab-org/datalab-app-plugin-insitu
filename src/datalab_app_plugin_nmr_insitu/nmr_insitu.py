@@ -64,16 +64,30 @@ def process_data(
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
 
+            print("before")
+            print(folder_name)
+            print(nmr_folder_name)
+            print(nmr_folder_path)
+            print("Extracted files and folders:", os.listdir(tmpdir))
+
             folder_name = os.path.splitext(folder_name)[0]
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
             nmr_folder_path = os.path.join(
                 tmpdir, folder_name, nmr_folder_name)
 
-            echem_folder_path = os.path.join(
-                tmpdir, folder_name, echem_folder_name)
+            print("after")
+            print(folder_name)
+            print(nmr_folder_name)
+            print(nmr_folder_path)
+            print("Extracted files and folders:", os.listdir(tmpdir))
+
             if not os.path.exists(nmr_folder_path):
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder_name}")
+
+            echem_folder_path = os.path.join(
+                tmpdir, folder_name, echem_folder_name)
+
             if not os.path.exists(echem_folder_path):
                 warnings.warn(
                     f"Echem folder not found: {echem_folder_name}")
