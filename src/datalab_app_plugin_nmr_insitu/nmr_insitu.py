@@ -93,9 +93,9 @@ def process_data(
 
             if echem_folder_name:
                 echem_path = os.path.join(
-                    tmpdir, base_folder, echem_folder_name, 'echem')
+                    tmpdir, folder_name, echem_folder_name, 'echem')
                 merged_df = process_echem_data(
-                    tmpdir, base_folder, echem_folder_name) if os.path.exists(echem_path) else None
+                    tmpdir, folder_name, echem_folder_name) if os.path.exists(echem_path) else None
             else:
                 merged_df = None
 
