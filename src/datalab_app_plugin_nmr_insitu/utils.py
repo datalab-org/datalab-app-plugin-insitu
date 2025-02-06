@@ -228,6 +228,9 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
 
 def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame]) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
+    print(nmr_data)
+    print(df)
+    print(echem_df)
     result = {
         "metadata": {
             "ppm_range": {
@@ -251,11 +254,15 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
         }
     }
 
+    print(result)
+
     if echem_df is not None:
         result["echem"] = {
             "Voltage": echem_df["Voltage"].tolist(),
             "time": (echem_df["time/s"] / 3600).tolist()
         }
+
+    print(result)
 
     return result
 

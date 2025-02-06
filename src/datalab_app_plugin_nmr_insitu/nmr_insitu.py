@@ -111,8 +111,6 @@ def process_data(
             else:
                 merged_df = None
 
-            print(echem_folder_name)
-            print(merged_df)
             result = prepare_for_bokeh(nmr_data, df, merged_df)
             return result
 
