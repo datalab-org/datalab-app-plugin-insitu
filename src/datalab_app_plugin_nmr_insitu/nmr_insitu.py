@@ -80,9 +80,9 @@ def process_data(
             if not os.path.exists(echem_folder_path):
                 warnings.warn(
                     f"Echem folder not found: {echem_folder_name}")
-
+            print("start")
             nmr_dimension = check_nmr_dimension(nmr_folder_path)
-
+            print(nmr_dimension)
             if nmr_dimension == '1D':
                 spec_paths, acqu_paths = setup_paths(
                     nmr_folder_path, start_at, exclude_exp)
@@ -114,6 +114,7 @@ def process_data(
             else:
                 merged_df = None
             result = prepare_for_bokeh(nmr_data, df, merged_df)
+            print(result)
             return result
 
     except Exception as e:
