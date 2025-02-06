@@ -62,6 +62,10 @@ def process_data(
             nmr_folder = os.path.splitext(nmr_folder_name)[0]
             nmr_path = os.path.join(tmpdir, base_folder, nmr_folder)
 
+            print(base_folder)
+            print(nmr_folder)
+            print(nmr_path)
+
             if not os.path.exists(nmr_path):
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder}")
