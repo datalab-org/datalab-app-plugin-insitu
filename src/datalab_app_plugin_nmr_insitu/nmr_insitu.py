@@ -114,6 +114,8 @@ def process_data(
             return result
 
         except Exception as e:
+            print("exeption:")
+            print(e)
             raise RuntimeError(f"Error processing NMR data: {str(e)}")
 
 
