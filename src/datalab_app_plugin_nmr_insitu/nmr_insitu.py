@@ -58,37 +58,47 @@ def process_data(
             except Exception as e:
                 raise RuntimeError(f"API error: {e}")
 
-            base_folder = os.path.splitext(folder_name)[0]
-            nmr_folder = os.path.splitext(nmr_folder_name)[0]
-            nmr_path = os.path.join(tmpdir, base_folder, nmr_folder)
+            zip_path = os.path.join(tmpdir, folder_name)
 
-            print(base_folder)
-            print(nmr_folder)
-            print(nmr_path)
-            print("Extracted files and folders:", os.listdir(tmpdir))
+            if not os.path.exists(zip_path):
+                raise FileNotFoundError(f"ZIP file not found: {folder_name}")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(tmpdir)
 
-            if not os.path.exists(nmr_path):
+            folder_name = os.path.splitext(folder_name)[0]
+            nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
+            nmr_folder_path = os.path.join(
+                tmpdir, folder_name, nmr_folder_name)
+
+            if not os.path.exists(nmr_folder_path):
                 raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder}")
+                    f"NMR folder not found: {nmr_folder_name}")
 
-            nmr_dimension = check_nmr_dimension(nmr_path)
+            echem_folder_path = os.path.join(
+                tmpdir, folder_name, echem_folder_name)
+
+            if not os.path.exists(echem_folder_path):
+                warnings.warn(
+                    f"Echem folder not found: {echem_folder_name}")
+
+            nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
             if nmr_dimension == '1D':
                 spec_paths, acqu_paths = setup_paths(
-                    nmr_path, start_at, exclude_exp)
+                    nmr_folder_path, start_at, exclude_exp)
                 time_points = process_time_data(acqu_paths)
                 nmr_data, df = process_spectral_data(
                     spec_paths, time_points, ppm1, ppm2)
 
             elif nmr_dimension == 'pseudo2D':
-                exp_folders = [d for d in os.listdir(nmr_path)
-                               if os.path.isdir(os.path.join(nmr_path, d)) and d.isdigit()]
+                exp_folders = [d for d in os.listdir(nmr_folder_path)
+                               if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
 
                 if not exp_folders:
                     raise FileNotFoundError(
                         "No experiment folders found in NMR data")
 
-                exp_folder = os.path.join(nmr_path, exp_folders[0])
+                exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
                 nmr_data, df = process_pseudo2d_spectral_data(
                     exp_folder, ppm1, ppm2)
 
@@ -98,9 +108,9 @@ def process_data(
 
             if echem_folder_name:
                 echem_path = os.path.join(
-                    tmpdir, base_folder, echem_folder_name, 'echem')
+                    tmpdir, folder_name, echem_folder_name, 'echem')
                 merged_df = process_echem_data(
-                    tmpdir, base_folder, echem_folder_name) if os.path.exists(echem_path) else None
+                    tmpdir, folder_name, echem_folder_name) if os.path.exists(echem_path) else None
             else:
                 merged_df = None
             result = prepare_for_bokeh(nmr_data, df, merged_df)
