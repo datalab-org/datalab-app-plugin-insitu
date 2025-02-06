@@ -229,9 +229,12 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 
     norm_intensities = [x/max(intensities) for x in intensities]
 
-    td_indirect = float(a_dic['acqus'].get('TD_INDIRECT', num_experiments))
-    time_increment = td_indirect / num_experiments
-    time_points = [i * time_increment for i in range(num_experiments)]
+    exp_date = extract_date_from_acqus(str(exp_dir / "acqus"))
+    if not exp_date:
+        raise ValueError("Could not extract date from experiment")
+
+    base_time = exp_date.timestamp() / 3600
+    time_points = [i for i in range(num_experiments)]
 
     df = pd.DataFrame({
         'time': time_points,
