@@ -67,7 +67,6 @@ def process_data(
             print("before")
             print(folder_name)
             print(nmr_folder_name)
-            print(nmr_folder_path)
             print("Extracted files and folders:", os.listdir(tmpdir))
 
             folder_name = os.path.splitext(folder_name)[0]
