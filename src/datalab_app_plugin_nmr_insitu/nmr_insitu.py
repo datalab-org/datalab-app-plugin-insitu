@@ -207,7 +207,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     pdata_path = exp_dir / "pdata" / "1"
     p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
 
-    num_experiments = p_data.shape[0]
+    num_experiments = int(p_data.shape[0])
 
     udic = ng.bruker.guess_udic(p_dic, p_data)
     uc = ng.fileiobase.uc_from_udic(udic)
@@ -215,27 +215,25 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 
     nmr_data = pd.DataFrame(index=range(len(ppm_scale)), columns=[
                             'ppm'] + [str(i) for i in range(1, num_experiments + 1)])
-    nmr_data['ppm'] = ppm_scale
+    nmr_data['ppm'] = [float(x) for x in ppm_scale]
 
     for i in range(num_experiments):
-        nmr_data[str(i + 1)] = p_data[i]
+        nmr_data[str(i + 1)] = [float(x)
+                                for x in p_data[i]]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
     intensities = []
     for i in range(1, nmr_data.shape[1]):
         y = nmr_data.iloc[:, i].values
-        intensities.append(abs(np.trapz(y, x=nmr_data['ppm'])))
+        intensity = float(abs(np.trapz(y, x=nmr_data['ppm'])))
+        intensities.append(intensity)
 
-    norm_intensities = [x/max(intensities) for x in intensities]
+    norm_intensities = [float(x/max(intensities))
+                        for x in intensities]
 
-    exp_date = extract_date_from_acqus(str(exp_dir / "acqus"))
-    if not exp_date:
-        raise ValueError("Could not extract date from experiment")
-
-    base_time = exp_date.timestamp() / 3600
-    time_points = [i for i in range(num_experiments)]
-
+    time_points = [float(i) for i in range(
+        num_experiments)]
     df = pd.DataFrame({
         'time': time_points,
         'intensity': intensities,
