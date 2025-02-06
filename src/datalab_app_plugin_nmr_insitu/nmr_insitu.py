@@ -112,7 +112,7 @@ def process_data(
             else:
                 raise ValueError(
                     f"Unknown NMR dimension type: {nmr_dimension}")
-
+            print("before echem")
             if echem_folder_name:
                 echem_path = os.path.join(
                     tmpdir, folder_name, echem_folder_name, 'echem')
@@ -120,6 +120,8 @@ def process_data(
                     tmpdir, folder_name, echem_folder_name) if os.path.exists(echem_path) else None
             else:
                 merged_df = None
+            print("before echem")
+
             result = prepare_for_bokeh(nmr_data, df, merged_df)
             print(result)
             return result
