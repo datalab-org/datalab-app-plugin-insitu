@@ -65,6 +65,7 @@ def process_data(
             print(base_folder)
             print(nmr_folder)
             print(nmr_path)
+            print("Extracted files and folders:", os.listdir(tmpdir))
 
             if not os.path.exists(nmr_path):
                 raise FileNotFoundError(
