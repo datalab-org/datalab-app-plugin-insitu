@@ -91,16 +91,23 @@ def process_data(
                     spec_paths, time_points, ppm1, ppm2)
 
             elif nmr_dimension == 'pseudo2D':
+                print("inside pseudo-2D")
                 exp_folders = [d for d in os.listdir(nmr_folder_path)
                                if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
-
+                print("exp_folder")
+                print(exp_folders)
                 if not exp_folders:
                     raise FileNotFoundError(
                         "No experiment folders found in NMR data")
 
                 exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
+                print("exp_folder")
+                print(exp_folder)
+
+                print("before process")
                 nmr_data, df = process_pseudo2d_spectral_data(
                     exp_folder, ppm1, ppm2)
+                print("after process")
 
             else:
                 raise ValueError(
