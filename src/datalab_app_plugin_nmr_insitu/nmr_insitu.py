@@ -56,12 +56,15 @@ def process_data(
             except Exception as e:
                 raise RuntimeError(f"API error: {e}")
 
-            base_folder = os.path.splitext(folder_name)[0]
-            nmr_folder = os.path.splitext(nmr_folder_name)[0]
-            nmr_path = os.path.join(tmpdir, base_folder, nmr_folder)
+            nmr_path = os.path.join(tmpdir, folder_name, nmr_folder_name)
 
             if not os.path.exists(nmr_path):
-                raise FileNotFoundError(f"NMR folder not found: {nmr_folder}")
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_path}. "
+                    f"Contents of {tmpdir}: {os.listdir(tmpdir)}, "
+                    f"Contents of {os.path.join(tmpdir, folder_name)}: "
+                    f"{os.listdir(os.path.join(tmpdir, folder_name)) if os.path.exists(os.path.join(tmpdir, folder_name)) else 'folder does not exist'}"
+                )
 
             nmr_dimension = check_nmr_dimension(nmr_path)
 
