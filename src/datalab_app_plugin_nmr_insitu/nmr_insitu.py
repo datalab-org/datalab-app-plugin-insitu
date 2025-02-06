@@ -211,13 +211,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     if td == 0:
         raise ValueError("Could not find TD parameter in acqus")
 
-    acqu2s_path = exp_dir / "acqu2s"
-    with open(acqu2s_path, 'r') as f:
-        acqu2s_content = f.read()
-        match = re.search(r'##\$TD=(\d+)', acqu2s_content)
-        if not match:
-            raise ValueError("Could not find TD parameter in acqu2s")
-        num_experiments = int(match.group(1))
+    num_experiments = len(p_data) // td
 
     udic = ng.bruker.guess_udic(p_dic, p_data)
     uc = ng.fileiobase.uc_from_udic(udic)
@@ -241,16 +235,9 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 
     norm_intensities = [x/max(intensities) for x in intensities]
 
-    time_points = []
-    for i in range(num_experiments):
-        date_time = extract_date_from_acqus(str(exp_dir / "acqus"))
-        if date_time:
-            time_points.append(date_time.timestamp() /
-                               3600)
-        else:
-            raise ValueError(f"Could not extract date from experiment {i+1}")
-
-    time_points = [t - time_points[0] for t in time_points]
+    td_indirect = float(a_dic['acqus'].get('TD_INDIRECT', 1))
+    time_increment = td_indirect / num_experiments
+    time_points = [i * time_increment for i in range(num_experiments)]
 
     df = pd.DataFrame({
         'time': time_points,
