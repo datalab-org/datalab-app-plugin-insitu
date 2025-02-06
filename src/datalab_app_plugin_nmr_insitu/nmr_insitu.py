@@ -207,19 +207,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     pdata_path = exp_dir / "pdata" / "1"
     p_dic, p_data = ng.fileio.bruker.read_pdata(str(pdata_path))
 
-    td = int(a_dic['acqus'].get('TD', 0))
-    if td == 0:
-        raise ValueError("Could not find TD parameter in acqus")
-
-    print("#%$$#^%$%^$#%$#^%$#^%#$")
-    print(p_data)
-    print("#%$$#^%$%^$#%$#^%$#^%#$")
-    print(len(p_data))
-    print("#%$$#^%$%^$#%$#^%$#^%#$")
-    print(td)
-    print("#%$$#^%$%^$#%$#^%$#^%#$")
-
-    num_experiments = len(p_data) // td
+    num_experiments = p_data.shape[0]
 
     udic = ng.bruker.guess_udic(p_dic, p_data)
     uc = ng.fileiobase.uc_from_udic(udic)
@@ -229,10 +217,8 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
                             'ppm'] + [str(i) for i in range(1, num_experiments + 1)])
     nmr_data['ppm'] = ppm_scale
 
-    reshaped_data = p_data.reshape((num_experiments, -1))
-
     for i in range(num_experiments):
-        nmr_data[str(i + 1)] = reshaped_data[i]
+        nmr_data[str(i + 1)] = p_data[i]
 
     nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
@@ -243,7 +229,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 
     norm_intensities = [x/max(intensities) for x in intensities]
 
-    td_indirect = float(a_dic['acqus'].get('TD_INDIRECT', 1))
+    td_indirect = float(a_dic['acqus'].get('TD_INDIRECT', num_experiments))
     time_increment = td_indirect / num_experiments
     time_points = [i * time_increment for i in range(num_experiments)]
 
