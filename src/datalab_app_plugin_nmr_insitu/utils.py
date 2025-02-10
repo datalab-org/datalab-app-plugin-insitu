@@ -144,6 +144,8 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     nmr_data = pd.DataFrame(index=range(len(ppm_values)), columns=column_names)
     nmr_data['ppm'] = ppm_values
 
+    num_experiments = len(spec_paths)
+
     for i, path in enumerate(spec_paths):
         data = pd.read_csv(path, header=None, skiprows=1)
         nmr_data[f'{i+1}'] = data.iloc[:, 1]
@@ -158,7 +160,7 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
         'norm_intensity': intensities / np.max(intensities),
     })
 
-    return nmr_data, df
+    return nmr_data, df, num_experiments
 
 
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -192,7 +194,7 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
         'norm_intensity': intensities / np.max(intensities),
     })
 
-    return nmr_data, df
+    return nmr_data, df, num_experiments
 
 
 def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
@@ -226,7 +228,7 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
         return None
 
 
-def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame]) -> Dict:
+def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame], num_experiments: int) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
 
     result = {
@@ -238,7 +240,8 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
             "time_range": {
                 "start": df['time'].min(),
                 "end": df['time'].max()
-            }
+            },
+            "num_experiments": num_experiments,
         },
         "nmr_spectra": {
             "ppm": nmr_data["ppm"].tolist(),

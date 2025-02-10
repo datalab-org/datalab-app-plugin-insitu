@@ -85,7 +85,7 @@ def process_data(
                 spec_paths, acqu_paths = setup_paths(
                     nmr_folder_path, start_at, exclude_exp)
                 time_points = process_time_data(acqu_paths)
-                nmr_data, df = process_spectral_data(
+                nmr_data, df, num_experiments = process_spectral_data(
                     spec_paths, time_points, ppm1, ppm2)
 
             elif nmr_dimension == 'pseudo2D':
@@ -97,7 +97,7 @@ def process_data(
 
                 exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
 
-                nmr_data, df = process_pseudo2d_spectral_data(
+                nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
                     exp_folder, ppm1, ppm2)
 
             else:
@@ -111,7 +111,8 @@ def process_data(
             else:
                 merged_df = None
 
-            result = prepare_for_bokeh(nmr_data, df, merged_df)
+            result = prepare_for_bokeh(
+                nmr_data, df, merged_df, num_experiments)
             return result
 
     except Exception as e:
