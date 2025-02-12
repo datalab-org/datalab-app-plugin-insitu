@@ -9,7 +9,7 @@ A Python plugin for processing and visualizing in situ NMR data within [_datalab
 - Interactive visualization using Bokeh
 - Flexible PPM range selection
 
-![insitu NMR and Echem Bokeh Plot](assets/datalab_plugin_bokeh_plot.png)
+![insitu NMR and Echem Bokeh Plot](docs/assets/datalab_plugin_bokeh_plot.png)
 
 ## Usage
 
