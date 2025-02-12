@@ -1,6 +1,16 @@
 # <div align="center"><i>datalab insitu NMR</i></div>
 
+<div align="center" style="padding-bottom: 5px">
+<a href="https://demo.datalab-org.io"><img src="https://img.shields.io/badge/try_it_out!-public_demo_server-orange?logo=firefox"></a>
+</div>
+
+<div align="center">
+<a href="https://join.slack.com/t/datalab-world/shared_invite/zt-2h58ev3pc-VV496~5je~QoT2TgFIwn4g"><img src="https://img.shields.io/badge/Slack-chat_with_us-yellow?logo=slack"></a>
+</div>
+
 A Python plugin for processing and visualizing in situ NMR data within [_datalab_](https://github.com/the-grey-group/datalab) instances. This plugin leverages the [_datalab_ Python API](https://github.com/datalab-org/datalab-api) to create interactive Bokeh plots of NMR data alongside electrochemical measurements.
+
+The project was originally developed in and is currently deployed for the [Grey Group](https://www.ch.cam.ac.uk/group/grey/) in the Department of Chemistry at the University of Cambridge.
 
 ## Features
 
