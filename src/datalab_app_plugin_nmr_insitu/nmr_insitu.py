@@ -22,10 +22,10 @@ def process_local_data(
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
-    Process NMR spectroscopy data from local files.
+    Process NMR spectroscopy data from local zip files.
 
     Args:
-        base_folder: Path to the base folder containing NMR and Echem data
+        base_folder: Path to the base folder containing NMR and Echem data zip file
         nmr_folder_name: Folder containing NMR experiments
         echem_folder_name: Folder containing Echem data
         ppm1: Lower PPM range limit
@@ -40,23 +40,37 @@ def process_local_data(
         raise ValueError("Folder names for NMR data are required")
 
     try:
-        nmr_folder_path = os.path.join(base_folder, nmr_folder_name)
-        if not os.path.exists(nmr_folder_path):
-            raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            if base_folder.endswith('.zip'):
+                with zipfile.ZipFile(base_folder, 'r') as zip_ref:
+                    zip_ref.extractall(tmpdir)
+                base_path = tmpdir
+            else:
+                base_path = base_folder
 
-        echem_folder_path = os.path.join(base_folder, echem_folder_name)
-        if not os.path.exists(echem_folder_path):
-            warnings.warn(f"Echem folder not found: {echem_folder_name}")
+            nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
+            if echem_folder_name:
+                echem_folder_name = os.path.splitext(echem_folder_name)[0]
 
-        return _process_data(
-            base_folder,
-            nmr_folder_path,
-            echem_folder_name,
-            ppm1,
-            ppm2,
-            start_at,
-            exclude_exp
-        )
+            nmr_folder_path = os.path.join(base_path, nmr_folder_name)
+            if not os.path.exists(nmr_folder_path):
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_folder_name}")
+
+            echem_folder_path = os.path.join(
+                base_path, echem_folder_name) if echem_folder_name else None
+            if echem_folder_name and not os.path.exists(echem_folder_path):
+                warnings.warn(f"Echem folder not found: {echem_folder_name}")
+
+            return _process_data(
+                base_path,
+                nmr_folder_path,
+                echem_folder_name,
+                ppm1,
+                ppm2,
+                start_at,
+                exclude_exp
+            )
 
     except Exception as e:
         raise RuntimeError(f"Error processing NMR data: {str(e)}")
