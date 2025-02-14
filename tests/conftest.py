@@ -6,7 +6,7 @@ import tempfile
 import pickle
 
 from datalab_api import DatalabClient
-from datalab_app_plugin_nmr_insitu.nmr_insitu import process_data, fitting_data
+from datalab_app_plugin_nmr_insitu.nmr_insitu import process_datalab_data, fitting_data
 
 
 DATALAB_API_URL = "https://demo-api.datalab-org.io"
@@ -151,7 +151,7 @@ def get_demo_data(tmpdir):
     for key, data in df_fit.items():
         data.loc[:, 'time'] = data['time'] / 3600
 
-    nmr_data, processed_df = process_data(
+    nmr_data, processed_df = process_datalab_data(
         "bc_nmr_insitu", "demo_dataset_nmr_insitu.zip", 220, 310)
 
     processed_df_fit = fitting_data(nmr_data, df)
