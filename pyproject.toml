@@ -32,7 +32,7 @@ dependencies = [
     "matplotlib>=3.9.2",
     "lmfit>=1.3.2", 
     "scipy>=1.14.1",
-    "datalab_api",
+    "datalab_api @ git+https://github.com/datalab-org/datalab-api",
     "nmrglue>=0.11",
     "navani @ git+https://github.com/the-grey-group/navani.git@v0.1.7",
 ]
