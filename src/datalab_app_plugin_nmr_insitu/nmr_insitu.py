@@ -13,7 +13,7 @@ import pandas as pd
 
 
 def process_local_data(
-    base_folder: str,
+    folder_name: str,
     nmr_folder_name: str,
     echem_folder_name: str,
     ppm1: float,
@@ -36,23 +36,26 @@ def process_local_data(
     Returns:
         Dictionary containing processed NMR and electrochemical data
     """
-    if not all([base_folder, nmr_folder_name]):
+    if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            if base_folder.endswith('.zip'):
-                with zipfile.ZipFile(base_folder, 'r') as zip_ref:
+            if folder_name.endswith('.zip'):
+                with zipfile.ZipFile(folder_name, 'r') as zip_ref:
                     zip_ref.extractall(tmpdir)
                 base_path = tmpdir
             else:
-                base_path = base_folder
+                base_path = folder_name
 
+            folder_name = os.path.splitext(folder_name)[0]
             nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
+            nmr_folder_path = os.path.join(
+                tmpdir, folder_name, nmr_folder_name)
+
             if echem_folder_name:
                 echem_folder_name = os.path.splitext(echem_folder_name)[0]
 
-            nmr_folder_path = os.path.join(base_path, nmr_folder_name)
             if not os.path.exists(nmr_folder_path):
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder_name}")
