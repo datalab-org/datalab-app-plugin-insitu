@@ -275,3 +275,64 @@ def calculate_intensities(data: pd.DataFrame, ppm_col: str = 'ppm') -> np.ndarra
     ])
 
     return intensities
+
+
+def _process_data(
+    base_folder: str,
+    nmr_folder_path: str,
+    echem_folder_name: str,
+    ppm1: float,
+    ppm2: float,
+    start_at: int,
+    exclude_exp: Optional[List[int]]
+) -> Dict:
+    """
+    Common processing logic for both local and Datalab data.
+
+    Args:
+        base_folder: Path to the base folder containing all data
+        nmr_folder_path: Path to the NMR data folder
+        echem_folder_name: Name of the electrochemistry folder
+        ppm1: Lower PPM range limit
+        ppm2: Upper PPM range limit
+        start_at: Starting experiment number
+        exclude_exp: List of experiment numbers to exclude
+
+    Returns:
+        Dictionary containing processed NMR and electrochemical data
+    """
+    try:
+        nmr_dimension = check_nmr_dimension(nmr_folder_path)
+
+        if nmr_dimension == '1D':
+            spec_paths, acqu_paths = setup_paths(
+                nmr_folder_path, start_at, exclude_exp)
+            time_points = process_time_data(acqu_paths)
+            nmr_data, df, num_experiments = process_spectral_data(
+                spec_paths, time_points, ppm1, ppm2)
+
+        elif nmr_dimension == 'pseudo2D':
+            exp_folders = [d for d in os.listdir(nmr_folder_path)
+                           if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
+            if not exp_folders:
+                raise FileNotFoundError(
+                    "No experiment folders found in NMR data")
+
+            exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
+            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
+                exp_folder, ppm1, ppm2)
+
+        else:
+            raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
+
+        if echem_folder_name:
+            echem_path = os.path.join(base_folder, echem_folder_name, 'echem')
+            merged_df = process_echem_data(base_folder, os.path.basename(
+                base_folder), echem_folder_name) if os.path.exists(echem_path) else None
+        else:
+            merged_df = None
+
+        return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
+
+    except Exception as e:
+        raise RuntimeError(f"Error in common processing: {str(e)}")

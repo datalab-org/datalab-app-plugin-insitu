@@ -6,13 +6,63 @@ import warnings
 from datalab_api import DatalabClient
 from typing import List, Optional, Dict
 from lmfit.models import PseudoVoigtModel
-from .utils import check_nmr_dimension, setup_paths, process_time_data, process_spectral_data, process_echem_data, prepare_for_bokeh, process_pseudo2d_spectral_data
+from .utils import _process_data
 
 import numpy as np
 import pandas as pd
 
 
-def process_data(
+def process_local_data(
+    base_folder: str,
+    nmr_folder_name: str,
+    echem_folder_name: str,
+    ppm1: float,
+    ppm2: float,
+    start_at: int = 1,
+    exclude_exp: Optional[List[int]] = None,
+) -> Dict:
+    """
+    Process NMR spectroscopy data from local files.
+
+    Args:
+        base_folder: Path to the base folder containing NMR and Echem data
+        nmr_folder_name: Folder containing NMR experiments
+        echem_folder_name: Folder containing Echem data
+        ppm1: Lower PPM range limit
+        ppm2: Upper PPM range limit
+        start_at: Starting experiment number (default: 1)
+        exclude_exp: List of experiment numbers to exclude (default: None)
+
+    Returns:
+        Dictionary containing processed NMR and electrochemical data
+    """
+    if not all([base_folder, nmr_folder_name]):
+        raise ValueError("Folder names for NMR data are required")
+
+    try:
+        nmr_folder_path = os.path.join(base_folder, nmr_folder_name)
+        if not os.path.exists(nmr_folder_path):
+            raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
+
+        echem_folder_path = os.path.join(base_folder, echem_folder_name)
+        if not os.path.exists(echem_folder_path):
+            warnings.warn(f"Echem folder not found: {echem_folder_name}")
+
+        return _process_data(
+            base_folder,
+            nmr_folder_path,
+            echem_folder_name,
+            ppm1,
+            ppm2,
+            start_at,
+            exclude_exp
+        )
+
+    except Exception as e:
+        raise RuntimeError(f"Error processing NMR data: {str(e)}")
+
+
+def process_datalab_data(
     api_url: str,
     item_id: str,
     folder_name: str,
@@ -24,7 +74,7 @@ def process_data(
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
-    Process NMR spectroscopy data from multiple experiments.
+    Process NMR spectroscopy data from Datalab API.
 
     Args:
         api_url: URL of the Datalab API
@@ -39,12 +89,7 @@ def process_data(
 
     Returns:
         Dictionary containing processed NMR and electrochemical data
-
-    Raises:
-        ValueError: If required parameters are missing
-        RuntimeError: If processing fails
     """
-
     if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
@@ -59,9 +104,9 @@ def process_data(
                 raise RuntimeError(f"API error: {e}")
 
             zip_path = os.path.join(tmpdir, folder_name)
-
             if not os.path.exists(zip_path):
                 raise FileNotFoundError(f"ZIP file not found: {folder_name}")
+
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
 
@@ -74,46 +119,15 @@ def process_data(
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder_name}")
 
-            echem_folder_path = os.path.join(
-                tmpdir, folder_name, echem_folder_name)
-
-            if not os.path.exists(echem_folder_path):
-                warnings.warn(
-                    f"Echem folder not found: {echem_folder_name}")
-            nmr_dimension = check_nmr_dimension(nmr_folder_path)
-            if nmr_dimension == '1D':
-                spec_paths, acqu_paths = setup_paths(
-                    nmr_folder_path, start_at, exclude_exp)
-                time_points = process_time_data(acqu_paths)
-                nmr_data, df, num_experiments = process_spectral_data(
-                    spec_paths, time_points, ppm1, ppm2)
-
-            elif nmr_dimension == 'pseudo2D':
-                exp_folders = [d for d in os.listdir(nmr_folder_path)
-                               if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
-                if not exp_folders:
-                    raise FileNotFoundError(
-                        "No experiment folders found in NMR data")
-
-                exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
-
-                nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
-                    exp_folder, ppm1, ppm2)
-
-            else:
-                raise ValueError(
-                    f"Unknown NMR dimension type: {nmr_dimension}")
-            if echem_folder_name:
-                echem_path = os.path.join(
-                    tmpdir, folder_name, echem_folder_name, 'echem')
-                merged_df = process_echem_data(
-                    tmpdir, folder_name, echem_folder_name) if os.path.exists(echem_path) else None
-            else:
-                merged_df = None
-
-            result = prepare_for_bokeh(
-                nmr_data, df, merged_df, num_experiments)
-            return result
+            return _process_data(
+                os.path.join(tmpdir, folder_name),
+                nmr_folder_path,
+                echem_folder_name,
+                ppm1,
+                ppm2,
+                start_at,
+                exclude_exp
+            )
 
     except Exception as e:
         raise RuntimeError(f"Error processing NMR data: {str(e)}")
