@@ -346,6 +346,13 @@ def _process_data(
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
 
+        print("TEST")
+        print("TEST")
+        print("TEST")
+        print(echem_folder_name)
+        print("TEST")
+        print("TEST")
+        print("TEST")
         merged_df = process_echem_data(
             base_folder, echem_folder_name) if echem_folder_name else None
 
