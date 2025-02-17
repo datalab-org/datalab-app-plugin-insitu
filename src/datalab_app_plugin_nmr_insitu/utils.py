@@ -197,41 +197,45 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     return nmr_data, df, num_experiments
 
 
-def process_echem_data(folder_name: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
+def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
     """Process electrochemical data if available."""
 
     if not echem_folder_name:
         return None
 
-    echem_folder_path = os.path.join(folder_name, echem_folder_name, 'echem')
-
-    if not os.path.exists(echem_folder_path):
-        warnings.warn(
-            f"Echem folder not found: {echem_folder_name}. Continuing without echem data.")
-        return None
-
     try:
-        gcpl_full_paths = [
-            os.path.join(echem_folder_path, filename)
-            for filename in os.listdir(echem_folder_path)
-            if "GCPL" in filename and filename.endswith(".mpr")
-        ]
+        echem_folder_path = os.path.join(
+            base_folder, echem_folder_name, 'echem')
 
-        if not gcpl_full_paths:
-            warnings.warn("No GCPL files found in echem folder.")
+        if not os.path.exists(echem_folder_path):
+            warnings.warn(f"Echem folder not found at {echem_folder_path}")
             return None
 
-        all_echem_df = [
-            ec.echem_file_loader(path)
-            for path in gcpl_full_paths
+        gcpl_files = [
+            os.path.join(echem_folder_path, f)
+            for f in os.listdir(echem_folder_path)
+            if f.upper().endswith('.MPR') and 'GCPL' in f.upper()
         ]
 
-        return pd.concat(all_echem_df, axis=0).sort_index()
+        if not gcpl_files:
+            warnings.warn(f"No GCPL files found in {echem_folder_path}")
+            return None
+
+        try:
+            echem_data = [
+                ec.echem_file_loader(file_path)
+                for file_path in sorted(gcpl_files)
+            ]
+
+            combined_data = pd.concat(echem_data, axis=0)
+            return combined_data.sort_index()
+
+        except Exception as e:
+            raise RuntimeError(f"Error processing GCPL files: {str(e)}")
 
     except Exception as e:
-        warnings.warn(
-            f"Error processing echem data: {str(e)}. Continuing without echem data.")
-        return None
+        raise RuntimeError(
+            f"Error in electrochemical data processing: {str(e)}")
 
 
 def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame], num_experiments: int) -> Dict:
