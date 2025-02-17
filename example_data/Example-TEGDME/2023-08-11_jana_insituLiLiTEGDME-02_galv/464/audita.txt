@@ -1,0 +1,18 @@
+##TITLE= Audit trail, TOPSPIN		Version 2.1
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= jr862
+$$ /opt/topspin/data/jr862/nmr/2023-08-11_jana_insituLiLiTEGDME-02_galv/464/audita.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2023-08-13 02:17:43.911 +0100>,<jr862>,<spectro300B>,<go>,<TOPSPIN 2.1>,
+      <created by zg
+	started at 2023-08-13 02:12:56.453 +0100,
+	POWCHK disabled, PULCHK disabled,
+       configuration hash MD5:
+       7E EC BB 58 6B F0 AF 6C 46 FB 57 99 1C A5 C6 0A
+       data hash MD5: 12K
+       75 E3 BA 1B FA 14 0B AF 6C A0 60 D6 91 3E 2B 0F>)
+##END=
+
+$$ hash MD5
+$$ 5B 3D 70 6A BB 00 8A 0E D5 B7 43 91 AD F2 CA 0D

@@ -1,0 +1,42 @@
+# 1 "/opt/topspin/exp/stan/nmr/lists/pp/user/ATM_zg8new"
+; ATM_zg8.op
+; opecher - 09/08/14
+
+; onepulse (zg) experiment with 8fold phase cycling
+; incl. automatic tuning matching (ATM) synchro
+
+
+"acqt0=-p1*2/3.1416"
+
+# 1 "mc_line 10 file /opt/topspin/exp/stan/nmr/lists/pp/user/ATM_zg8new dc-measurement inserted automatically"
+    dccorr
+# 10 "/opt/topspin/exp/stan/nmr/lists/pp/user/ATM_zg8new"
+1  ze                       ; clear memmory etc.
+
+2  1u pl10:f1               ; set power level for low power (!) T/M pulse   
+   10u cw:f1                ; CW T/M pulse active
+	 100m                     ; short waiting delay
+	 ; IN for Autotune Control Box / Bruker OUT
+ 	 ; AUTOTUNE (NMRS: 101110)
+	 1m setnmr4|30            ; TTL 1
+	 1m setnmr4^30						; TTL 0
+	 1m setnmr4|30 						; TTL 1
+	 1m setnmr4|30						; TTL 1
+	 1m setnmr4|30						; TTL 1
+	 1m setnmr4^30						; TTL 0
+	 500m 										; short waiting delay
+	 ; OUT for Autotune controle Box/Bruker IN
+   10m trigpe3              ; ATM end: trigger input (positive edge) on E1@T2
+   5m do:f1                 ; CW T/M pulse inactive
+   50m  										; short waiting time
+	 1u pl1:f1								; set power level to f1 for pulse sequence
+
+3  d1
+   p1 ph1
+   go=3 ph31
+   100m wr #0
+  
+exit
+
+ph1=0 2 2 0 1 3 3 1
+ph31=0 2 2 0 1 3 3 1

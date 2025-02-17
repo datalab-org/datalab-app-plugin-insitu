@@ -1,0 +1,41 @@
+##TITLE= Audit trail, TOPSPIN		Version 2.1
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= jr862
+$$ /opt/topspin/data/jr862/nmr/2023-08-11_jana_insituLiLiTEGDME-02_galv/528/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2023-08-13 07:27:16.442 +0100>,<jr862>,<spectro300B>,<go>,<TOPSPIN 2.1>,
+      <created by zg
+	started at 2023-08-13 07:22:29.315 +0100,
+	POWCHK disabled, PULCHK disabled,
+       configuration hash MD5:
+       7E EC BB 58 6B F0 AF 6C 46 FB 57 99 1C A5 C6 0A
+       data hash MD5: 12K
+       C6 54 EE 65 4E BA 3D 2E 38 77 49 6B D2 07 C7 9D>)
+(   2,<2023-08-14 09:46:11.432 +0100>,<jr862>,<spectro300B>,<proc1d>,<TOPSPIN 2.1>,
+      <Start of raw data processing
+       efp BC_mod = 2 LB = 50 FT_mod = 6 PKNL = 1 PHC0 = 92.12425 PHC1 = 155.6564 TDeff = 4K SI = 8K 
+       data hash MD5: 8K
+       42 6E 8B DD 63 BE E3 51 BD E1 C1 54 E1 6E B9 D7>)
+(   3,<2023-08-14 14:15:14.618 +0100>,<jr862>,<spectro300B>,<proc1d>,<TOPSPIN 2.1>,
+      <apk 
+       data hash MD5: 8K
+       7E C0 BB 88 FF 74 A0 C3 0B BE B2 72 30 30 9E 1B>)
+$$ E:/Cambridge/in situ NMR/2023-08-11_jana_insituLiLiTEGDME-02_galv/528/pdata/1/auditp.txt
+(   4,<2023-08-14 17:15:00.860 +0100>,<AD\jr862>,<atmc-pc>,<proc1d>,<TopSpin 4.1.4>,
+      <Start of raw data processing
+       efp BC_mod = 2 LB = 50 FT_mod = 6 PKNL = 1 PHC0 = 235.9835 PHC1 = -67.82224 TDeff = 4K SI = 8K 
+       data hash MD5: 8K
+       B3 44 DF BF 25 6B BE C4 BC 56 D9 5C AF E1 55 BE>)
+(   5,<2023-08-14 17:39:37.570 +0100>,<AD\jr862>,<atmc-pc>,<proc1d>,<TopSpin 4.1.4>,
+      <apk 
+       data hash MD5: 8K
+       B1 8E 94 8F 26 C0 CC 10 EB B0 DB 31 52 B8 A7 81>)
+(   6,<2023-08-14 18:02:51.748 +0100>,<AD\jr862>,<atmc-pc>,<proc1d>,<TopSpin 4.1.4>,
+      <abs n ABSG = 5 
+       data hash MD5: 8K
+       CC 0E 85 D5 EE 68 F9 F3 D5 B7 BA 8B 8F 2A 58 FB>)
+##END=
+
+$$ hash MD5
+$$ 3C A5 C0 47 E9 AA 3F 16 72 4E B7 67 84 9A 1D 0D
