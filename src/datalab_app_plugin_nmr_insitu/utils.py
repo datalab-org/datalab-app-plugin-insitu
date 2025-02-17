@@ -200,6 +200,12 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
     """Process electrochemical data if available."""
 
+    print("\n=== Debug Information ===")
+    print(f"Base folder: {base_folder}")
+    print(f"Base folder exists: {os.path.exists(base_folder)}")
+    if os.path.exists(base_folder):
+        print("Base folder contents:", os.listdir(base_folder))
+
     if not echem_folder_name:
         return None
 
