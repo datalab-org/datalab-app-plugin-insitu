@@ -1,7 +1,6 @@
 import os
 import pyreadr
 import pytest
-import zipfile
 
 from datalab_app_plugin_nmr_insitu.nmr_insitu import process_datalab_data, fitting_data
 
@@ -91,69 +90,50 @@ def percentage_difference():
 
 
 @pytest.fixture()
-def get_demo_data(tmpdir):
+def get_tests_data():
     """Download test data from the datalab instance."""
 
-    # client = DatalabClient(DATALAB_API_URL)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    import_data_path = os.path.join(
+        base_dir,
+        "example_data",
+        "Example-TEGDME",
+        "LiLiTEGDMEinsitu_02",
+        "dfenv_LiLiTEGDMEinsitu_02.rds"
+    )
 
-    # data_dir = tmpdir.mkdir("data")
+    if not os.path.exists(import_data_path):
+        raise FileNotFoundError(
+            f"The file {import_data_path} does not exist.")
 
-    # file_name = "demo_data_nmr_insitu.zip"
-    # zip_path = data_dir / file_name
+    df = pyreadr.read_r(import_data_path)
+    import_data = df[None]
+    import_data["time"] = import_data["time"] / 3600
 
-    # os.chdir(data_dir)
-    # client.get_item_files("bc_nmr_insitu")
+    fit_peaks_path = os.path.join(
+        base_dir,
+        "example_data",
+        "Example-TEGDME",
+        "LiLiTEGDMEinsitu_02",
+        "LiLiTEGDMEinsitu_02.rds"
+    )
+    fit_data = pyreadr.read_r(fit_peaks_path)
+    df_fit_base = fit_data[None]
+    df_fit_total_df = df_fit_base[df_fit_base['peak']
+                                  == 'Total intensity']
+    df_fit_peak1_df = df_fit_base[df_fit_base['peak'] == 'Peak 1']
+    df_fit_peak2_df = df_fit_base[df_fit_base['peak'] == 'Peak 2']
 
-    # assert zip_path.exists(), f"File {zip_path} does not exist"
+    fit_peaks = {
+        "data_df": df_fit_total_df[['time', 'intensity', 'norm_intensity']],
+        "df_peakfit1": df_fit_peak1_df[['time', 'intensity', 'norm_intensity']],
+        "df_peakfit2": df_fit_peak2_df[['time', 'intensity', 'norm_intensity']]
+    }
 
-    # extract_dir = data_dir
+    for _, data in fit_peaks.items():
+        data.loc[:, 'time'] = data['time'] / 3600
 
-    # required_files = [
-    #     "demo_data_nmr_insitu_df.rds",
-    #     "demo_data_nmr_insitu_fit_and_dfall.rds"
-    # ]
+    result = process_datalab_data(DATALAB_API_URL, "bc_insitu_block", "Example-TEGDME.zip",
+                                  "2023-08-11_jana_insituLiLiTEGDME-02_galv", "LiLiTEGDMEinsitu_02", 220, 310)
 
-    # extracted_paths = {}
-    # with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-    #     zip_contents = zip_ref.namelist()
-    #     for required_file in required_files:
-    #         if required_file not in zip_contents:
-    #             raise FileNotFoundError(
-    #                 f"{required_file} not found in {zip_path}"
-    #             )
-    #         zip_ref.extract(required_file, path=extract_dir)
-    #         extracted_paths[required_file] = os.path.join(
-    #             extract_dir, required_file)
-
-    # df_path = extracted_paths["demo_data_nmr_insitu_df.rds"]
-    # fit_and_dfall_path = extracted_paths["demo_data_nmr_insitu_fit_and_dfall.rds"]
-
-    # df_data = pyreadr.read_r(df_path)
-    # df = df_data[None]
-    # df["time"] = df["time"] / 3600
-
-    # fit_data = pyreadr.read_r(fit_and_dfall_path)
-    # df_fit_base = fit_data[None]
-    # df_fit_total_df = df_fit_base[df_fit_base['peak']
-    #                               == 'Total intensity']
-    # df_fit_peak1_df = df_fit_base[df_fit_base['peak'] == 'Peak 1']
-    # df_fit_peak2_df = df_fit_base[df_fit_base['peak'] == 'Peak 2']
-
-    # df_fit = {
-    #     "data_df": df_fit_total_df[['time', 'intensity', 'norm_intensity']],
-    #     "df_peakfit1": df_fit_peak1_df[['time', 'intensity', 'norm_intensity']],
-    #     "df_peakfit2": df_fit_peak2_df[['time', 'intensity', 'norm_intensity']]
-    # }
-
-    # for key, data in df_fit.items():
-    #     data.loc[:, 'time'] = data['time'] / 3600
-
-    # nmr_data, processed_df = process_datalab_data(
-    #     "bc_nmr_insitu", "demo_dataset_nmr_insitu.zip", 220, 310)
-
-    # processed_df_fit = fitting_data(nmr_data, df)
-
-    # yield df, df_fit, processed_df, processed_df_fit
-
-    # for path in extracted_paths.values():
-    #     os.remove(path)
+    yield result, import_data, fit_peaks
