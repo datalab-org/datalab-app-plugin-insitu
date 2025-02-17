@@ -197,10 +197,13 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
     return nmr_data, df, num_experiments
 
 
-def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
+def process_echem_data(folder_name: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
     """Process electrochemical data if available."""
-    echem_folder_path = os.path.join(
-        tmpdir, folder_name, echem_folder_name, 'echem')
+
+    if not echem_folder_name:
+        return None
+
+    echem_folder_path = os.path.join(folder_name, echem_folder_name, 'echem')
 
     if not os.path.exists(echem_folder_path):
         warnings.warn(
@@ -208,20 +211,23 @@ def process_echem_data(tmpdir: str, folder_name: str, echem_folder_name: str) ->
         return None
 
     try:
-        gcpl_full_paths = []
-        for filename in os.listdir(echem_folder_path):
-            if "GCPL" in filename and filename.endswith(".mpr"):
-                full_path = os.path.join(
-                    echem_folder_path, filename)
-                gcpl_full_paths.append(full_path)
+        gcpl_full_paths = [
+            os.path.join(echem_folder_path, filename)
+            for filename in os.listdir(echem_folder_path)
+            if "GCPL" in filename and filename.endswith(".mpr")
+        ]
 
-        all_echem_df = []
-        for path in gcpl_full_paths:
-            raw_df = ec.echem_file_loader(path)
-            all_echem_df.append(raw_df)
+        if not gcpl_full_paths:
+            warnings.warn("No GCPL files found in echem folder.")
+            return None
 
-        merged_df = pd.concat(all_echem_df, axis=0)
-        return merged_df.sort_index()
+        all_echem_df = [
+            ec.echem_file_loader(path)
+            for path in gcpl_full_paths
+        ]
+
+        return pd.concat(all_echem_df, axis=0).sort_index()
+
     except Exception as e:
         warnings.warn(
             f"Error processing echem data: {str(e)}. Continuing without echem data.")
@@ -252,7 +258,12 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
                 }
                 for i in range(len(df))
             ]
-        }
+        },
+        "df": {
+            "intensity": df["intensity"].tolist(),
+            "norm_intensity": df["norm_intensity"].tolist(),
+            "time": df["time"].tolist(),
+        },
     }
 
     if echem_df is not None:
@@ -325,12 +336,8 @@ def _process_data(
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
 
-        if echem_folder_name:
-            echem_path = os.path.join(base_folder, echem_folder_name, 'echem')
-            merged_df = process_echem_data(base_folder, os.path.basename(
-                base_folder), echem_folder_name) if os.path.exists(echem_path) else None
-        else:
-            merged_df = None
+        merged_df = process_echem_data(
+            base_folder, echem_folder_name) if echem_folder_name else None
 
         return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
 
