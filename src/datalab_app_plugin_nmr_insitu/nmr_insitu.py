@@ -215,8 +215,8 @@ def fitting_data(nmr_data: pd.DataFrame, df: pd.DataFrame, config: dict = FITTIN
             env_peak1.append(abs(np.trapz(peak1_intensity, x=ppm)))
             env_peak2.append(abs(np.trapz(peak2_intensity, x=ppm)))
 
-        norm_intensity_peak1 = [x/max(env) for x in env_peak1]
-        norm_intensity_peak2 = [x/max(env) for x in env_peak2]
+        norm_intensity_peak1 = np.array(env_peak1) / max(env)
+        norm_intensity_peak2 = np.array(env_peak2) / max(env)
 
         def data_fitted(tNMR, peak_intensity, norm_intensity):
             result = pd.DataFrame({
