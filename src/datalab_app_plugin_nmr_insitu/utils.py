@@ -221,9 +221,8 @@ def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.
             return None
 
         try:
-            file_path = str(file_path)
             echem_data = [
-                ec.echem_file_loader(file_path)
+                ec.echem_file_loader(str(file_path))
                 for file_path in sorted(gcpl_files)
             ]
 
