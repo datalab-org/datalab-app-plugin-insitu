@@ -87,7 +87,7 @@ result = process_datalab_data(
     ppm1=240,
     ppm2=280,
     start_at=1,                                 # Optional: starting experiment number
-    exclude_exp=[]                          # Optional: experiments to exclude
+    exclude_exp=[]                              # Optional: experiments to exclude
 )
 ```
 
