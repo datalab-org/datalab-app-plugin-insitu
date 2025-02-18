@@ -9,7 +9,7 @@ TOLERANCE_PERCENT = 50
 # def test_columns_exist(get_tests_data):
 
 #     result, _, fit_peaks = get_tests_data
-#     df = pd.DataFrame(result['df'])
+#     df = pd.DataFrame(result['integrated_data'])
 
 #     expected_arrays = ['data_df', 'df_peakfit1', 'df_peakfit2']
 #     expected_columns = ['time', 'intensity', 'norm_intensity']
@@ -25,7 +25,7 @@ TOLERANCE_PERCENT = 50
 # def test_column_values(get_tests_data, percentage_difference):
 
 #     result, _, fit_peaks = get_tests_data
-#     df = pd.DataFrame(result['df'])
+#     df = pd.DataFrame(result['integrated_data'])
 
 #     arrays = ['data_df', 'df_peakfit1', 'df_peakfit2']
 #     columns = ['time', 'intensity', 'norm_intensity']

@@ -263,7 +263,7 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
                 for i in range(len(df))
             ]
         },
-        "df": {
+        "integrated_data": {
             "intensity": df["intensity"].tolist(),
             "norm_intensity": df["norm_intensity"].tolist(),
             "time": df["time"].tolist(),

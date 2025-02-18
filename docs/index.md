@@ -18,6 +18,7 @@ The project was originally developed in and is currently deployed for the [Grey 
 - Integration with electrochemical data for combined analysis
 - Interactive visualization using Bokeh
 - Flexible PPM range selection
+- Support for both local files and datalab API access
 
 ![insitu NMR and Echem Bokeh Plot](assets/datalab_plugin_bokeh_plot.png)
 
@@ -37,37 +38,91 @@ uv sync --all-extras --dev
 
 You can activate `pre-commit` in your local repository with `uv run pre-commit install`.
 
+## Configuration
+
+### For Datalab API Usage
+
+When using the plugin with a datalab instance, you need to set up your API key:
+
+1. Create a .env file in your project root
+1. Add your Datalab API key:
+
+```Shell
+   DATALAB_API_KEY=your_api_key_here
+```
+
 ## Usage
 
-### Basic Usage
+The plugin offers two main processing functions: process_local_data for local files and process_datalab_data for datalab integration.
+
+### Processing Local Data
 
 ```python
-from datalab_api import DatalabClient
-from datalab_app_plugin_nmr_insitu import process_data
+from datalab_app_plugin_nmr_insitu import process_local_data
 
-# Initialize Datalab client
-client = DatalabClient("https://your-datalab-instance.com")
+# Process local NMR data
+result = process_local_data(
+    folder_name="path/to/your/data.zip",        # Path to zip file or folder
+    nmr_folder_name="nmr_data",                 # Folder containing NMR experiments
+    echem_folder_name="echem_data",             # Optional: folder with electrochemical data
+    ppm1=240,                                   # Lower PPM range limit
+    ppm2=280,                                   # Upper PPM range limit
+    start_at=1,                                 # Optional: starting experiment number
+    exclude_exp=[]                              # Optional: experiments to exclude
+)
+```
 
-# Process NMR data
-result = process_data(
+### Using with Datalab API
+
+```python
+from datalab_app_plugin_nmr_insitu import process_datalab_data
+
+# Process NMR data from datalab
+result = process_datalab_data(
     api_url="https://your-datalab-instance.com",
     item_id="your-item-id",
     folder_name="your-folder",
     nmr_folder_name="nmr-data",
     echem_folder_name="echem-data",
     ppm1=240,
-    ppm2=280
+    ppm2=280,
+    start_at=1,                                 # Optional: starting experiment number
+    exclude_exp=[]                          # Optional: experiments to exclude
 )
 ```
 
 ## API Reference
 
-### Main Functions
-
-#### process_data
+### process_local_data
 
 ```python
-def process_data(
+def process_local_data(
+    folder_name: str,
+    nmr_folder_name: str,
+    echem_folder_name: str,
+    ppm1: float,
+    ppm2: float,
+    start_at: int = 1,
+    exclude_exp: Optional[List[int]] = None,
+) -> Dict
+```
+
+Process NMR spectroscopy data from local files.
+
+**Parameters:**
+
+- `folder_name`: Path to zip file or folder containing the data
+- `nmr_folder_name`: Folder containing NMR experiments
+- `echem_folder_name`: Folder containing electrochemical data (optional)
+- `ppm1`: Lower PPM range limit
+- `ppm2`: Upper PPM range limit
+- `start_at`: Starting experiment number (default: 1)
+- `exclude_exp`: List of experiment numbers to exclude (default: None)
+
+### process_datalab_data
+
+```Python
+def process_datalab_data(
     api_url: str,
     item_id: str,
     folder_name: str,
@@ -80,51 +135,76 @@ def process_data(
 ) -> Dict
 ```
 
-Process NMR spectroscopy data from multiple experiments.
+Process NMR spectroscopy data from Datalab API.
 
 **Parameters:**
 
 - `api_url`: URL of the Datalab API
 - `item_id`: ID of the item to process
-- `folder_name`: Base folder name
+- `folder_name`: Base folder name in datalab
 - `nmr_folder_name`: Folder containing NMR experiments
-- `echem_folder_name`: Folder containing Echem data
+- `echem_folder_name`: Folder containing electrochemical data (optional)
 - `ppm1`: Lower PPM range limit
 - `ppm2`: Upper PPM range limit
 - `start_at`: Starting experiment number (default: 1)
 - `exclude_exp`: List of experiment numbers to exclude (default: None)
 
-**Returns:**
-Dictionary containing processed NMR and electrochemical data
+**Returns format:**
+
+Both functions return a dictionary with the following structure:
 
 ```python
     result = {
         "metadata": {
             "ppm_range": {
-                "start": nmr_data['ppm'].min(),
-                "end": nmr_data['ppm'].max()
+                "start": float,               # Minimum PPM value
+                "end": float                  # Maximum PPM value
             },
             "time_range": {
-                "start": df['time'].min(),
-                "end": df['time'].max()
+                "start": float,               # Start time in hours
+                "end": float                  # End time in hours
             },
-            "num_experiments": num_experiments,
+            "num_experiments": int,           # Total number of experiments
         },
         "nmr_spectra": {
-            "ppm": nmr_data["ppm"].tolist(),
+            "ppm": List[float],               # PPM values
             "spectra": [
                 {
-                    "time": df["time"][i],
-                    "intensity": nmr_data[str(i+1)].tolist()
+                    "time": float,            # Time point in hours
+                    "intensity": List[float]  # Intensity values
                 }
-                for i in range(len(df))
             ]
         },
-        "echem": {
-            "Voltage": echem_df["Voltage"].tolist(),
-            "time": (echem_df["time/s"] / 3600).tolist()
+        "integrated_data": {
+            "intensity": List[float],          # Integrated intensity
+            "norm_intensity": List[float]      # Normalized intensity
+            "time": float,                     # Time point in hours
+        },
+        "echem": {                             # Only present if echem_folder_name is provided
+            "Voltage": List[float],            # Voltage measurements
+            "time": List[float]                # Time points in hours
         }
     }
+```
+
+## Data Structure Requirements
+
+Your data should be organized as follows:
+
+```Shell
+data_folder.zip/
+├── nmr_folder/
+│   ├── 1/
+│   │   ├── acqus
+│   │   └── pdata/
+│   │       └── 1/
+│   │           └── ascii-spec.txt
+│   ├── 2/
+│   │   └── ...
+│   └── ...
+└── echem_folder/  (optional)
+    └── echem/
+        └── GCPL_*.MPR
 ```
 
 ## License

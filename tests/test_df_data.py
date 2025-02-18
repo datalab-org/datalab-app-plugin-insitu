@@ -7,7 +7,7 @@ TOLERANCE_PERCENT = 0.01
 
 def test_columns_exist(get_tests_data):
     result, import_data, _ = get_tests_data
-    df = pd.DataFrame(result['df'])
+    df = pd.DataFrame(result['integrated_data'])
 
     expected_columns = ['time', 'intensity', 'norm_intensity']
 
@@ -18,7 +18,7 @@ def test_columns_exist(get_tests_data):
 
 def test_column_values(get_tests_data, percentage_difference):
     result, import_data, _ = get_tests_data
-    df = pd.DataFrame(result['df'])
+    df = pd.DataFrame(result['integrated_data'])
 
     columns = ['time', 'intensity', 'norm_intensity']
     stats = ['min', 'max', 'mean']
