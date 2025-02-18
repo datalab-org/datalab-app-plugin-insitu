@@ -1,11 +1,15 @@
 import pandas as pd
 
+#! Disable test_fit because we don't use fit_peaks for now.
+#! So there's is no fit data inside result
 #! To make test work
 TOLERANCE_PERCENT = 50
 
 
-# def test_columns_exist(get_demo_data):
-#     _, df_fit, _, processed_df_fit = get_demo_data
+# def test_columns_exist(get_tests_data):
+
+#     result, _, fit_peaks = get_tests_data
+#     df = pd.DataFrame(result['df'])
 
 #     expected_arrays = ['data_df', 'df_peakfit1', 'df_peakfit2']
 #     expected_columns = ['time', 'intensity', 'norm_intensity']
@@ -18,8 +22,10 @@ TOLERANCE_PERCENT = 50
 #             assert column in processed_df_fit[array], f"{column} is missing in processed_df_fit"
 
 
-# def test_column_values(get_demo_data, percentage_difference):
-#     _, df_fit, _, processed_df_fit = get_demo_data
+# def test_column_values(get_tests_data, percentage_difference):
+
+#     result, _, fit_peaks = get_tests_data
+#     df = pd.DataFrame(result['df'])
 
 #     arrays = ['data_df', 'df_peakfit1', 'df_peakfit2']
 #     columns = ['time', 'intensity', 'norm_intensity']
