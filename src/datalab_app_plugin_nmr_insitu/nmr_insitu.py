@@ -25,16 +25,16 @@ def process_local_data(
     Process NMR spectroscopy data from local zip files.
 
     Args:
-        base_folder: Path to the base folder containing NMR and Echem data zip file
-        nmr_folder_name: Folder containing NMR experiments
-        echem_folder_name: Folder containing Echem data
-        ppm1: Lower PPM range limit
-        ppm2: Upper PPM range limit
-        start_at: Starting experiment number (default: 1)
-        exclude_exp: List of experiment numbers to exclude (default: None)
+        folder_name (str): Path to the ZIP file or folder containing the NMR data.
+        nmr_folder_name (str): Name of the folder inside `folder_name` containing NMR experiments.
+        echem_folder_name (str): Name of the folder inside `folder_name` containing electrochemical data.
+        ppm1 (float): Lower PPM range limit.
+        ppm2 (float): Upper PPM range limit.
+        start_at (int, optional): Starting experiment number (default: 1).
+        exclude_exp (Optional[List[int]], optional): List of experiment numbers to exclude (default: None).
 
     Returns:
-        Dictionary containing processed NMR and electrochemical data
+        Dict: Dictionary containing processed NMR and electrochemical data.
     """
     if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
