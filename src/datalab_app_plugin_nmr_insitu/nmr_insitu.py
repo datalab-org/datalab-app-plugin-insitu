@@ -3,6 +3,7 @@ import zipfile
 import tempfile
 import warnings
 
+from pathlib import Path
 from datalab_api import DatalabClient
 from typing import List, Optional, Dict
 from lmfit.models import PseudoVoigtModel
@@ -44,29 +45,27 @@ def process_local_data(
             if folder_name.endswith('.zip'):
                 with zipfile.ZipFile(folder_name, 'r') as zip_ref:
                     zip_ref.extractall(tmpdir)
-                base_path = tmpdir
+                base_path = Path(tmpdir)
             else:
                 base_path = folder_name
 
-            folder_name = os.path.splitext(folder_name)[0]
-            nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
-            nmr_folder_path = os.path.join(
-                tmpdir, folder_name, nmr_folder_name)
+            folder_name = Path(folder_name).stem
+            nmr_folder_name = Path(nmr_folder_name).stem
+            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
 
             if echem_folder_name:
-                echem_folder_name = os.path.splitext(echem_folder_name)[0]
+                echem_folder_name = Path(echem_folder_name).stem
 
-            if not os.path.exists(nmr_folder_path):
+            if not nmr_folder_path.exists():
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder_name}")
 
-            echem_folder_path = os.path.join(
-                base_path, echem_folder_name) if echem_folder_name else None
-            if echem_folder_name and not os.path.exists(echem_folder_path):
+            echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
+            if echem_folder_name and not echem_folder_path.exists():
                 warnings.warn(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
-                base_path,
+                Path(tmpdir) / folder_name,
                 nmr_folder_path,
                 echem_folder_name,
                 ppm1,
@@ -120,24 +119,23 @@ def process_datalab_data(
             except Exception as e:
                 raise RuntimeError(f"API error: {e}")
 
-            zip_path = os.path.join(tmpdir, folder_name)
-            if not os.path.exists(zip_path):
+            zip_path = Path(tmpdir) / folder_name
+            if not zip_path.exists():
                 raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
 
-            folder_name = os.path.splitext(folder_name)[0]
-            nmr_folder_name = os.path.splitext(nmr_folder_name)[0]
-            nmr_folder_path = os.path.join(
-                tmpdir, folder_name, nmr_folder_name)
+            folder_name = Path(folder_name).stem
+            nmr_folder_name = Path(nmr_folder_name).stem
+            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
 
-            if not os.path.exists(nmr_folder_path):
+            if not nmr_folder_path.exists():
                 raise FileNotFoundError(
                     f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
-                os.path.join(tmpdir, folder_name),
+                Path(tmpdir) / folder_name,
                 nmr_folder_path,
                 echem_folder_name,
                 ppm1,

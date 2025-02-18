@@ -2,6 +2,7 @@ import os
 import re
 import warnings
 
+from pathlib import Path
 from typing import List, Optional, Dict, Tuple
 from navani import echem as ec
 from datetime import datetime
@@ -28,22 +29,22 @@ def check_nmr_dimension(nmr_folder_path: str) -> str:
         RuntimeError: If there's an error accessing the files or invalid configuration
     """
     try:
-        exp_folders = [d for d in os.listdir(nmr_folder_path)
-                       if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
+        exp_folders = [d for d in Path(
+            nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
         if not exp_folders:
             raise FileNotFoundError("No experiment folders found in NMR data")
 
         if len(exp_folders) == 1:
-            exp_path = os.path.join(nmr_folder_path, exp_folders[0])
-            acqus_path = os.path.join(exp_path, "acqus")
-            acqu2s_path = os.path.join(exp_path, "acqu2s")
+            exp_path = Path(nmr_folder_path) / exp_folders[0]
+            acqus_path = exp_path / "acqus"
+            acqu2s_path = exp_path / "acqu2s"
 
-            if not os.path.exists(acqus_path):
+            if not acqus_path.exists():
                 raise FileNotFoundError(
                     f"acqus file not found in experiment {exp_folders[0]}")
 
-            if not os.path.exists(acqu2s_path):
+            if not acqu2s_path.exists():
                 raise FileNotFoundError(
                     f"acqu2s file not found in experiment {exp_folders[0]} - required for pseudo2D")
 
@@ -51,15 +52,15 @@ def check_nmr_dimension(nmr_folder_path: str) -> str:
 
         else:
             for exp_folder in exp_folders:
-                exp_path = os.path.join(nmr_folder_path, exp_folder)
-                acqus_path = os.path.join(exp_path, "acqus")
-                acqu2s_path = os.path.join(exp_path, "acqu2s")
+                exp_path = Path(nmr_folder_path) / exp_folder
+                acqus_path = exp_path / "acqus"
+                acqu2s_path = exp_path / "acqu2s"
 
-                if not os.path.exists(acqus_path):
+                if not acqus_path.exists():
                     raise FileNotFoundError(
                         f"acqus file not found in experiment {exp_folder}")
 
-                if os.path.exists(acqu2s_path):
+                if acqu2s_path.exists():
                     raise RuntimeError(
                         f"acqu2s file found in experiment {exp_folder}")
 
@@ -106,15 +107,16 @@ def extract_date_from_acqus(path: str) -> Optional[datetime]:
 
 def setup_paths(nmr_folder_path: str, start_at: int, exclude_exp: Optional[List[int]]) -> Tuple[List[str], List[str]]:
     """Setup experiment paths and create output directory."""
-    exp_folders = [d for d in os.listdir(nmr_folder_path)
-                   if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
+    exp_folders = [d for d in Path(nmr_folder_path).iterdir()
+                   if d.is_dir() and d.name.isdigit()]
 
     exp_folder = [exp for exp in range(start_at, len(exp_folders) + 1)
                   if exp not in (exclude_exp or [])]
 
-    spec_paths = [
-        f"{nmr_folder_path}/{exp}/pdata/1/ascii-spec.txt" for exp in exp_folder]
-    acqu_paths = [f"{nmr_folder_path}/{exp}/acqus" for exp in exp_folder]
+    spec_paths = [str(Path(nmr_folder_path) / str(exp) /
+                      "pdata" / "1" / "ascii-spec.txt") for exp in exp_folder]
+    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus")
+                  for exp in exp_folder]
 
     return spec_paths, acqu_paths
 
@@ -166,8 +168,7 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
 def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process pseudo-2D spectral data from Bruker files."""
 
-    p_dic, p_data = ng.fileio.bruker.read_pdata(
-        os.path.join(exp_dir, "pdata", "1"))
+    p_dic, p_data = ng.fileio.bruker.read_pdata(Path(exp_dir) / "pdata" / "1")
 
     udic = ng.bruker.guess_udic(p_dic, p_data)
     uc = ng.fileiobase.uc_from_udic(udic)
@@ -204,17 +205,15 @@ def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.
         return None
 
     try:
-        echem_folder_path = os.path.join(
-            base_folder, echem_folder_name, 'echem')
+        echem_folder_path = Path(base_folder) / echem_folder_name / 'echem'
 
-        if not os.path.exists(echem_folder_path):
+        if not echem_folder_path.exists():
             warnings.warn(f"Echem folder not found at {echem_folder_path}")
             return None
 
         gcpl_files = [
-            os.path.join(echem_folder_path, f)
-            for f in os.listdir(echem_folder_path)
-            if f.upper().endswith('.MPR') and 'GCPL' in f.upper()
+            f for f in echem_folder_path.iterdir()
+            if f.suffix.upper() == '.MPR' and 'GCPL' in f.name.upper()
         ]
 
         if not gcpl_files:
@@ -222,6 +221,7 @@ def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.
             return None
 
         try:
+            file_path = str(file_path)
             echem_data = [
                 ec.echem_file_loader(file_path)
                 for file_path in sorted(gcpl_files)
@@ -327,13 +327,13 @@ def _process_data(
                 spec_paths, time_points, ppm1, ppm2)
 
         elif nmr_dimension == 'pseudo2D':
-            exp_folders = [d for d in os.listdir(nmr_folder_path)
-                           if os.path.isdir(os.path.join(nmr_folder_path, d)) and d.isdigit()]
+            exp_folders = [d for d in Path(nmr_folder_path).iterdir()
+                           if d.is_dir() and d.name.isdigit()]
             if not exp_folders:
                 raise FileNotFoundError(
                     "No experiment folders found in NMR data")
 
-            exp_folder = os.path.join(nmr_folder_path, exp_folders[0])
+            exp_folder = Path(nmr_folder_path) / exp_folders[0]
             nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
                 exp_folder, ppm1, ppm2)
 
