@@ -135,7 +135,7 @@ def process_time_data(acqu_paths: List[str]) -> List[float]:
 
 
 def process_spectral_data(spec_paths: List[str], time_points: List[float]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Process spectral data from ascii-spec files with PPM range filtering."""
+    """Process spectral data from ascii-spec files"""
 
     first_data = pd.read_csv(spec_paths[0], header=None, skiprows=1)
     ppm_values = first_data.iloc[:, 3].values
@@ -237,10 +237,6 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
 
     result = {
         "metadata": {
-            "ppm_range": {
-                "start": nmr_data['ppm'].min(),
-                "end": nmr_data['ppm'].max()
-            },
             "time_range": {
                 "start": df['time'].min(),
                 "end": df['time'].max()
