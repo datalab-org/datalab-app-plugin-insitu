@@ -134,7 +134,7 @@ def process_time_data(acqu_paths: List[str]) -> List[float]:
     return time_points
 
 
-def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def process_spectral_data(spec_paths: List[str], time_points: List[float]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process spectral data from ascii-spec files with PPM range filtering."""
 
     first_data = pd.read_csv(spec_paths[0], header=None, skiprows=1)
@@ -151,8 +151,6 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
         data = pd.read_csv(path, header=None, skiprows=1)
         nmr_data[f'{i+1}'] = data.iloc[:, 1]
 
-    nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
-
     intensities = calculate_intensities(nmr_data)
 
     df = pd.DataFrame({
@@ -164,7 +162,7 @@ def process_spectral_data(spec_paths: List[str], time_points: List[float], ppm1:
     return nmr_data, df, num_experiments
 
 
-def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def process_pseudo2d_spectral_data(exp_dir: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process pseudo-2D spectral data from Bruker files."""
 
     p_dic, p_data = ng.fileio.bruker.read_pdata(Path(exp_dir) / "pdata" / "1")
@@ -182,8 +180,6 @@ def process_pseudo2d_spectral_data(exp_dir: str, ppm1: float, ppm2: float) -> Tu
 
     for i in range(num_experiments):
         nmr_data[f'{i+1}'] = p_data[i]
-
-    nmr_data = nmr_data[(nmr_data['ppm'] >= ppm1) & (nmr_data['ppm'] <= ppm2)]
 
     intensities = calculate_intensities(nmr_data)
 
@@ -294,8 +290,6 @@ def _process_data(
     base_folder: str,
     nmr_folder_path: str,
     echem_folder_name: str,
-    ppm1: float,
-    ppm2: float,
     start_at: int,
     exclude_exp: Optional[List[int]]
 ) -> Dict:
@@ -306,8 +300,6 @@ def _process_data(
         base_folder: Path to the base folder containing all data
         nmr_folder_path: Path to the NMR data folder
         echem_folder_name: Name of the electrochemistry folder
-        ppm1: Lower PPM range limit
-        ppm2: Upper PPM range limit
         start_at: Starting experiment number
         exclude_exp: List of experiment numbers to exclude
 
@@ -322,7 +314,7 @@ def _process_data(
                 nmr_folder_path, start_at, exclude_exp)
             time_points = process_time_data(acqu_paths)
             nmr_data, df, num_experiments = process_spectral_data(
-                spec_paths, time_points, ppm1, ppm2)
+                spec_paths, time_points)
 
         elif nmr_dimension == 'pseudo2D':
             exp_folders = [d for d in Path(nmr_folder_path).iterdir()
@@ -333,7 +325,7 @@ def _process_data(
 
             exp_folder = Path(nmr_folder_path) / exp_folders[0]
             nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
-                exp_folder, ppm1, ppm2)
+                exp_folder)
 
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
