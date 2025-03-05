@@ -247,8 +247,9 @@ def prepare_for_bokeh(nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Option
             "ppm": nmr_data["ppm"].tolist(),
             "spectra": [
                 {
-                    "time": df["time"][i],
-                    "intensity": nmr_data[str(i+1)].tolist()
+                    "time": float(df["time"][i]),
+                    "intensity": nmr_data[str(i+1)].tolist(),
+                    "experiment_number": i + 1
                 }
                 for i in range(len(df))
             ]
