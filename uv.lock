@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version < '3.11'",
@@ -314,20 +315,22 @@ wheels = [
 [[package]]
 name = "datalab-api"
 version = "0.2.8"
-source = { git = "https://github.com/datalab-org/datalab-api#54e9f12b69960582c2c831b4cfde042b2b694026" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bokeh" },
     { name = "httpx" },
     { name = "numpy" },
     { name = "rich" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/2a/89/969ded4b62bd892be39cdd7282006c2066cb5d188515539e3d70f4004c5e/datalab_api-0.2.8.tar.gz", hash = "sha256:83642c85b5c9360c469f3f05707f8f31337373f8a5cbc46d00e3015278db12f3", size = 19469 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/77/a2ddcee1235e9af3d2d1a308d9f4e922abafde079985a236cf4e2edb84b9/datalab_api-0.2.8-py3-none-any.whl", hash = "sha256:8ed566dfd389289a6a5b574df7f389d872130ea5ffbc289bfb6eea5ceb03fdc4", size = 16526 },
+]
 
 [[package]]
-name = "datalab-app-plugin-nmr-insitu"
-version = "0.0.0"
+name = "datalab-app-plugin-insitu"
 source = { editable = "." }
 dependencies = [
-    { name = "datalab-api" },
     { name = "lmfit" },
     { name = "matplotlib" },
     { name = "navani" },
@@ -336,6 +339,11 @@ dependencies = [
     { name = "pandas" },
     { name = "pyreadr" },
     { name = "scipy" },
+]
+
+[package.optional-dependencies]
+local = [
+    { name = "datalab-api" },
 ]
 
 [package.dev-dependencies]
@@ -351,16 +359,17 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datalab-api", git = "https://github.com/datalab-org/datalab-api" },
+    { name = "datalab-api", marker = "extra == 'local'", specifier = "~=0.2" },
     { name = "lmfit", specifier = ">=1.3.2" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "navani", git = "https://github.com/the-grey-group/navani.git?rev=v0.1.7" },
     { name = "nmrglue", specifier = ">=0.11" },
-    { name = "numpy", specifier = ">=1.26.4" },
+    { name = "numpy", specifier = ">=1.26.4,<2" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pyreadr", specifier = ">=0.5.2" },
     { name = "scipy", specifier = ">=1.14.1" },
 ]
+provides-extras = ["local"]
 
 [package.metadata.requires-dev]
 dev = [

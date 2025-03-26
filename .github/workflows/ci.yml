@@ -29,11 +29,10 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: "0.4.x"
+          version: "0.6.x"
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: ./src/datalab_app_plugin_nmr_insitu
         run: |
           uv sync --locked --all-extras --dev
 
@@ -67,7 +66,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: "0.4.x"
+          version: "0.6.x"
           enable-cache: true
 
       - name: Install locked versions of dependencies

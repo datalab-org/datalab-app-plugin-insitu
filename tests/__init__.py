@@ -1,1 +1,1 @@
-"""Tests for datalab-app-plugin-nmr-insitu."""
+"""Tests for datalab-app-plugin-insitu."""
