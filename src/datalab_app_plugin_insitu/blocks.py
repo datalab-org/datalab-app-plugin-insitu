@@ -20,7 +20,7 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
-from nmr_insitu import process_datalab_data
+from .nmr_insitu import process_datalab_data
 
 pydatalab = importlib.import_module("pydatalab")
 
