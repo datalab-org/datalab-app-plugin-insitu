@@ -1,5 +1,6 @@
 import os
 import zipfile
+import importlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -19,12 +20,17 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
-from datalab_app_plugin_nmr_insitu import process_datalab_data
+from nmr_insitu import process_datalab_data
 
-from pydatalab.blocks.base import DataBlock
-from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
-from pydatalab.file_utils import get_file_info_by_id
-from pydatalab.logger import LOGGER
+pydatalab = importlib.import_module("pydatalab")
+
+DataBlock = getattr(importlib.import_module(
+    "pydatalab.blocks.base"), "DataBlock")
+DATALAB_BOKEH_THEME = getattr(importlib.import_module(
+    "pydatalab.bokeh_plots"), "DATALAB_BOKEH_THEME")
+get_file_info_by_id = getattr(importlib.import_module(
+    "pydatalab.file_utils"), "get_file_info_by_id")
+LOGGER = getattr(importlib.import_module("pydatalab.logger"), "LOGGER")
 
 
 class InsituBlock(DataBlock):
