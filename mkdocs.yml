@@ -1,6 +1,6 @@
-site_name: datalab-insitu-nmr
+site_name: datalab-app-plugin-insitu
 site_description: Documentation for datalab insitu NMR
-site_url: https://datalab-insitu-nmr.readthedocs.io
+site_url: https://datalab-app-plugin-insitu.readthedocs.io
 
 theme:
   name: material
@@ -35,8 +35,8 @@ theme:
   features:
     - content.tabs.link
 
-repo_name: datalab-org/datalab_app_plugin_nmr_insitu
-repo_url: https://github.com/datalab-org/datalab_app_plugin_nmr_insitu
+repo_name: datalab-org/datalab-app-plugin-insitu
+repo_url: https://github.com/datalab-org/datalab-app-plugin-insitu
 
 docs_dir: "docs"
 

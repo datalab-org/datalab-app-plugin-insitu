@@ -5,8 +5,8 @@ We recommend you use [`uv`](https://astral.sh/uv) for managing virtual environme
 Once you have `uv` installed, you can clone this repository and install the package in a fresh virtual environment with:
 
 ```
-git clone git@github.com:datalab-org/datalab_app_plugin_nmr_insitu
-cd datalab_app_plugin_nmr_insitu
+git clone git@github.com:datalab-org/datalab-app-plugin-nsitu
+cd datalab-app-plugin-insitu
 uv sync --all-extras --dev
 ```
 
