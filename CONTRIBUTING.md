@@ -14,7 +14,7 @@ transparent as possible, whether it's:
 datalab-app-plugin-nmr-insitu is still in development, so at the moment we
 do not have a dedicated help forum. For the time being, please
 submit questions and bugs to the
-[GitHub issues page](https://github.com/datalab-org/datalab_app_plugin_nmr_insitu/issues).
+[GitHub issues page](https://github.com/datalab-org/datalab_app_plugin_insitu/issues).
 
 If you are making a bug report, incorporate as many elements of the
 following as possible to ensure a timely response and avoid the
@@ -36,7 +36,7 @@ further tracked.
 
 We use github to host code, to track issues and feature requests,
 as well as accept pull requests. We maintain a list of all
-contributors [here](https://datalab-org.github.io/datalab_app_plugin_nmr_insitu/contributors.html).
+contributors [here](https://datalab-org.github.io/datalab_app_plugin_insitu/contributors.html).
 
 Pull requests are the best way to propose changes to the codebase.
 Follow the [Github flow](https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow)
@@ -63,7 +63,7 @@ We have a few tips for writing good PRs that are accepted into the main repo:
   resources on writing good tests.
 - Understand your contributions will fall under the same license as this repo.
 - This project uses `pre-commit` for uniform linting across many developers. You can install
-  it through the extra dev dependencies with `pip install -e .[dev]`  and then run `pre-commit install`
+  it through the extra dev dependencies with `pip install -e .[dev]` and then run `pre-commit install`
   to activate it for you local repository.
 
 When you submit your PR, our CI service will automatically run your tests.

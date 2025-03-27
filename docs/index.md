@@ -29,8 +29,8 @@ We recommend you use [`uv`](https://astral.sh/uv) for managing virtual environme
 Once you have `uv` installed, you can clone this repository and install the package in a fresh virtual environment with:
 
 ```
-git clone git@github.com:datalab-org/datalab_app_plugin_nmr_insitu
-cd datalab_app_plugin_nmr_insitu
+git clone git@github.com:datalab-org/datalab_app_plugin_insitu
+cd datalab_app_plugin_insitu
 uv sync --all-extras --dev
 ```
 
@@ -58,7 +58,7 @@ The plugin offers two main processing functions: process_local_data for local fi
 ### Processing Local Data
 
 ```python
-from datalab_app_plugin_nmr_insitu import process_local_data
+from datalab_app_plugin_insitu import process_local_data
 
 # Process local NMR data
 result = process_local_data(
@@ -75,7 +75,7 @@ result = process_local_data(
 ### Using with Datalab API
 
 ```python
-from datalab_app_plugin_nmr_insitu import process_datalab_data
+from datalab_app_plugin_insitu import process_datalab_data
 
 # Process NMR data from datalab
 result = process_datalab_data(
@@ -209,8 +209,8 @@ data_folder.zip/
 
 ## License
 
-This project is released under the conditions of the MIT license. Please see [LICENSE](https://github.com/datalab-org/datalab_app_plugin_nmr_insitu/blob/main/LICENSE) for the full text of the license.
+This project is released under the conditions of the MIT license. Please see [LICENSE](https://github.com/datalab-org/datalab_app_plugin_insitu/blob/main/LICENSE) for the full text of the license.
 
 ## Contact
 
-For questions and support, please [open an issue](https://github.com/datalab-org/datalab_app_plugin_nmr_insitu/issues) on the GitHub repository or join the [public datalab Slack workspace](https://join.slack.com/t/datalab-world/shared_invite/zt-2h58ev3pc-VV496~5je~QoT2TgFIwn4g).
+For questions and support, please [open an issue](https://github.com/datalab-org/datalab_app_plugin_insitu/issues) on the GitHub repository or join the [public datalab Slack workspace](https://join.slack.com/t/datalab-world/shared_invite/zt-2h58ev3pc-VV496~5je~QoT2TgFIwn4g).
