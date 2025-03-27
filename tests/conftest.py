@@ -134,6 +134,6 @@ def get_tests_data():
         data.loc[:, 'time'] = data['time'] / 3600
 
     result = process_datalab_data(DATALAB_API_URL, "bc_insitu_block", "Example-TEGDME.zip",
-                                  "2023-08-11_jana_insituLiLiTEGDME-02_galv", "LiLiTEGDMEinsitu_02", 220, 310)
+                                  "2023-08-11_jana_insituLiLiTEGDME-02_galv", "LiLiTEGDMEinsitu_02", 1, [])
 
     yield result, import_data, fit_peaks

@@ -96,6 +96,9 @@ def process_datalab_data(
     Returns:
         Dictionary containing processed NMR and electrochemical data
     """
+    if exclude_exp is None:
+        exclude_exp = []
+
     if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
