@@ -22,15 +22,19 @@ from bokeh.models import (
 from bokeh.plotting import figure
 from .nmr_insitu import process_datalab_data
 
-pydatalab = importlib.import_module("pydatalab")
+import importlib
+import logging
 
-DataBlock = getattr(importlib.import_module(
-    "pydatalab.blocks.base"), "DataBlock")
-DATALAB_BOKEH_THEME = getattr(importlib.import_module(
-    "pydatalab.bokeh_plots"), "DATALAB_BOKEH_THEME")
-get_file_info_by_id = getattr(importlib.import_module(
-    "pydatalab.file_utils"), "get_file_info_by_id")
-LOGGER = getattr(importlib.import_module("pydatalab.logger"), "LOGGER")
+try:
+    from pydatalab.blocks.base import DataBlock
+    from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
+    from pydatalab.file_utils import get_file_info_by_id
+    from pydatalab.logger import LOGGER
+except ImportError:
+    DataBlock = object
+    DATALAB_BOKEH_THEME = None
+    get_file_info_by_id = lambda *args, **kwargs: {}
+    LOGGER = logging.getLogger(__name__)
 
 
 class InsituBlock(DataBlock):
