@@ -20,7 +20,7 @@ The project was originally developed in and is currently deployed for the [Grey 
 - Flexible PPM range selection
 - Support for both local files and datalab API access
 
-![insitu NMR and Echem Bokeh Plot](docs/assets/datalab_plugin_bokeh_plot.png)
+![insitu NMR and Echem Bokeh Plot](assets/datalab_plugin_bokeh_plot.png)
 
 # Installation
 
