@@ -10,9 +10,6 @@ build:
     - asdf plugin add uv
     - asdf install uv latest
     - asdf global uv latest
-    - uv venv
-    - uv pip install mkdocs mkdocs-material
-    - uv pip install mkdocstrings mkdocstrings-python
-    - uv pip install mkdocs-awesome-pages-plugin mkdocs-autorefs
-    - uv pip install -e .
+    - uv sync --all-extras --dev
+    - uv pip install .
     - .venv/bin/python -m mkdocs build --site-dir $READTHEDOCS_OUTPUT/html
