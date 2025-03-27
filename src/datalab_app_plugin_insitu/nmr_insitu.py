@@ -33,12 +33,6 @@ def process_local_data(
     Returns:
         Dict: Dictionary containing processed NMR and electrochemical data.
     """
-    if exclude_exp is None:
-        exclude_exp = []
-
-    if not isinstance(exclude_exp, list):
-        exclude_exp = [exclude_exp] if isinstance(exclude_exp, int) else []
-
     if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
