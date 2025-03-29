@@ -43,6 +43,9 @@ homepage = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
 repository = "https://github.com/datalab-org/datalab-app-plugin-insitu"
 documentation = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
 
+[tool.setuptools_scm]
+version_scheme = "post-release"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
