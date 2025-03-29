@@ -22,7 +22,6 @@ from bokeh.models import (
 from bokeh.plotting import figure
 from .nmr_insitu import process_datalab_data
 
-import importlib
 import logging
 
 try:

@@ -47,6 +47,9 @@ documentation = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
 where = ["src"]
 namespaces = true
 
+[project.entry-points.'pydatalab.apps.plugins']
+insitu_nmr = "datalab_app_plugin_insitu:InsituBlock"
+
 [tool.setuptools.package-data]
 datalab_app_plugin_insitu = ["py.typed"]
 
@@ -79,6 +82,7 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
+    "datalab-server @ git+https://github.com/datalab-org/datalab@bc/nmr-insitu#subdirectory=pydatalab"
 ]
 
 [tool.coverage.run]
