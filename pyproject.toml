@@ -34,7 +34,6 @@ dependencies = [
     "scipy>=1.14.1",
     "nmrglue>=0.11",
     "navani @ git+https://github.com/the-grey-group/navani.git@v0.1.7",
-    "datalab-server[all] @ git+https://github.com/datalab-org/datalab@bc/nmr-insitu#subdirectory=pydatalab",
 ]
 [project.optional-dependencies]
 local = ["datalab-api ~= 0.2"]
