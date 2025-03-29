@@ -4,7 +4,6 @@ import tempfile
 import warnings
 
 from pathlib import Path
-from datalab_api import DatalabClient
 from typing import List, Optional, Dict
 from lmfit.models import PseudoVoigtModel
 from .utils import _process_data
@@ -96,6 +95,10 @@ def process_datalab_data(
     Returns:
         Dictionary containing processed NMR and electrochemical data
     """
+    try:
+        from datalab_api import DatalabClient
+    except ImportError:
+        raise ImportError("`datalab-api` is required to process data from datalab; install this package with the extra 'local' via 'pip install .[local]'")
     if exclude_exp is None:
         exclude_exp = []
 
