@@ -47,6 +47,9 @@ documentation = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
 where = ["src"]
 namespaces = true
 
+[project.entry-points.'datalab.apps.plugins']
+insitu = "datalab_app_plugin_insitu"
+
 [tool.setuptools.package-data]
 datalab_app_plugin_insitu = ["py.typed"]
 
