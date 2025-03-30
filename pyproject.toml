@@ -85,7 +85,7 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
-    "datalab-server @ git+https://github.com/datalab-org/datalab@bc/nmr-insitu#subdirectory=pydatalab"
+    "datalab-server @ git+https://github.com/datalab-org/datalab#subdirectory=pydatalab"
 ]
 
 [tool.coverage.run]
