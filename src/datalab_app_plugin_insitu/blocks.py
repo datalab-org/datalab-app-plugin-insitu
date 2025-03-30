@@ -37,7 +37,7 @@ except ImportError:
 
 
 class InsituBlock(DataBlock):
-    blocktype = "insitu"
+    blocktype = "insitu-nmr"
     name = "NMR insitu"
     description = "A simple NMR insitu block from .zip files."
     accepted_file_extensions = (".zip",)
