@@ -374,7 +374,7 @@ provides-extras = ["local"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datalab-server", git = "https://github.com/datalab-org/datalab?subdirectory=pydatalab&rev=bc%2Fnmr-insitu" },
+    { name = "datalab-server", git = "https://github.com/datalab-org/datalab?subdirectory=pydatalab" },
     { name = "mkdocs", specifier = "~=1.6" },
     { name = "mkdocs-awesome-pages-plugin", specifier = "~=2.9" },
     { name = "mkdocs-material", specifier = "~=9.5" },
@@ -386,8 +386,8 @@ dev = [
 
 [[package]]
 name = "datalab-server"
-version = "0.5.2.post5+gc6849af"
-source = { git = "https://github.com/datalab-org/datalab?subdirectory=pydatalab&rev=bc%2Fnmr-insitu#c6849af29d6b9084d09db50cb849b7ece8ddac4a" }
+version = "0.5.2.post3+gda2b63f"
+source = { git = "https://github.com/datalab-org/datalab?subdirectory=pydatalab#da2b63f230916093bc4be911664fc120dd0eefb9" }
 dependencies = [
     { name = "bokeh" },
     { name = "matplotlib" },
