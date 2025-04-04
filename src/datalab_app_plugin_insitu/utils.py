@@ -194,7 +194,7 @@ def process_pseudo2d_spectral_data(exp_dir: str) -> Tuple[pd.DataFrame, pd.DataF
 
 
 def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.DataFrame]:
-    """Process electrochemical data if available."""
+    """Process electrochemical data using .mpr file(s), and combine them if there is "GCPL" in their filename."""
 
     if not echem_folder_name:
         return None
@@ -203,29 +203,47 @@ def process_echem_data(base_folder: str, echem_folder_name: str) -> Optional[pd.
         echem_folder_path = Path(base_folder) / echem_folder_name / 'echem'
 
         if not echem_folder_path.exists():
-            warnings.warn(f"Echem folder not found at {echem_folder_path}")
-            return None
+            echem_folder_path = Path(base_folder) / echem_folder_name
 
-        gcpl_files = [
+            if not echem_folder_path.exists():
+                warnings.warn(f"Echem folder not found at {echem_folder_path}")
+                return None
+
+        mpr_files = [
             f for f in echem_folder_path.iterdir()
-            if f.suffix.upper() == '.MPR' and 'GCPL' in f.name.upper()
+            if f.suffix.upper() == '.MPR'
         ]
 
-        if not gcpl_files:
-            warnings.warn(f"No GCPL files found in {echem_folder_path}")
+        if not mpr_files:
+            warnings.warn(f"No MPR files found in {echem_folder_path}")
             return None
 
+        if len(mpr_files) == 1:
+            file_to_process = mpr_files[0]
+        else:
+
+            gcpl_files = [f for f in mpr_files if 'GCPL' in f.name.upper()]
+
+            if gcpl_files:
+                files_to_process = sorted(gcpl_files)
+            else:
+                raise ValueError(
+                    "Multiple MPR files found but none contain 'GCPL' in the filename. Cannot determine which file to use.")
+
         try:
-            echem_data = [
-                ec.echem_file_loader(str(file_path))
-                for file_path in sorted(gcpl_files)
-            ]
+            if len(mpr_files) == 1:
+                echem_data = [ec.echem_file_loader(str(file_to_process))]
+            else:
+                echem_data = [
+                    ec.echem_file_loader(str(file_path))
+                    for file_path in files_to_process
+                ]
 
             combined_data = pd.concat(echem_data, axis=0)
             return combined_data.sort_index()
 
         except Exception as e:
-            raise RuntimeError(f"Error processing GCPL files: {str(e)}")
+            raise RuntimeError(f"Error processing MPR files: {str(e)}")
 
     except Exception as e:
         raise RuntimeError(
