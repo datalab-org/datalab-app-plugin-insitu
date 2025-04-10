@@ -20,7 +20,7 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
-from .nmr_insitu import process_datalab_data
+from .nmr_insitu import process_local_data
 
 import logging
 
@@ -159,20 +159,8 @@ class InsituBlock(DataBlock):
             exclude_exp = self.data.get(
                 "exclude_exp", self.defaults["exclude_exp"])
 
-            api_url = os.environ.get("DATALAB_API_URL")
-            if not api_url:
-                LOGGER.warning(
-                    "API URL is missing. Please set the 'DATALAB_API_URL' environment variable."
-                )
-                self.data["errors"] = [
-                    "API URL is missing. Please set the 'DATALAB_API_URL' environment variable."
-                ]
-                return False
-
             try:
-                result = process_datalab_data(
-                    api_url=api_url,
-                    item_id=item_id,
+                result = process_local_data(
                     folder_name=folder_name,
                     nmr_folder_name=nmr_folder_name,
                     echem_folder_name=echem_folder_name,
