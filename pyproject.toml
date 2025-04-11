@@ -33,7 +33,7 @@ dependencies = [
     "lmfit>=1.3.2",
     "scipy>=1.14.1",
     "nmrglue>=0.11",
-    "navani @ git+https://github.com/the-grey-group/navani.git@v0.1.7",
+    "navani @ git+https://github.com/the-grey-group/navani.git",
 ]
 [project.optional-dependencies]
 local = ["datalab-api ~= 0.2"]
