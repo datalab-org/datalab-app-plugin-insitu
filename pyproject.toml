@@ -3,12 +3,15 @@ requires = ["setuptools >= 75", "wheel", "setuptools_scm ~= 8.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
+authors = [
+    { name = "Ben Charmes", email = "benjamin.charmes@gmail.com" },
+    { name = "datalab development team", email = "dev@datalab-org.io" },
+]
 name = "datalab-app-plugin-insitu"
 description = "Datalab plugin for In Situ data, primarily NMR"
 readme = "README.md"
 keywords = []
-license = { text = "modified BSD" }
-authors = [{ name = "Ben Charmes", email = "benjamin.charmes@gmail.com" }]
+license = { text = "MIT" }
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -85,7 +88,7 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
-    "datalab-server @ git+https://github.com/datalab-org/datalab#subdirectory=pydatalab"
+    "datalab-server @ git+https://github.com/datalab-org/datalab#subdirectory=pydatalab",
 ]
 
 [tool.coverage.run]
