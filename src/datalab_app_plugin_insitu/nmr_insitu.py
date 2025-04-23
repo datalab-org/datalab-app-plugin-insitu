@@ -1,15 +1,11 @@
 import os
-import zipfile
 import tempfile
 import warnings
-
+import zipfile
 from pathlib import Path
-from typing import List, Optional, Dict
-from lmfit.models import PseudoVoigtModel
-from .utils import _process_data
+from typing import Dict, List, Optional
 
-import numpy as np
-import pandas as pd
+from .utils import _process_data
 
 
 def process_local_data(
@@ -37,12 +33,12 @@ def process_local_data(
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            if folder_name.endswith('.zip'):
-                with zipfile.ZipFile(folder_name, 'r') as zip_ref:
+            if folder_name.endswith(".zip"):
+                with zipfile.ZipFile(folder_name, "r") as zip_ref:
                     zip_ref.extractall(tmpdir)
                 base_path = Path(tmpdir)
             else:
-                base_path = folder_name
+                base_path = Path(folder_name)
 
             folder_name = Path(folder_name).stem
             nmr_folder_name = Path(nmr_folder_name).stem
@@ -52,11 +48,10 @@ def process_local_data(
                 echem_folder_name = Path(echem_folder_name).stem
 
             if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
-            if echem_folder_name and not echem_folder_path.exists():
+            if echem_folder_path and not echem_folder_path.exists():
                 warnings.warn(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
@@ -64,7 +59,7 @@ def process_local_data(
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
-                exclude_exp
+                exclude_exp,
             )
 
     except Exception as e:
@@ -98,7 +93,9 @@ def process_datalab_data(
     try:
         from datalab_api import DatalabClient
     except ImportError:
-        raise ImportError("`datalab-api` is required to process data from datalab; install this package with the extra 'local' via 'pip install .[local]'")
+        raise ImportError(
+            "`datalab-api` is required to process data from datalab; install this package with the extra 'local' via 'pip install .[local]'"
+        )
     if exclude_exp is None:
         exclude_exp = []
 
@@ -119,7 +116,7 @@ def process_datalab_data(
             if not zip_path.exists():
                 raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(tmpdir)
 
             folder_name = Path(folder_name).stem
@@ -127,15 +124,14 @@ def process_datalab_data(
             nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
 
             if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
                 Path(tmpdir) / folder_name,
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
-                exclude_exp
+                exclude_exp,
             )
 
     except Exception as e:

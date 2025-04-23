@@ -1,4 +1,4 @@
-import pandas as pd
+# import pandas as pd
 
 #! Disable test_fit because we don't use fit_peaks for now.
 #! So there's is no fit data inside result
