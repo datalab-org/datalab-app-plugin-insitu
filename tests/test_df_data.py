@@ -1,5 +1,3 @@
-import random
-
 import pandas as pd
 
 TOLERANCE_PERCENT = 0.01
@@ -9,9 +7,9 @@ TOLERANCE_PERCENT = 0.01
 
 def test_columns_exist(get_tests_data):
     result, import_data, _ = get_tests_data
-    df = pd.DataFrame(result['integrated_data'])
+    df = pd.DataFrame(result["integrated_data"])
 
-    expected_columns = ['time', 'intensity', 'norm_intensity']
+    expected_columns = ["time", "intensity", "norm_intensity"]
 
     for column in expected_columns:
         assert column in df.columns, f"{column} is missing in df"

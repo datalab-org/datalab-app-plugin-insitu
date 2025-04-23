@@ -1,9 +1,9 @@
 import os
+
 import pyreadr
 import pytest
 
 from src.datalab_app_plugin_insitu.nmr_insitu import process_datalab_data
-
 
 DATALAB_API_URL = "https://demo-api.datalab-org.io"
 
@@ -26,9 +26,7 @@ def log_to_stdout():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
@@ -82,10 +80,12 @@ def percentage_difference():
     Returns:
         float: Percentage difference between val1 and val2
     """
+
     def calculate(val1, val2):
         if val1 == 0 or val2 == 0:
             return 0
         return abs(val1 - val2) / ((val1 + val2) / 2) * 100
+
     return calculate
 
 
@@ -99,41 +99,42 @@ def get_tests_data():
         "example_data",
         "Example-TEGDME",
         "LiLiTEGDMEinsitu_02",
-        "dfenv_LiLiTEGDMEinsitu_02.rds"
+        "dfenv_LiLiTEGDMEinsitu_02.rds",
     )
 
     if not os.path.exists(import_data_path):
-        raise FileNotFoundError(
-            f"The file {import_data_path} does not exist.")
+        raise FileNotFoundError(f"The file {import_data_path} does not exist.")
 
     df = pyreadr.read_r(import_data_path)
     import_data = df[None]
     import_data["time"] = import_data["time"] / 3600
 
     fit_peaks_path = os.path.join(
-        base_dir,
-        "example_data",
-        "Example-TEGDME",
-        "LiLiTEGDMEinsitu_02",
-        "LiLiTEGDMEinsitu_02.rds"
+        base_dir, "example_data", "Example-TEGDME", "LiLiTEGDMEinsitu_02", "LiLiTEGDMEinsitu_02.rds"
     )
     fit_data = pyreadr.read_r(fit_peaks_path)
     df_fit_base = fit_data[None]
-    df_fit_total_df = df_fit_base[df_fit_base['peak']
-                                  == 'Total intensity']
-    df_fit_peak1_df = df_fit_base[df_fit_base['peak'] == 'Peak 1']
-    df_fit_peak2_df = df_fit_base[df_fit_base['peak'] == 'Peak 2']
+    df_fit_total_df = df_fit_base[df_fit_base["peak"] == "Total intensity"]
+    df_fit_peak1_df = df_fit_base[df_fit_base["peak"] == "Peak 1"]
+    df_fit_peak2_df = df_fit_base[df_fit_base["peak"] == "Peak 2"]
 
     fit_peaks = {
-        "data_df": df_fit_total_df[['time', 'intensity', 'norm_intensity']],
-        "df_peakfit1": df_fit_peak1_df[['time', 'intensity', 'norm_intensity']],
-        "df_peakfit2": df_fit_peak2_df[['time', 'intensity', 'norm_intensity']]
+        "data_df": df_fit_total_df[["time", "intensity", "norm_intensity"]],
+        "df_peakfit1": df_fit_peak1_df[["time", "intensity", "norm_intensity"]],
+        "df_peakfit2": df_fit_peak2_df[["time", "intensity", "norm_intensity"]],
     }
 
     for _, data in fit_peaks.items():
-        data.loc[:, 'time'] = data['time'] / 3600
+        data.loc[:, "time"] = data["time"] / 3600
 
-    result = process_datalab_data(DATALAB_API_URL, "bc_insitu_block", "Example-TEGDME.zip",
-                                  "2023-08-11_jana_insituLiLiTEGDME-02_galv", "LiLiTEGDMEinsitu_02", 1, [])
+    result = process_datalab_data(
+        DATALAB_API_URL,
+        "bc_insitu_block",
+        "Example-TEGDME.zip",
+        "2023-08-11_jana_insituLiLiTEGDME-02_galv",
+        "LiLiTEGDMEinsitu_02",
+        1,
+        [],
+    )
 
     yield result, import_data, fit_peaks
