@@ -5,11 +5,7 @@ import warnings
 
 from pathlib import Path
 from typing import List, Optional, Dict
-from lmfit.models import PseudoVoigtModel
 from .utils import _process_data
-
-import numpy as np
-import pandas as pd
 
 
 def process_local_data(
@@ -32,43 +28,34 @@ def process_local_data(
     Returns:
         Dict: Dictionary containing processed NMR and electrochemical data.
     """
-    if not all([folder_name, nmr_folder_name]):
+    if not all([folder_name, echem_folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            if folder_name.endswith('.zip'):
-                with zipfile.ZipFile(folder_name, 'r') as zip_ref:
-                    zip_ref.extractall(tmpdir)
-                base_path = Path(tmpdir)
-            else:
-                base_path = folder_name
+    with tempfile.TemporaryDirectory() as tmpdir:
+        if folder_name.endswith(".zip"):
+            with zipfile.ZipFile(folder_name, "r") as zip_ref:
+                zip_ref.extractall(tmpdir)
+            base_path = Path(tmpdir)
+        else:
+            base_path = Path(folder_name)
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
+        folder_name = Path(folder_name).stem
+        nmr_folder_path = base_path / folder_name / nmr_folder_name
 
-            if echem_folder_name:
-                echem_folder_name = Path(echem_folder_name).stem
+        if not nmr_folder_path.exists():
+            raise FileNotFoundError(f"NMR folder not found at {nmr_folder_path}: {nmr_folder_name}")
 
-            if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+        echem_folder_path = base_path / folder_name / echem_folder_name if echem_folder_name else None
+        if echem_folder_name and not echem_folder_path.exists():
+            raise FileNotFoundError(f"Echem folder not found at {echem_folder_path}: {echem_folder_name}")
 
-            echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
-            if echem_folder_name and not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found: {echem_folder_name}")
-
-            return _process_data(
-                Path(tmpdir) / folder_name,
-                nmr_folder_path,
-                echem_folder_name,
-                start_at,
-                exclude_exp
-            )
-
-    except Exception as e:
-        raise RuntimeError(f"Error processing NMR data: {str(e)}")
+        return _process_data(
+            Path(tmpdir) / folder_name,
+            nmr_folder_path,
+            echem_folder_name,
+            start_at,
+            exclude_exp,
+        )
 
 
 def process_datalab_data(
@@ -98,49 +85,45 @@ def process_datalab_data(
     try:
         from datalab_api import DatalabClient
     except ImportError:
-        raise ImportError("`datalab-api` is required to process data from datalab; install this package with the extra 'local' via 'pip install .[local]'")
+        raise ImportError(
+            "`datalab-api` is required to process data from datalab; install this package with the extra 'local' via 'pip install .[local]'"
+        )
     if exclude_exp is None:
         exclude_exp = []
 
     if not all([folder_name, nmr_folder_name]):
         raise ValueError("Folder names for NMR data are required")
 
-    try:
-        client = DatalabClient(api_url)
+    client = DatalabClient(api_url)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.chdir(tmpdir)
-            try:
-                client.get_item_files(item_id=item_id)
-            except Exception as e:
-                raise RuntimeError(f"API error: {e}")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.chdir(tmpdir)
+        try:
+            client.get_item_files(item_id=item_id)
+        except Exception as e:
+            raise RuntimeError(f"API error: {e}")
 
-            zip_path = Path(tmpdir) / folder_name
-            if not zip_path.exists():
-                raise FileNotFoundError(f"ZIP file not found: {folder_name}")
+        zip_path = Path(tmpdir) / folder_name
+        if not zip_path.exists():
+            raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(tmpdir)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(tmpdir)
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
+        folder_name = Path(folder_name).stem
+        nmr_folder_name = Path(nmr_folder_name).stem
+        nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
 
-            if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+        if not nmr_folder_path.exists():
+            raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
-            return _process_data(
-                Path(tmpdir) / folder_name,
-                nmr_folder_path,
-                echem_folder_name,
-                start_at,
-                exclude_exp
-            )
-
-    except Exception as e:
-        raise RuntimeError(f"Error processing NMR data: {str(e)}")
-
+        return _process_data(
+            Path(tmpdir) / folder_name,
+            nmr_folder_path,
+            echem_folder_name,
+            start_at,
+            exclude_exp,
+        )
 
 #! Will need to be handle by UI at some point if we want to keep fitting
 # FITTING_CONFIG = {
@@ -159,6 +142,11 @@ def process_datalab_data(
 # }
 
 #! Disable for now
+# from lmfit.models import PseudoVoigtModel
+# import numpy as np
+# import pandas as pd
+
+
 # def fitting_data(nmr_data: pd.DataFrame, df: pd.DataFrame, config: dict = FITTING_CONFIG) -> Dict:
 #     """
 #     Perform fitting using pseudo-Voigt Model on insitu NMR data.
