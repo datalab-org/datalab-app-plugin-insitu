@@ -1,0 +1,43 @@
+default_language_version:
+  python: python3.10
+  node: "20.17.0"
+
+ci:
+  autoupdate_schedule: "monthly"
+  autofix_prs: false
+
+exclude: '^example_data/'
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: (pydatalab/example_data/)|(.*.snap)
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: end-of-file-fixer
+        exclude: ^(pydatalab/example_data/|pydatalab/schemas)
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-symlinks
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.0
+    hooks:
+      - id: pyupgrade
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
