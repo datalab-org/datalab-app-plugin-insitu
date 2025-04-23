@@ -138,6 +138,8 @@ class InsituBlock(DataBlock):
         nmr_folder_name = self.data.get("nmr_folder_name")
         echem_folder_name = self.data.get("echem_folder_name")
 
+        file_path = get_file_info_by_id(self.data["file_id"])["location"]
+
         if not nmr_folder_name or not echem_folder_name:
             self.data["warnings"] = [
                 "Both NMR and Echem folder names must be specified"]
@@ -161,7 +163,7 @@ class InsituBlock(DataBlock):
 
             try:
                 result = process_local_data(
-                    folder_name=folder_name,
+                    folder_name=file_path,
                     nmr_folder_name=nmr_folder_name,
                     echem_folder_name=echem_folder_name,
                     start_at=start_exp,
