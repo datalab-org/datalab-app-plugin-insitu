@@ -202,7 +202,7 @@ def process_echem_data(base_folder: Path, echem_folder_name: str) -> Optional[pd
         return None
 
     try:
-        echem_folder_path = Path(base_folder) / echem_folder_name / 'eChem'
+        echem_folder_path = Path(base_folder) / echem_folder_name / "eChem"
 
         if not echem_folder_path.exists():
             echem_folder_path = Path(base_folder) / echem_folder_name
