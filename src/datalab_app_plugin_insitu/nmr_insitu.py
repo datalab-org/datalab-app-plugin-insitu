@@ -3,9 +3,49 @@ import tempfile
 import warnings
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from .utils import _process_data
+
+
+def _find_folder_path(base_path: Path, target_folder_name: str) -> Optional[Path]:
+    """
+    Find a folder path recursively regardless of nesting level.
+
+    Args:
+        base_path: Base directory to start the search
+        target_folder_name: Name of the folder to find
+
+    Returns:
+        Optional[Path]: Path to the found folder, or None if not found
+    """
+    target_folder_name = Path(
+        target_folder_name).stem
+
+    def should_skip(path):
+        return "__MACOSX" in str(path) or path.name.startswith(".")
+
+    direct_path = base_path / target_folder_name
+    if direct_path.exists() and direct_path.is_dir():
+        return direct_path
+
+    for item in base_path.iterdir():
+        if should_skip(item):
+            continue
+
+        if item.is_dir():
+            nested_path = item / target_folder_name
+            if nested_path.exists() and nested_path.is_dir():
+                return nested_path
+
+    for root, dirs, _ in os.walk(str(base_path)):
+        dirs[:] = [
+            d for d in dirs if "__MACOSX" not in d and not d.startswith(".")]
+
+        if target_folder_name in dirs:
+            return Path(root) / target_folder_name
+
+    return None
 
 
 def process_local_data(
@@ -35,27 +75,32 @@ def process_local_data(
         with tempfile.TemporaryDirectory() as tmpdir:
             if folder_name.endswith(".zip"):
                 with zipfile.ZipFile(folder_name, "r") as zip_ref:
-                    zip_ref.extractall(tmpdir)
+                    members = [m for m in zip_ref.namelist() if not (
+                        "__MACOSX" in m or m.startswith("."))]
+                    for member in members:
+                        try:
+                            zip_ref.extract(member, tmpdir)
+                        except Exception as e:
+                            warnings.warn(f"Could not extract {member}: {e}")
                 base_path = Path(tmpdir)
             else:
                 base_path = Path(folder_name)
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
+            nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
+            if not nmr_folder_path:
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_folder_name}")
 
+            echem_folder_path = None
             if echem_folder_name:
-                echem_folder_name = Path(echem_folder_name).stem
-
-            if not nmr_folder_path.exists():
-                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
-
-            echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
-            if echem_folder_path and not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found: {echem_folder_name}")
+                echem_folder_path = _find_folder_path(
+                    base_path, echem_folder_name)
+                if not echem_folder_path:
+                    warnings.warn(
+                        f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
-                Path(tmpdir) / folder_name,
+                base_path,
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
@@ -117,17 +162,23 @@ def process_datalab_data(
                 raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(tmpdir)
+                members = [m for m in zip_ref.namelist() if not (
+                    "__MACOSX" in m or m.startswith("."))]
+                for member in members:
+                    try:
+                        zip_ref.extract(member, tmpdir)
+                    except Exception as e:
+                        warnings.warn(f"Could not extract {member}: {e}")
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
+            base_path = Path(tmpdir)
 
-            if not nmr_folder_path.exists():
-                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
+            nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
+            if not nmr_folder_path:
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
-                Path(tmpdir) / folder_name,
+                base_path,
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
