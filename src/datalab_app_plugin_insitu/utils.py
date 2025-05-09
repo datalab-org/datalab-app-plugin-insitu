@@ -28,12 +28,15 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
     """
     try:
         if not nmr_folder_path.exists() or not nmr_folder_path.is_dir():
-            raise FileNotFoundError(
-                f"NMR folder path is not a valid directory: {nmr_folder_path}")
+            raise FileNotFoundError(f"NMR folder path is not a valid directory: {nmr_folder_path}")
 
         exp_folders = [
-            d for d in Path(nmr_folder_path).iterdir()
-            if d.is_dir() and d.name.isdigit() and not d.name.startswith(".") and "__MACOSX" not in str(d)
+            d
+            for d in Path(nmr_folder_path).iterdir()
+            if d.is_dir()
+            and d.name.isdigit()
+            and not d.name.startswith(".")
+            and "__MACOSX" not in str(d)
         ]
 
         if not exp_folders:
@@ -45,8 +48,7 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
             acqu2s_path = exp_path / "acqu2s"
 
             if not acqus_path.exists():
-                raise FileNotFoundError(
-                    f"acqus file not found in experiment {exp_folders[0]}")
+                raise FileNotFoundError(f"acqus file not found in experiment {exp_folders[0]}")
 
             if not acqu2s_path.exists():
                 raise FileNotFoundError(
@@ -62,12 +64,10 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
                 acqu2s_path = exp_path / "acqu2s"
 
                 if not acqus_path.exists():
-                    raise FileNotFoundError(
-                        f"acqus file not found in experiment {exp_folder}")
+                    raise FileNotFoundError(f"acqus file not found in experiment {exp_folder}")
 
                 if acqu2s_path.exists():
-                    raise RuntimeError(
-                        f"acqu2s file found in experiment {exp_folder}")
+                    raise RuntimeError(f"acqu2s file found in experiment {exp_folder}")
 
             return "1D"
 
@@ -81,12 +81,10 @@ def extract_td_parameters(acqus_path: str) -> Tuple[Optional[int], Optional[str]
         with open(acqus_path) as file:
             content = file.read()
             td_match = re.search(r"##\$TD=\s*(\d+)", content)
-            td_indirect_match = re.search(
-                r"##\$TD_INDIRECT=(.*?)(?=##|\Z)", content, re.DOTALL)
+            td_indirect_match = re.search(r"##\$TD_INDIRECT=(.*?)(?=##|\Z)", content, re.DOTALL)
 
             td_value = int(td_match.group(1)) if td_match else None
-            td_indirect = td_indirect_match.group(
-                1).strip() if td_indirect_match else None
+            td_indirect = td_indirect_match.group(1).strip() if td_indirect_match else None
 
             return td_value, td_indirect
 
@@ -100,8 +98,7 @@ def extract_date_from_acqus(path: str) -> Optional[datetime]:
         with open(path) as file:
             for line in file:
                 if line.startswith("$$"):
-                    match = re.search(
-                        r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})", line)
+                    match = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})", line)
                     if match:
                         return datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S.%f %z")
 
@@ -114,8 +111,7 @@ def setup_paths(
     nmr_folder_path: Path, start_at: int, exclude_exp: Optional[List[int]]
 ) -> Tuple[List[str], List[str]]:
     """Setup experiment paths and create output directory."""
-    exp_folders = [d for d in Path(
-        nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
+    exp_folders = [d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
     exp_folder = [
         exp for exp in range(start_at, len(exp_folders) + 1) if exp not in (exclude_exp or [])
@@ -125,8 +121,7 @@ def setup_paths(
         str(Path(nmr_folder_path) / str(exp) / "pdata" / "1" / "ascii-spec.txt")
         for exp in exp_folder
     ]
-    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus")
-                  for exp in exp_folder]
+    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus") for exp in exp_folder]
 
     return spec_paths, acqu_paths
 
@@ -208,7 +203,9 @@ def process_pseudo2d_spectral_data(exp_dir: str) -> Tuple[pd.DataFrame, pd.DataF
     return nmr_data, df, num_experiments
 
 
-def process_echem_data(base_folder: Path, echem_folder_path: Union[Path, str]) -> Optional[pd.DataFrame]:
+def process_echem_data(
+    base_folder: Path, echem_folder_path: Union[Path, str]
+) -> Optional[pd.DataFrame]:
     """Process electrochemical data using .mpr file(s), and combine them if there is "GCPL" in their filename."""
 
     if not echem_folder_path:
@@ -226,8 +223,7 @@ def process_echem_data(base_folder: Path, echem_folder_path: Union[Path, str]) -
                     echem_folder_path = path
                     break
             else:
-                warnings.warn(
-                    f"Echem folder not found in any of the expected locations")
+                warnings.warn("Echem folder not found in any of the expected locations")
                 return None
         else:
             echem_subfolder = echem_folder_path / "eChem"
@@ -238,8 +234,7 @@ def process_echem_data(base_folder: Path, echem_folder_path: Union[Path, str]) -
             warnings.warn(f"Echem folder not found at {echem_folder_path}")
             return None
 
-        mpr_files = [f for f in echem_folder_path.iterdir()
-                     if f.suffix.upper() == ".MPR"]
+        mpr_files = [f for f in echem_folder_path.iterdir() if f.suffix.upper() == ".MPR"]
 
         if not mpr_files:
             warnings.warn(f"No MPR files found in {echem_folder_path}")
@@ -272,8 +267,7 @@ def process_echem_data(base_folder: Path, echem_folder_path: Union[Path, str]) -
             raise RuntimeError(f"Error processing MPR files: {str(e)}")
 
     except Exception as e:
-        raise RuntimeError(
-            f"Error in electrochemical data processing: {str(e)}")
+        raise RuntimeError(f"Error in electrochemical data processing: {str(e)}")
 
 
 def prepare_for_bokeh(
@@ -318,8 +312,7 @@ def calculate_intensities(data: pd.DataFrame, ppm_col: str = "ppm") -> np.ndarra
     cols = [col for col in data.columns if col != ppm_col]
     ppm_values = data[ppm_col].values
 
-    intensities = np.array(
-        [abs(np.trapz(data[col].values, x=ppm_values)) for col in cols])
+    intensities = np.array([abs(np.trapz(data[col].values, x=ppm_values)) for col in cols])
 
     return intensities
 
@@ -348,23 +341,19 @@ def _process_data(
         nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
         if nmr_dimension == "1D":
-            spec_paths, acqu_paths = setup_paths(
-                nmr_folder_path, start_at, exclude_exp)
+            spec_paths, acqu_paths = setup_paths(nmr_folder_path, start_at, exclude_exp)
             time_points = process_time_data(acqu_paths)
-            nmr_data, df, num_experiments = process_spectral_data(
-                spec_paths, time_points)
+            nmr_data, df, num_experiments = process_spectral_data(spec_paths, time_points)
 
         elif nmr_dimension == "pseudo2D":
             exp_folders = [
                 d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()
             ]
             if not exp_folders:
-                raise FileNotFoundError(
-                    "No experiment folders found in NMR data")
+                raise FileNotFoundError("No experiment folders found in NMR data")
 
             exp_folder = str(Path(nmr_folder_path) / exp_folders[0])
-            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
-                exp_folder)
+            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(exp_folder)
 
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
@@ -383,8 +372,7 @@ def _process_data(
                             echem_folder_path = nested_path
                             break
 
-            merged_df = process_echem_data(
-                base_folder, echem_folder_path or echem_folder_name)
+            merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
         else:
             merged_df = None
 
