@@ -37,6 +37,7 @@ dependencies = [
     "scipy>=1.14.1",
     "nmrglue>=0.11",
     "navani @ git+https://github.com/the-grey-group/navani.git",
+    "h5py",
 ]
 [project.optional-dependencies]
 local = ["datalab-api ~= 0.2"]

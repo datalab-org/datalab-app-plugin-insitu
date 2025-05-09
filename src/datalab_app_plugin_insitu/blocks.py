@@ -1,12 +1,12 @@
 import logging
 import os
 import zipfile
+import json
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import bokeh.embed
-import numpy as np
-import pandas as pd
+
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
 from bokeh.models import (
@@ -22,6 +22,11 @@ from bokeh.models import (
 from bokeh.plotting import figure
 
 from .nmr_insitu import process_local_data
+from .utils import save_to_cache, load_from_cache, get_cache_path
+
+import bokeh.embed
+import numpy as np
+import pandas as pd
 
 try:
     from pydatalab.blocks.base import DataBlock
@@ -38,7 +43,7 @@ except ImportError:
 class InsituBlock(DataBlock):
     blocktype = "insitu-nmr"
     name = "NMR insitu"
-    description = """This datablock processes an input .zip file containing two specific directories:
+    description = """This CACHE12 datablock processes an input .zip file containing two specific directories:
 
     - **NMR Data Directory**: Contains multiple Bruker in-situ NMR experiment datasets.
     - **Echem Data Directory**: Contains echem data files in `.mpr` format.
@@ -64,6 +69,9 @@ class InsituBlock(DataBlock):
         for key, value in self.defaults.items():
             self.data.setdefault(key, value)
 
+        self._figures_cache = None
+        self._plot_data_cache = None
+
     @property
     def plot_functions(self):
         return (self.generate_insitu_nmr_plot,)
@@ -83,7 +91,6 @@ class InsituBlock(DataBlock):
             return []
 
         main_folder = self.data.get("folder_name")
-        LOGGER.info(f"Main folder name: {main_folder}")
 
         if not main_folder:
             LOGGER.warning("Main folder name not specified")
@@ -92,7 +99,6 @@ class InsituBlock(DataBlock):
         try:
             file_info = get_file_info_by_id(self.data["file_id"])
             file_path = file_info.get("location")
-            LOGGER.info(f"File path: {file_path}")
 
             if not file_path or not os.path.exists(file_path):
                 LOGGER.warning(f"File not found: {file_path}")
@@ -104,13 +110,13 @@ class InsituBlock(DataBlock):
 
                 for file in zip_folder.namelist():
                     if file.startswith(main_folder + "/"):
-                        sub_path = file[len(main_folder) + 1 :]
-                        sub_folder = sub_path.split("/")[0] if "/" in sub_path else None
+                        sub_path = file[len(main_folder) + 1:]
+                        sub_folder = sub_path.split(
+                            "/")[0] if "/" in sub_path else None
                         if sub_folder:
                             folders.add(sub_folder)
 
             folder_list = sorted(list(folders))
-            LOGGER.info(f"Found folders in '{main_folder}': {folder_list}")
 
             return folder_list
         except Exception as e:
@@ -129,85 +135,117 @@ class InsituBlock(DataBlock):
 
         Returns:
             bool: True if processing was successful, False otherwise.
+
+        Raises:
+            ValueError: If required parameters are missing
+            FileNotFoundError: If required files are not found
+            RuntimeError: For other processing errors
         """
+
         folders = self.get_available_folders()
         self.data["available_folders"] = folders
 
         nmr_folder_name = self.data.get("nmr_folder_name")
         echem_folder_name = self.data.get("echem_folder_name")
+        file_id = self.data.get("file_id")
 
-        file_path = get_file_info_by_id(self.data["file_id"])["location"]
+        if not file_id:
+            raise ValueError("No file ID specified")
 
-        if not nmr_folder_name or not echem_folder_name:
-            self.data["warnings"] = ["Both NMR and Echem folder names must be specified"]
-            return False
+        cached_data = load_from_cache(file_id)
 
-        try:
-            nmr_folder_name = self.data.get("nmr_folder_name")
-            echem_folder_name = self.data.get("echem_folder_name")
+        if cached_data:
+            ppm_values = np.array(cached_data["nmr_spectra"]["ppm"])
+            min_ppm = min(ppm_values)
+            max_ppm = max(ppm_values)
 
-            if not all([nmr_folder_name, echem_folder_name]):
-                self.data["warnings"] = ["Both NMR and Echem folder names are required"]
-                return False
-
-            start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
-            exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
-
-            try:
-                result = process_local_data(
-                    folder_name=file_path,
-                    nmr_folder_name=nmr_folder_name,
-                    echem_folder_name=echem_folder_name,
-                    start_at=start_exp,
-                    exclude_exp=exclude_exp,
-                )
-
-            except FileNotFoundError as e:
-                LOGGER.warning(f"Folder not found: {str(e)}")
-                self.data["errors"] = [f"Folder not found: {str(e)}"]
-                return False
-
-            except Exception as e:
-                LOGGER.warning(f"Error processing data: {str(e)}")
-                self.data["errors"] = [f"Error processing data: {str(e)}"]
-                return False
-
-            self.data.pop("warnings", None)
-            self.data.pop("errors", None)
-
-            nmr_data = result["nmr_spectra"]
-            ppm_values = np.array(nmr_data.get("ppm", []))
-
-            ppm1 = self.data["ppm1"] = min(ppm_values)
-            ppm2 = self.data["ppm2"] = max(ppm_values)
-
-            self.data.update(
-                {
-                    "nmr_data": result["nmr_spectra"],
-                    "echem_data": result.get("echem", {}),
-                    "metadata": result["metadata"],
-                    "processing_params": {
-                        "ppm1": ppm1,
-                        "ppm2": ppm2,
-                        "file_id": self.data.get("file_id"),
-                        "start_exp": start_exp,
-                        "exclude_exp": exclude_exp,
-                    },
-                }
-            )
+            self.data.update({
+                "metadata": cached_data["metadata"],
+                "ppm1": min_ppm,
+                "ppm2": max_ppm,
+                "processing_params": {
+                    "ppm1": float(self.data.get("ppm1", min_ppm)),
+                    "ppm2": float(self.data.get("ppm2", max_ppm)),
+                    "file_id": file_id,
+                    "start_exp": int(self.data.get("start_exp", self.defaults["start_exp"])),
+                    "exclude_exp": self.data.get("exclude_exp", self.defaults["exclude_exp"]),
+                },
+                "cached_data_id": file_id,
+            })
 
             return True
 
+        file_info = get_file_info_by_id(file_id)
+        if not file_info:
+            raise ValueError(f"No file info found for ID: {file_id}")
+
+        file_path = file_info.get("location")
+        if not file_path:
+            raise ValueError(f"No file location found for ID: {file_id}")
+
+        if not nmr_folder_name or not echem_folder_name:
+            raise ValueError(
+                "Both NMR and Echem folder names must be specified")
+
+        if not all([nmr_folder_name, echem_folder_name]):
+            raise ValueError("Both NMR and Echem folder names are required")
+
+        start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
+        exclude_exp = self.data.get(
+            "exclude_exp", self.defaults["exclude_exp"])
+
+        try:
+            result = process_local_data(
+                folder_name=file_path,
+                nmr_folder_name=nmr_folder_name,
+                echem_folder_name=echem_folder_name,
+                start_at=start_exp,
+                exclude_exp=exclude_exp,
+            )
+
+            if result is None:
+                raise RuntimeError(
+                    "Processing returned None instead of expected data")
+
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:
-            LOGGER.error(f"Error processing data: {str(e)}")
-            return False
+            raise RuntimeError(f"Error processing data: {str(e)}")
+
+        try:
+            save_to_cache(file_id, result)
+        except Exception as e:
+            raise RuntimeError(f"Error saving data to cache: {str(e)}")
+
+        try:
+            ppm_values = np.array(result["nmr_spectra"]["ppm"])
+            self.data.update({
+                "metadata": result["metadata"],
+                "ppm1": min(ppm_values),
+                "ppm2": max(ppm_values),
+                "processing_params": {
+                    "ppm1": min(ppm_values),
+                    "ppm2": max(ppm_values),
+                    "file_id": file_id,
+                    "start_exp": start_exp,
+                    "exclude_exp": exclude_exp,
+                },
+                "cached_data_id": file_id,
+            })
+
+            return True
+        except Exception as e:
+            raise RuntimeError(f"Error updating data attributes: {str(e)}")
 
     def should_reprocess_data(self) -> bool:
         """
         Determine if data needs to be reprocessed based on parameter changes.
         PPM changes should not trigger reprocessing.
         """
-        if "processing_params" not in self.data or "nmr_data" not in self.data:
+        if not self.data.get("nmr_folder_name") or not self.data.get("echem_folder_name"):
+            return False
+
+        if "processing_params" not in self.data or "cached_data_id" not in self.data:
             return True
 
         params = self.data["processing_params"]
@@ -219,7 +257,6 @@ class InsituBlock(DataBlock):
 
         for key in current_params:
             if params.get(key) != current_params[key]:
-                LOGGER.info(f"Parameter {key} changed, reprocessing data...")
                 return True
 
         return False
@@ -233,127 +270,179 @@ class InsituBlock(DataBlock):
 
         Returns:
             Tuple[pd.DataFrame, List[str]]: Time data and status messages.
+
+        Raises:
+            ValueError: If required parameters are missing or invalid
+            FileNotFoundError: If required files are not found
+            RuntimeError: For other processing errors
         """
         if "file_id" not in self.data:
-            LOGGER.warning("No file set in the DataBlock")
-            return None, []
+            return None, ["No file set. Please select a file first."]
+
+        nmr_folder_name = self.data.get("nmr_folder_name")
+        echem_folder_name = self.data.get("echem_folder_name")
+
+        if not nmr_folder_name or not echem_folder_name:
+            folders = self.get_available_folders()
+            self.data["available_folders"] = folders
+            return None, ["Please select both NMR and Echem folders before processing."]
+
+        file_id = self.data.get("file_id")
+
+        cache_key = f"{file_id}_{nmr_folder_name}_{echem_folder_name}"
+        plot_cache_path = get_cache_path(f"{cache_key}_plot") + ".json"
+
+        if os.path.exists(plot_cache_path):
+            try:
+                with open(plot_cache_path, 'r') as f:
+                    cache_data = json.load(f)
+
+                    if isinstance(cache_data, dict) and 'root_id' in cache_data:
+                        self.data["bokeh_plot_data"] = cache_data
+                        return self.data.get("time_data"), ["Plot loaded from cache"]
+            except Exception as e:
+                raise ValueError(f"Error loading from cache: {str(e)}")
+
+        file_info = get_file_info_by_id(
+            self.data["file_id"], update_if_live=True)
+        if not file_info:
+            raise ValueError(
+                f"No file info found for ID: {self.data['file_id']}")
+
+        if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
+            raise ValueError(
+                f"Unsupported file extension (must be one of {self.accepted_file_extensions})")
+
+        needs_reprocessing = self.should_reprocess_data()
+
+        if needs_reprocessing:
+            self.process_and_store_data()
+        else:
+            self.data["processing_params"]["ppm1"] = float(
+                self.data.get("ppm1", self.defaults["ppm1"])
+            )
+            self.data["processing_params"]["ppm2"] = float(
+                self.data.get("ppm2", self.defaults["ppm2"])
+            )
+
+        plot_data = self._prepare_plot_data()
+
+        shared_ranges = self._create_shared_ranges(plot_data)
+
+        heatmap_figure = self._create_heatmap_figure(plot_data, shared_ranges)
+        nmrplot_figure = self._create_nmr_line_figure(plot_data, shared_ranges)
+        echemplot_figure = self._create_echem_figure(plot_data, shared_ranges)
+
+        heatmap_figure.js_on_event(
+            DoubleTap, CustomJS(args=dict(p=heatmap_figure),
+                                code="p.reset.emit()")
+        )
+        nmrplot_figure.js_on_event(
+            DoubleTap, CustomJS(args=dict(p=nmrplot_figure),
+                                code="p.reset.emit()")
+        )
+        echemplot_figure.js_on_event(
+            DoubleTap, CustomJS(args=dict(p=echemplot_figure),
+                                code="p.reset.emit()")
+        )
+
+        self._link_plots(heatmap_figure, nmrplot_figure,
+                         echemplot_figure, plot_data)
+
+        grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
+        gp = gridplot(grid, merge_tools=True, toolbar_location="right")
 
         try:
-            file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
-            if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
-                LOGGER.warning(
-                    f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
-                )
-                return None, []
-
-            needs_reprocessing = self.should_reprocess_data()
-            if needs_reprocessing:
-                LOGGER.info("Processing new data...")
-                if not self.process_and_store_data():
-                    return None, []
+            if DATALAB_BOKEH_THEME is not None:
+                json_item = bokeh.embed.json_item(
+                    gp, theme=DATALAB_BOKEH_THEME)
             else:
-                LOGGER.info("Using stored data...")
-                self.data["processing_params"]["ppm1"] = float(
-                    self.data.get("ppm1", self.defaults["ppm1"])
-                )
-                self.data["processing_params"]["ppm2"] = float(
-                    self.data.get("ppm2", self.defaults["ppm2"])
-                )
-
-            plot_data = self._prepare_plot_data()
-            if not plot_data:
-                return None, []
-
-            shared_ranges = self._create_shared_ranges(plot_data)
-
-            heatmap_figure = self._create_heatmap_figure(plot_data, shared_ranges)
-            nmrplot_figure = self._create_nmr_line_figure(plot_data, shared_ranges)
-            echemplot_figure = self._create_echem_figure(plot_data, shared_ranges)
-
-            heatmap_figure.js_on_event(
-                DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
-            )
-            nmrplot_figure.js_on_event(
-                DoubleTap, CustomJS(args=dict(p=nmrplot_figure), code="p.reset.emit()")
-            )
-            echemplot_figure.js_on_event(
-                DoubleTap, CustomJS(args=dict(p=echemplot_figure), code="p.reset.emit()")
-            )
-
-            self._link_plots(heatmap_figure, nmrplot_figure, echemplot_figure, plot_data)
-
-            grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
-            gp = gridplot(grid, merge_tools=True)
-
-            self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
-
-            return self.data.get("time_data"), ["Plot successfully generated"]
+                json_item = bokeh.embed.json_item(gp)
 
         except Exception as e:
-            import traceback
+            try:
+                from bokeh.core.json_encoder import serialize_json
+                if DATALAB_BOKEH_THEME is not None:
+                    serialized = serialize_json(gp, theme=DATALAB_BOKEH_THEME)
+                else:
+                    serialized = serialize_json(gp)
+                json_item = json.loads(serialized)
+            except Exception as inner_e:
+                raise ValueError(
+                    f"Alternative serialization failed: {str(inner_e)}")
 
-            LOGGER.error(f"Error in generate_insitu_nmr_plot: {str(e)}")
-            LOGGER.error(traceback.format_exc())
-            return None, []
+        try:
+            os.makedirs(os.path.dirname(plot_cache_path), exist_ok=True)
+            with open(plot_cache_path, 'w') as f:
+                json.dump(json_item, f)
 
-    def _prepare_plot_data(self) -> Optional[Dict[str, Any]]:
+        except Exception as e:
+            raise ValueError(f"Error caching plot: {str(e)}")
+
+        self.data["bokeh_plot_data"] = json_item
+
+        return self.data.get("time_data"), ["Plot successfully generated"]
+
+    def _prepare_plot_data(self) -> Dict[str, Any]:
         """
         Extract and prepare data for plotting.
 
         Returns:
-            Optional[Dict[str, Any]]: Dictionary containing prepared plot data,
-                                      or None if data extraction fails.
+            Dict[str, Any]: Dictionary containing prepared plot data
+
+        Raises:
+            ValueError: If required data is missing or invalid
+            RuntimeError: For processing errors
         """
+        file_id = self.data.get("cached_data_id")
+        if not file_id:
+            raise ValueError("No cached data ID found")
+
+        cached_data = load_from_cache(file_id)
+        if not cached_data:
+            raise ValueError(f"No cached data found for ID: {file_id}")
+
+        nmr_data = cached_data["nmr_spectra"]
+        echem_data = cached_data.get("echem", {})
+        metadata = cached_data["metadata"]
+
+        ppm_values = np.array(nmr_data.get("ppm", []))
+        if len(ppm_values) == 0:
+            raise ValueError("No PPM values found in NMR data")
+
+        spectra = nmr_data.get("spectra", [])
+        if not spectra:
+            raise ValueError("No spectra found in NMR data")
+
         try:
-            nmr_data = self.data["nmr_data"]
-            echem_data = self.data["echem_data"]
-            metadata = self.data["metadata"]
+            spectra_intensities = [
+                np.array(spectrum["intensity"]).tolist() for spectrum in spectra
+            ]
 
-            ppm_values = np.array(nmr_data.get("ppm", []))
-            if len(ppm_values) == 0:
-                LOGGER.error("No PPM values found in NMR data")
-                return None
-
-            spectra = nmr_data.get("spectra", [])
-            if not spectra:
-                LOGGER.error("No spectra found in NMR data")
-                return None
-
-            try:
-                spectra_intensities = [
-                    np.array(spectrum["intensity"]).tolist() for spectrum in spectra
-                ]
-
-                intensity_matrix = np.array(
-                    [np.array(spectrum["intensity"]) for spectrum in spectra]
-                )
-
-            except Exception as e:
-                LOGGER.error(f"Error processing spectrum intensities: {e}")
-                LOGGER.error(f"Spectrum data structure: {spectra[0] if spectra else 'No spectra'}")
-                return None
-
-            time_range = metadata["time_range"]
-            first_spectrum_intensities = np.array(spectra[0]["intensity"])
-
-            intensity_min = np.min(intensity_matrix)
-            intensity_max = np.max(intensity_matrix)
-
-            return {
-                "ppm_values": ppm_values,
-                "spectra": spectra,
-                "spectra_intensities": spectra_intensities,
-                "intensity_matrix": intensity_matrix,
-                "time_range": time_range,
-                "first_spectrum_intensities": first_spectrum_intensities,
-                "intensity_min": intensity_min,
-                "intensity_max": intensity_max,
-                "echem_data": echem_data,
-            }
-
+            intensity_matrix = np.array(
+                [np.array(spectrum["intensity"]) for spectrum in spectra]
+            )
         except Exception as e:
-            LOGGER.error(f"Error preparing plot data: {str(e)}")
-            return None
+            raise RuntimeError(
+                f"Error processing spectrum intensities: {str(e)}")
+
+        time_range = metadata["time_range"]
+        first_spectrum_intensities = np.array(spectra[0]["intensity"])
+
+        intensity_min = np.min(intensity_matrix)
+        intensity_max = np.max(intensity_matrix)
+
+        return {
+            "ppm_values": ppm_values,
+            "spectra": spectra,
+            "spectra_intensities": spectra_intensities,
+            "intensity_matrix": intensity_matrix,
+            "time_range": time_range,
+            "first_spectrum_intensities": first_spectrum_intensities,
+            "intensity_min": intensity_min,
+            "intensity_max": intensity_max,
+            "echem_data": echem_data,
+        }
 
     def _create_shared_ranges(self, plot_data: Dict[str, Any]) -> Dict[str, Range1d]:
         """
@@ -370,7 +459,8 @@ class InsituBlock(DataBlock):
         intensity_min = np.min(plot_data["intensity_matrix"])
         intensity_max = np.max(plot_data["intensity_matrix"])
 
-        shared_y_range = Range1d(start=time_range["start"], end=time_range["end"])
+        shared_y_range = Range1d(
+            start=time_range["start"], end=time_range["end"])
 
         ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
@@ -419,9 +509,11 @@ class InsituBlock(DataBlock):
             y_range=ranges["shared_y_range"],
             height=400,
             tools=tools,
+            toolbar_location=None,
         )
 
-        color_mapper = LinearColorMapper(palette="Turbo256", low=intensity_min, high=intensity_max)
+        color_mapper = LinearColorMapper(
+            palette="Turbo256", low=intensity_min, high=intensity_max)
 
         heatmap_figure.image(
             image=[intensity_matrix],
@@ -435,7 +527,8 @@ class InsituBlock(DataBlock):
 
         time_points = len(intensity_matrix)
         if time_points > 0:
-            times = np.linspace(time_range["start"], time_range["end"], time_points)
+            times = np.linspace(
+                time_range["start"], time_range["end"], time_points)
             experiment_numbers = np.arange(1, time_points + 1)
 
             source = ColumnDataSource(
@@ -494,7 +587,8 @@ class InsituBlock(DataBlock):
 
         tools = "pan,wheel_zoom,box_zoom,reset,save"
 
-        ppm_list = ppm_values.tolist() if isinstance(ppm_values, np.ndarray) else ppm_values
+        ppm_list = ppm_values.tolist() if isinstance(
+            ppm_values, np.ndarray) else ppm_values
         intensity_list = (
             first_spectrum_intensities.tolist()
             if isinstance(first_spectrum_intensities, np.ndarray)
@@ -518,6 +612,7 @@ class InsituBlock(DataBlock):
             x_range=ranges["shared_x_range"],
             y_range=ranges["intensity_range"],
             tools=tools,
+            toolbar_location=None,
         )
 
         nmrplot_figure.line(
@@ -567,6 +662,7 @@ class InsituBlock(DataBlock):
             height=400,
             width=250,
             tools=tools,
+            toolbar_location=None,
         )
 
         if echem_data and "Voltage" in echem_data and "time" in echem_data:
@@ -577,7 +673,8 @@ class InsituBlock(DataBlock):
             time_span = time_range["end"] - time_range["start"]
             exp_count = len(plot_data["spectra"])
 
-            exp_numbers = np.floor(((times - time_range["start"]) / time_span) * exp_count) + 1
+            exp_numbers = np.floor(
+                ((times - time_range["start"]) / time_span) * exp_count) + 1
             exp_numbers = np.clip(exp_numbers, 1, exp_count)
 
             echem_source = ColumnDataSource(
@@ -613,13 +710,11 @@ class InsituBlock(DataBlock):
     ) -> None:
         """
         Link the plots together with interactive tools and callbacks.
-
-        Args:
-            heatmap_figure: The heatmap figure component
-            nmrplot_figure: The NMR line plot figure component
-            echemplot_figure: The electrochemical figure component
-            plot_data: Dictionary containing prepared plot data
         """
+        import time
+        link_start = time.time()
+
+        data_prep_start = time.time()
         line_source = plot_data["line_source"]
         clicked_spectra_source = plot_data["clicked_spectra_source"]
         spectra_intensities = plot_data["spectra_intensities"]
@@ -627,24 +722,21 @@ class InsituBlock(DataBlock):
         intensity_matrix = plot_data["intensity_matrix"]
         heatmap_source = plot_data.get("heatmap_source")
 
-        colors = [
-            "red",
-            "green",
-            "orange",
-            "purple",
-            "brown",
-            "darkblue",
-            "teal",
-            "magenta",
-            "olive",
-            "navy",
-        ]
+        ppm_list = ppm_values.tolist() if isinstance(
+            ppm_values, np.ndarray) else ppm_values
+
+        global_min = float(np.min(intensity_matrix))
+        global_max = float(np.max(intensity_matrix))
+
+        colors = ["red", "green", "orange", "purple", "brown",
+                  "darkblue", "teal", "magenta", "olive", "navy"]
 
         crosshair = CrosshairTool(dimensions="width", line_color="grey")
         heatmap_figure.add_tools(crosshair)
         echemplot_figure.add_tools(crosshair)
 
-        hover = next((tool for tool in heatmap_figure.tools if isinstance(tool, HoverTool)), None)
+        hover = next(
+            (tool for tool in heatmap_figure.tools if isinstance(tool, HoverTool)), None)
         if hover:
             hover.callback = CustomJS(
                 args=dict(
@@ -676,6 +768,7 @@ class InsituBlock(DataBlock):
                     """,
             )
 
+        tap_start = time.time()
         if heatmap_source:
             tap_tool = TapTool()
             heatmap_figure.add_tools(tap_tool)
@@ -684,111 +777,68 @@ class InsituBlock(DataBlock):
                     heatmap_source=heatmap_source,
                     clicked_spectra_source=clicked_spectra_source,
                     spectra_intensities=spectra_intensities,
-                    ppm_values=ppm_values.tolist(),
+                    ppm_values=ppm_list,
                     colors=colors,
                 ),
                 code="""
-                        const indices = cb_obj.indices;
-                        if (indices.length === 0) return;
-
-                        const index = indices[0];
-                        const exp_num = heatmap_source.data.exp_num[index];
-
-                        const existing_indices = clicked_spectra_source.data.exp_index;
-                        if (existing_indices.includes(exp_num)) return;
-
-                        const color_index = existing_indices.length % colors.length;
-
-                        const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
-                        const new_ys = [...clicked_spectra_source.data.intensity];
-                        const new_indices = [...clicked_spectra_source.data.exp_index];
-                        const new_colors = [...clicked_spectra_source.data.color];
-
-                        new_xs.push(ppm_values);
-                        new_ys.push(spectra_intensities[index]);
-                        new_indices.push(exp_num);
-                        new_colors.push(colors[color_index]);
-
-                        clicked_spectra_source.data = {
-                            'δ (ppm)': new_xs,
-                            'intensity': new_ys,
-                            'exp_index': new_indices,
-                            'color': new_colors
-                        };
-
-                        clicked_spectra_source.change.emit();
-                    """,
+                    const indices = cb_obj.indices;
+                    if (indices.length === 0) return;
+                    const index = indices[0];
+                    const exp_num = heatmap_source.data.exp_num[index];
+                    const existing_indices = clicked_spectra_source.data.exp_index;
+                    if (existing_indices.includes(exp_num)) return;
+                    const color_index = existing_indices.length % colors.length;
+                    const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
+                    const new_ys = [...clicked_spectra_source.data.intensity];
+                    const new_indices = [...clicked_spectra_source.data.exp_index];
+                    const new_colors = [...clicked_spectra_source.data.color];
+                    new_xs.push(ppm_values);
+                    new_ys.push(spectra_intensities[index]);
+                    new_indices.push(exp_num);
+                    new_colors.push(colors[color_index]);
+                    clicked_spectra_source.data = {
+                        'δ (ppm)': new_xs,
+                        'intensity': new_ys,
+                        'exp_index': new_indices,
+                        'color': new_colors
+                    };
+                    clicked_spectra_source.change.emit();
+                """,
             )
-
             heatmap_source.selected.js_on_change("indices", tap_callback)
 
+        range_start = time.time()
         heatmap_figure.x_range.js_on_change(
             "start",
             CustomJS(
                 args=dict(
                     color_mapper=heatmap_figure.select_one(LinearColorMapper),
-                    intensity_matrix=intensity_matrix.tolist(),
-                    ppm_array=ppm_values.tolist(),
-                    global_min=np.min(intensity_matrix),
-                    global_max=np.max(intensity_matrix),
+                    global_min=global_min,
+                    global_max=global_max,
                 ),
                 code="""
-                        const start_index = ppm_array.findIndex(ppm => ppm <= cb_obj.end);
-                        const end_index = ppm_array.findIndex(ppm => ppm <= cb_obj.start);
-
-                        if (start_index < 0 || end_index < 0 || start_index >= ppm_array.length || end_index >= ppm_array.length) {
-                            color_mapper.low = global_min;
-                            color_mapper.high = global_max;
-                            return;
-                        }
-
-                        if (Math.abs(end_index - start_index) < 5) {
-                            return;
-                        }
-
-                        let min_intensity = Infinity;
-                        let max_intensity = -Infinity;
-
-                        for (let i = 0; i < intensity_matrix.length; i++) {
-                            for (let j = Math.min(start_index, end_index); j <= Math.max(start_index, end_index); j++) {
-                                if (j >= 0 && j < intensity_matrix[i].length) {
-                                    const value = intensity_matrix[i][j];
-                                    min_intensity = Math.min(min_intensity, value);
-                                    max_intensity = Math.max(max_intensity, value);
-                                }
-                            }
-                        }
-
-                        if (Math.abs(max_intensity - min_intensity) < 0.1 * Math.abs(global_max - global_min)) {
-                            const padding = 0.1 * Math.abs(global_max - global_min);
-                            min_intensity = Math.max(min_intensity - padding, global_min);
-                            max_intensity = Math.min(max_intensity + padding, global_max);
-                        }
-
-                        color_mapper.low = min_intensity;
-                        color_mapper.high = max_intensity;
-                    """,
+                    color_mapper.low = global_min;
+                    color_mapper.high = global_max;
+                """,
             ),
         )
 
-        heatmap_figure.x_range.tags = [ppm_values.tolist(), intensity_matrix.tolist()]
-
+        link_ranges_start = time.time()
         line_y_range = nmrplot_figure.y_range
-        line_y_range.js_link("start", heatmap_figure.select_one(LinearColorMapper), "low")
-        line_y_range.js_link("end", heatmap_figure.select_one(LinearColorMapper), "high")
+        line_y_range.js_link(
+            "start", heatmap_figure.select_one(LinearColorMapper), "low")
+        line_y_range.js_link(
+            "end", heatmap_figure.select_one(LinearColorMapper), "high")
 
+        remove_line_start = time.time()
         tap_tool = TapTool()
-
         nmrplot_figure.add_tools(tap_tool)
-
         remove_line_callback = CustomJS(
             args=dict(clicked_spectra_source=clicked_spectra_source),
             code="""
             const indices = clicked_spectra_source.selected.indices;
             if (indices.length === 0) return;
-
             let data = clicked_spectra_source.data;
-
             for (let i = indices.length - 1; i >= 0; i--) {
                 let index = indices[i];
                 data['δ (ppm)'].splice(index, 1);
@@ -796,9 +846,8 @@ class InsituBlock(DataBlock):
                 data['exp_index'].splice(index, 1);
                 data['color'].splice(index, 1);
             }
-
             clicked_spectra_source.change.emit();
-        """,
+            """,
         )
-
-        clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
+        clicked_spectra_source.selected.js_on_change(
+            "indices", remove_line_callback)
