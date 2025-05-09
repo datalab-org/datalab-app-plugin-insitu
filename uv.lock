@@ -314,17 +314,17 @@ wheels = [
 
 [[package]]
 name = "datalab-api"
-version = "0.2.8"
+version = "0.2.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "bokeh" },
+    { name = "bokeh", marker = "sys_platform != 'emscripten'" },
     { name = "httpx" },
     { name = "numpy" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/89/969ded4b62bd892be39cdd7282006c2066cb5d188515539e3d70f4004c5e/datalab_api-0.2.8.tar.gz", hash = "sha256:83642c85b5c9360c469f3f05707f8f31337373f8a5cbc46d00e3015278db12f3", size = 19469 }
+sdist = { url = "https://files.pythonhosted.org/packages/05/87/23e352c2098af5fd6a2aff1a64ea7ca3991276f0dad0fe3e96aeaa90960a/datalab_api-0.2.13.tar.gz", hash = "sha256:4d934ef8054d7e6b8a4825b7d3ac99db9ea8fe08e7f62bfb6761a94c596d9067", size = 20011 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/77/a2ddcee1235e9af3d2d1a308d9f4e922abafde079985a236cf4e2edb84b9/datalab_api-0.2.8-py3-none-any.whl", hash = "sha256:8ed566dfd389289a6a5b574df7f389d872130ea5ffbc289bfb6eea5ceb03fdc4", size = 16526 },
+    { url = "https://files.pythonhosted.org/packages/61/f1/a3ab70e9eeb144fd8a83ce457f415a44bad7525f8c1efaa17b25e8f5b3cd/datalab_api-0.2.13-py3-none-any.whl", hash = "sha256:ee0a58a5eb3e5e28d66a318ab5ee93e562dc620ac83c7f03a56b8c8d0c540f89", size = 16815 },
 ]
 
 [[package]]
@@ -360,7 +360,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datalab-api", marker = "extra == 'local'", specifier = "~=0.2" },
+    { name = "datalab-api", marker = "extra == 'local'", specifier = ">=0.2.8" },
     { name = "lmfit", specifier = ">=1.3.2" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "navani", git = "https://github.com/the-grey-group/navani.git" },
