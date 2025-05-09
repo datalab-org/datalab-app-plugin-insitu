@@ -2,7 +2,7 @@ import re
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import nmrglue as ng
 import numpy as np
@@ -27,8 +27,16 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
         RuntimeError: If there's an error accessing the files or invalid configuration
     """
     try:
+        if not nmr_folder_path.exists() or not nmr_folder_path.is_dir():
+            raise FileNotFoundError(f"NMR folder path is not a valid directory: {nmr_folder_path}")
+
         exp_folders = [
-            d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()
+            d
+            for d in Path(nmr_folder_path).iterdir()
+            if d.is_dir()
+            and d.name.isdigit()
+            and not d.name.startswith(".")
+            and "__MACOSX" not in str(d)
         ]
 
         if not exp_folders:
@@ -195,21 +203,36 @@ def process_pseudo2d_spectral_data(exp_dir: str) -> Tuple[pd.DataFrame, pd.DataF
     return nmr_data, df, num_experiments
 
 
-def process_echem_data(base_folder: Path, echem_folder_name: str) -> Optional[pd.DataFrame]:
+def process_echem_data(
+    base_folder: Path, echem_folder_path: Union[Path, str]
+) -> Optional[pd.DataFrame]:
     """Process electrochemical data using .mpr file(s), and combine them if there is "GCPL" in their filename."""
 
-    if not echem_folder_name:
+    if not echem_folder_path:
         return None
 
     try:
-        echem_folder_path = Path(base_folder) / echem_folder_name / "eChem"
+        if isinstance(echem_folder_path, str):
+            paths_to_try = [
+                Path(base_folder) / echem_folder_path / "eChem",
+                Path(base_folder) / echem_folder_path,
+            ]
+
+            for path in paths_to_try:
+                if path.exists():
+                    echem_folder_path = path
+                    break
+            else:
+                warnings.warn("Echem folder not found in any of the expected locations")
+                return None
+        else:
+            echem_subfolder = echem_folder_path / "eChem"
+            if echem_subfolder.exists():
+                echem_folder_path = echem_subfolder
 
         if not echem_folder_path.exists():
-            echem_folder_path = Path(base_folder) / echem_folder_name
-
-            if not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found at {echem_folder_path}")
-                return None
+            warnings.warn(f"Echem folder not found at {echem_folder_path}")
+            return None
 
         mpr_files = [f for f in echem_folder_path.iterdir() if f.suffix.upper() == ".MPR"]
 
@@ -335,9 +358,23 @@ def _process_data(
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
 
-        merged_df = (
-            process_echem_data(base_folder, echem_folder_name) if echem_folder_name else None
-        )
+        echem_folder_path = None
+        if echem_folder_name:
+            echem_folder_name_stem = Path(echem_folder_name).stem
+            direct_path = base_folder / echem_folder_name_stem
+            if direct_path.exists() and direct_path.is_dir():
+                echem_folder_path = direct_path
+            else:
+                for item in base_folder.iterdir():
+                    if item.is_dir():
+                        nested_path = item / echem_folder_name_stem
+                        if nested_path.exists() and nested_path.is_dir():
+                            echem_folder_path = nested_path
+                            break
+
+            merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
+        else:
+            merged_df = None
 
         return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
 
