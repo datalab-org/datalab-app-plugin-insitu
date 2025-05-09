@@ -79,15 +79,13 @@ class InsituBlock(DataBlock):
             List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
         """
         if "file_id" not in self.data:
-            LOGGER.warning("No file_id in data")
-            return []
+            raise ValueError("No file_id in data")
 
         main_folder = self.data.get("folder_name")
         LOGGER.info(f"Main folder name: {main_folder}")
 
         if not main_folder:
-            LOGGER.warning("Main folder name not specified")
-            return []
+            raise ValueError("Main folder name not specified")
 
         try:
             file_info = get_file_info_by_id(self.data["file_id"])
@@ -95,8 +93,7 @@ class InsituBlock(DataBlock):
             LOGGER.info(f"File path: {file_path}")
 
             if not file_path or not os.path.exists(file_path):
-                LOGGER.warning(f"File not found: {file_path}")
-                return []
+                raise FileNotFoundError(f"File not found: {file_path}")
 
             folders = set()
             with zipfile.ZipFile(file_path, "r") as zip_folder:
@@ -114,11 +111,7 @@ class InsituBlock(DataBlock):
 
             return folder_list
         except Exception as e:
-            LOGGER.error(f"Error getting folders from zip file: {str(e)}")
-            import traceback
-
-            LOGGER.error(traceback.format_exc())
-            return []
+            raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
 
     def process_and_store_data(self) -> bool:
         """
@@ -139,16 +132,14 @@ class InsituBlock(DataBlock):
         file_path = get_file_info_by_id(self.data["file_id"])["location"]
 
         if not nmr_folder_name or not echem_folder_name:
-            self.data["warnings"] = ["Both NMR and Echem folder names must be specified"]
-            return False
+            raise ValueError("Both NMR and Echem folder names must be specified")
 
         try:
             nmr_folder_name = self.data.get("nmr_folder_name")
             echem_folder_name = self.data.get("echem_folder_name")
 
             if not all([nmr_folder_name, echem_folder_name]):
-                self.data["warnings"] = ["Both NMR and Echem folder names are required"]
-                return False
+                raise ValueError("Both NMR and Echem folder names are required")
 
             start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
             exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
@@ -163,17 +154,10 @@ class InsituBlock(DataBlock):
                 )
 
             except FileNotFoundError as e:
-                LOGGER.warning(f"Folder not found: {str(e)}")
-                self.data["errors"] = [f"Folder not found: {str(e)}"]
-                return False
+                raise FileNotFoundError(f"Folder not found: {str(e)}")
 
             except Exception as e:
-                LOGGER.warning(f"Error processing data: {str(e)}")
-                self.data["errors"] = [f"Error processing data: {str(e)}"]
-                return False
-
-            self.data.pop("warnings", None)
-            self.data.pop("errors", None)
+                raise RuntimeError(f"Error processing data: {str(e)}")
 
             nmr_data = result["nmr_spectra"]
             ppm_values = np.array(nmr_data.get("ppm", []))
@@ -199,8 +183,7 @@ class InsituBlock(DataBlock):
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error processing data: {str(e)}")
-            return False
+            raise RuntimeError(f"Error processing data: {str(e)}")
 
     def should_reprocess_data(self) -> bool:
         """
@@ -235,16 +218,14 @@ class InsituBlock(DataBlock):
             Tuple[pd.DataFrame, List[str]]: Time data and status messages.
         """
         if "file_id" not in self.data:
-            LOGGER.warning("No file set in the DataBlock")
-            return None, []
+            raise ValueError("No file set in the DataBlock")
 
         try:
             file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
             if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
-                LOGGER.warning(
+                raise ValueError(
                     f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
                 )
-                return None, []
 
             needs_reprocessing = self.should_reprocess_data()
             if needs_reprocessing:
@@ -290,11 +271,7 @@ class InsituBlock(DataBlock):
             return self.data.get("time_data"), ["Plot successfully generated"]
 
         except Exception as e:
-            import traceback
-
-            LOGGER.error(f"Error in generate_insitu_nmr_plot: {str(e)}")
-            LOGGER.error(traceback.format_exc())
-            return None, []
+            raise RuntimeError(f"Failed to generate insitu NMR plot: {str(e)}")
 
     def _prepare_plot_data(self) -> Optional[Dict[str, Any]]:
         """
@@ -311,13 +288,11 @@ class InsituBlock(DataBlock):
 
             ppm_values = np.array(nmr_data.get("ppm", []))
             if len(ppm_values) == 0:
-                LOGGER.error("No PPM values found in NMR data")
-                return None
+                raise ValueError("No PPM values found in NMR data")
 
             spectra = nmr_data.get("spectra", [])
             if not spectra:
-                LOGGER.error("No spectra found in NMR data")
-                return None
+                raise ValueError("No spectra found in NMR data")
 
             try:
                 spectra_intensities = [
@@ -329,9 +304,7 @@ class InsituBlock(DataBlock):
                 )
 
             except Exception as e:
-                LOGGER.error(f"Error processing spectrum intensities: {e}")
-                LOGGER.error(f"Spectrum data structure: {spectra[0] if spectra else 'No spectra'}")
-                return None
+                raise ValueError(f"Error processing spectrum intensities: {e}")
 
             time_range = metadata["time_range"]
             first_spectrum_intensities = np.array(spectra[0]["intensity"])
@@ -352,8 +325,7 @@ class InsituBlock(DataBlock):
             }
 
         except Exception as e:
-            LOGGER.error(f"Error preparing plot data: {str(e)}")
-            return None
+            raise RuntimeError(f"Error preparing plot data: {str(e)}")
 
     def _create_shared_ranges(self, plot_data: Dict[str, Any]) -> Dict[str, Range1d]:
         """
