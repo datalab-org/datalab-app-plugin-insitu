@@ -43,7 +43,7 @@ except ImportError:
 class InsituBlock(DataBlock):
     blocktype = "insitu-nmr"
     name = "NMR insitu"
-    description = """This CACHE12 datablock processes an input .zip file containing two specific directories:
+    description = """This datablock processes an input .zip file containing two specific directories:
 
     - **NMR Data Directory**: Contains multiple Bruker in-situ NMR experiment datasets.
     - **Echem Data Directory**: Contains echem data files in `.mpr` format.
