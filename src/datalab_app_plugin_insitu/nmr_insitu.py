@@ -10,7 +10,7 @@ from .utils import _process_data
 
 def _find_folder_path(base_path: Path, target_folder_name: str) -> Optional[Path]:
     """
-    Find a folder path recursively regardless of nesting level.
+    Find a folder path inside a zip regardless of whether the zip has an extra level of nesting.
 
     Args:
         base_path: Base directory to start the search
