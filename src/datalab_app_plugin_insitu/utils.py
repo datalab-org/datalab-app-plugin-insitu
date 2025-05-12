@@ -1,18 +1,16 @@
-import h5py
-import os
 import json
+import os
 import re
 import warnings
-
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from navani import echem as ec
 
-
+import h5py
 import nmrglue as ng
 import numpy as np
 import pandas as pd
+from navani import echem as ec
 
 
 def check_nmr_dimension(nmr_folder_path: Path) -> str:
@@ -45,8 +43,7 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
             acqu2s_path = exp_path / "acqu2s"
 
             if not acqus_path.exists():
-                raise FileNotFoundError(
-                    f"acqus file not found in experiment {exp_folders[0]}")
+                raise FileNotFoundError(f"acqus file not found in experiment {exp_folders[0]}")
 
             if not acqu2s_path.exists():
                 raise FileNotFoundError(
@@ -62,12 +59,10 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
                 acqu2s_path = exp_path / "acqu2s"
 
                 if not acqus_path.exists():
-                    raise FileNotFoundError(
-                        f"acqus file not found in experiment {exp_folder}")
+                    raise FileNotFoundError(f"acqus file not found in experiment {exp_folder}")
 
                 if acqu2s_path.exists():
-                    raise RuntimeError(
-                        f"acqu2s file found in experiment {exp_folder}")
+                    raise RuntimeError(f"acqu2s file found in experiment {exp_folder}")
 
             return "1D"
 
@@ -81,12 +76,10 @@ def extract_td_parameters(acqus_path: str) -> Tuple[Optional[int], Optional[str]
         with open(acqus_path) as file:
             content = file.read()
             td_match = re.search(r"##\$TD=\s*(\d+)", content)
-            td_indirect_match = re.search(
-                r"##\$TD_INDIRECT=(.*?)(?=##|\Z)", content, re.DOTALL)
+            td_indirect_match = re.search(r"##\$TD_INDIRECT=(.*?)(?=##|\Z)", content, re.DOTALL)
 
             td_value = int(td_match.group(1)) if td_match else None
-            td_indirect = td_indirect_match.group(
-                1).strip() if td_indirect_match else None
+            td_indirect = td_indirect_match.group(1).strip() if td_indirect_match else None
 
             return td_value, td_indirect
 
@@ -100,8 +93,7 @@ def extract_date_from_acqus(path: str) -> Optional[datetime]:
         with open(path) as file:
             for line in file:
                 if line.startswith("$$"):
-                    match = re.search(
-                        r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})", line)
+                    match = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{4})", line)
                     if match:
                         return datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S.%f %z")
 
@@ -114,8 +106,7 @@ def setup_paths(
     nmr_folder_path: Path, start_at: int, exclude_exp: Optional[List[int]]
 ) -> Tuple[List[str], List[str]]:
     """Setup experiment paths and create output directory."""
-    exp_folders = [d for d in Path(
-        nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
+    exp_folders = [d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
     exp_folder = [
         exp for exp in range(start_at, len(exp_folders) + 1) if exp not in (exclude_exp or [])
@@ -125,8 +116,7 @@ def setup_paths(
         str(Path(nmr_folder_path) / str(exp) / "pdata" / "1" / "ascii-spec.txt")
         for exp in exp_folder
     ]
-    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus")
-                  for exp in exp_folder]
+    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus") for exp in exp_folder]
 
     return spec_paths, acqu_paths
 
@@ -224,8 +214,7 @@ def process_echem_data(base_folder: Path, echem_folder_name: str) -> Optional[pd
                 warnings.warn(f"Echem folder not found at {echem_folder_path}")
                 return None
 
-        mpr_files = [f for f in echem_folder_path.iterdir()
-                     if f.suffix.upper() == ".MPR"]
+        mpr_files = [f for f in echem_folder_path.iterdir() if f.suffix.upper() == ".MPR"]
 
         if not mpr_files:
             warnings.warn(f"No MPR files found in {echem_folder_path}")
@@ -258,8 +247,7 @@ def process_echem_data(base_folder: Path, echem_folder_name: str) -> Optional[pd
             raise RuntimeError(f"Error processing MPR files: {str(e)}")
 
     except Exception as e:
-        raise RuntimeError(
-            f"Error in electrochemical data processing: {str(e)}")
+        raise RuntimeError(f"Error in electrochemical data processing: {str(e)}")
 
 
 def prepare_for_bokeh(
@@ -307,8 +295,7 @@ def calculate_intensities(data: pd.DataFrame, ppm_col: str = "ppm") -> np.ndarra
     cols = [col for col in data.columns if col != ppm_col]
     ppm_values = data[ppm_col].values
 
-    intensities = np.array(
-        [abs(np.trapz(data[col].values, x=ppm_values)) for col in cols])
+    intensities = np.array([abs(np.trapz(data[col].values, x=ppm_values)) for col in cols])
 
     return intensities
 
@@ -337,37 +324,31 @@ def _process_data(
         nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
         if nmr_dimension == "1D":
-            spec_paths, acqu_paths = setup_paths(
-                nmr_folder_path, start_at, exclude_exp)
+            spec_paths, acqu_paths = setup_paths(nmr_folder_path, start_at, exclude_exp)
             time_points = process_time_data(acqu_paths)
-            nmr_data, df, num_experiments = process_spectral_data(
-                spec_paths, time_points)
+            nmr_data, df, num_experiments = process_spectral_data(spec_paths, time_points)
 
         elif nmr_dimension == "pseudo2D":
             exp_folders = [
                 d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()
             ]
             if not exp_folders:
-                raise FileNotFoundError(
-                    "No experiment folders found in NMR data")
+                raise FileNotFoundError("No experiment folders found in NMR data")
 
             exp_folder = str(Path(nmr_folder_path) / exp_folders[0])
-            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(
-                exp_folder)
+            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(exp_folder)
 
         else:
             raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
 
         merged_df = (
-            process_echem_data(
-                base_folder, echem_folder_name) if echem_folder_name else None
+            process_echem_data(base_folder, echem_folder_name) if echem_folder_name else None
         )
 
         result = prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
 
         if result is None:
-            raise RuntimeError(
-                "prepare_for_bokeh returned None instead of expected data")
+            raise RuntimeError("prepare_for_bokeh returned None instead of expected data")
 
         return result
 
@@ -375,40 +356,55 @@ def _process_data(
         raise RuntimeError(f"Error in common processing: {str(e)}")
 
 
-def get_cache_path(file_id: str) -> str:
-    """Get the path to the cache file for a given file_id."""
-    cache_dir = os.path.join(os.path.expanduser("~"), ".datalab_cache")
+def get_cache_path(key: str) -> str:
+    """
+    Get the path to the cache file for a given key.
+    If key is a composite key (e.g. "file_id_subfolder1_subfolder2"),
+    it extracts the file_id and uses it to determine the cache location.
+    Uses the parent directory of the original file location for cache storage.
+    """
+
+    file_id = key.split("_")[0] if "_" in key else key
+
+    try:
+        from pydatalab.file_utils import get_file_info_by_id
+
+        file_info = get_file_info_by_id(file_id)
+        if file_info and "location" in file_info:
+            file_location = Path(file_info["location"])
+            cache_dir = file_location.parent / ".datalab_cache"
+        else:
+            cache_dir = Path(os.path.expanduser("~")) / ".datalab_cache"
+    except Exception:
+        cache_dir = Path(os.path.expanduser("~")) / ".datalab_cache"
+
     os.makedirs(cache_dir, exist_ok=True)
-
-    cache_path = os.path.join(cache_dir, f"{file_id}_insitu.h5")
-
-    return cache_path
+    return str(cache_dir / key)
 
 
-def save_to_cache(file_id: str, data: Dict) -> None:
+def save_data_to_cache(file_id: str, data: Dict) -> None:
     """Save processed data to HDF5 cache file."""
     cache_path = get_cache_path(file_id)
 
     try:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
 
-        with h5py.File(cache_path, 'w') as f:
+        with h5py.File(cache_path, "w") as f:
             if "metadata" in data:
                 f.attrs["metadata"] = json.dumps(data["metadata"])
 
             if "nmr_spectra" in data:
                 nmr_group = f.create_group("nmr_spectra")
-                nmr_group.create_dataset(
-                    "ppm", data=data["nmr_spectra"]["ppm"])
+                nmr_group.create_dataset("ppm", data=data["nmr_spectra"]["ppm"])
 
                 spectra_group = nmr_group.create_group("spectra")
                 for i, spectrum in enumerate(data["nmr_spectra"]["spectra"]):
                     spectrum_group = spectra_group.create_group(str(i))
                     spectrum_group.attrs["time"] = spectrum["time"]
                     spectrum_group.attrs["experiment_number"] = spectrum.get(
-                        "experiment_number", i+1)
-                    spectrum_group.create_dataset(
-                        "intensity", data=spectrum["intensity"])
+                        "experiment_number", i + 1
+                    )
+                    spectrum_group.create_dataset("intensity", data=spectrum["intensity"])
 
             if "integrated_data" in data:
                 integrated_group = f.create_group("integrated_data")
@@ -420,19 +416,18 @@ def save_to_cache(file_id: str, data: Dict) -> None:
                 for key, values in data["echem"].items():
                     echem_group.create_dataset(key, data=values)
 
-        return True
     except Exception as e:
         raise RuntimeError(f"Error saving to cache: {str(e)}")
 
 
-def load_from_cache(file_id: str) -> Optional[Dict]:
+def load_data_from_cache(file_id: str) -> Optional[Dict]:
     """Load processed data from HDF5 cache file."""
     cache_path = get_cache_path(file_id)
     if not os.path.exists(cache_path):
         return None
 
     try:
-        with h5py.File(cache_path, 'r') as f:
+        with h5py.File(cache_path, "r") as f:
             data = {}
 
             if "metadata" in f.attrs:
@@ -440,18 +435,17 @@ def load_from_cache(file_id: str) -> Optional[Dict]:
 
             if "nmr_spectra" in f:
                 nmr_group = f["nmr_spectra"]
-                data["nmr_spectra"] = {
-                    "ppm": nmr_group["ppm"][:].tolist(),
-                    "spectra": []
-                }
+                data["nmr_spectra"] = {"ppm": nmr_group["ppm"][:].tolist(), "spectra": []}
 
                 for i in range(len(nmr_group["spectra"])):
                     spectrum_group = nmr_group["spectra"][str(i)]
-                    data["nmr_spectra"]["spectra"].append({
-                        "time": float(spectrum_group.attrs["time"]),
-                        "experiment_number": int(spectrum_group.attrs["experiment_number"]),
-                        "intensity": spectrum_group["intensity"][:].tolist()
-                    })
+                    data["nmr_spectra"]["spectra"].append(
+                        {
+                            "time": float(spectrum_group.attrs["time"]),
+                            "experiment_number": int(spectrum_group.attrs["experiment_number"]),
+                            "intensity": spectrum_group["intensity"][:].tolist(),
+                        }
+                    )
 
             if "integrated_data" in f:
                 integrated_group = f["integrated_data"]
@@ -468,3 +462,29 @@ def load_from_cache(file_id: str) -> Optional[Dict]:
             return data
     except Exception as e:
         raise RuntimeError(f"Error loading from cache: {str(e)}")
+
+
+def save_plot_to_cache(cache_key: str, plot_data: Dict) -> None:
+    """Save plot data to a separate JSON cache file."""
+    plot_cache_path = f"{get_cache_path(cache_key)}.json"
+
+    try:
+        os.makedirs(os.path.dirname(plot_cache_path), exist_ok=True)
+        with open(plot_cache_path, "w") as f:
+            json.dump(plot_data, f)
+    except Exception as e:
+        raise RuntimeError(f"Error saving plot to cache: {str(e)}")
+
+
+def load_plot_from_cache(cache_key: str) -> Optional[Dict]:
+    """Load plot data from the JSON cache file."""
+    plot_cache_path = f"{get_cache_path(cache_key)}.json"
+
+    if not os.path.exists(plot_cache_path):
+        return None
+
+    try:
+        with open(plot_cache_path) as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Error loading plot from cache: {str(e)}")
