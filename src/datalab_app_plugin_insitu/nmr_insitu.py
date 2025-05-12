@@ -35,9 +35,6 @@ def process_local_data(
             if folder_name.endswith(".zip"):
                 with zipfile.ZipFile(folder_name, "r") as zip_ref:
                     zip_ref.extractall(tmpdir)
-                base_path = Path(tmpdir)
-            else:
-                base_path = Path(folder_name)
 
             folder_name = Path(folder_name).stem
             nmr_folder_name = Path(nmr_folder_name).stem
@@ -48,10 +45,6 @@ def process_local_data(
 
             if not nmr_folder_path.exists():
                 raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
-
-            echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
-            if echem_folder_path and not echem_folder_path.exists():
-                raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
                 Path(tmpdir) / folder_name,
