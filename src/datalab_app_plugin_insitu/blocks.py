@@ -89,22 +89,19 @@ class InsituBlock(DataBlock):
             List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
         """
         if "file_id" not in self.data:
-            LOGGER.warning("No file_id in data")
-            return []
+            raise ValueError("No file_id in data")
 
         main_folder = self.data.get("folder_name")
 
         if not main_folder:
-            LOGGER.warning("Main folder name not specified")
-            return []
+            raise ValueError("Main folder name not specified")
 
         try:
             file_info = get_file_info_by_id(self.data["file_id"])
             file_path = file_info.get("location")
 
             if not file_path or not os.path.exists(file_path):
-                LOGGER.warning(f"File not found: {file_path}")
-                return []
+                raise FileNotFoundError(f"File not found: {file_path}")
 
             folders = set()
             with zipfile.ZipFile(file_path, "r") as zip_folder:
@@ -121,11 +118,7 @@ class InsituBlock(DataBlock):
 
             return folder_list
         except Exception as e:
-            LOGGER.error(f"Error getting folders from zip file: {str(e)}")
-            import traceback
-
-            LOGGER.error(traceback.format_exc())
-            return []
+            raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
 
     def process_and_store_data(self) -> bool:
         """

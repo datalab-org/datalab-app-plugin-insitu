@@ -40,7 +40,7 @@ dependencies = [
     "h5py",
 ]
 [project.optional-dependencies]
-local = ["datalab-api ~= 0.2"]
+local = ["datalab-api >= 0.2.8"]
 
 [project.urls]
 homepage = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
