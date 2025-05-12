@@ -82,7 +82,6 @@ class InsituBlock(DataBlock):
             raise ValueError("No file_id in data")
 
         main_folder = self.data.get("folder_name")
-        LOGGER.info(f"Main folder name: {main_folder}")
 
         if not main_folder:
             raise ValueError("Main folder name not specified")
@@ -90,7 +89,6 @@ class InsituBlock(DataBlock):
         try:
             file_info = get_file_info_by_id(self.data["file_id"])
             file_path = file_info.get("location")
-            LOGGER.info(f"File path: {file_path}")
 
             if not file_path or not os.path.exists(file_path):
                 raise FileNotFoundError(f"File not found: {file_path}")
@@ -107,7 +105,6 @@ class InsituBlock(DataBlock):
                             folders.add(sub_folder)
 
             folder_list = sorted(list(folders))
-            LOGGER.info(f"Found folders in '{main_folder}': {folder_list}")
 
             return folder_list
         except Exception as e:
@@ -202,7 +199,6 @@ class InsituBlock(DataBlock):
 
         for key in current_params:
             if params.get(key) != current_params[key]:
-                LOGGER.info(f"Parameter {key} changed, reprocessing data...")
                 return True
 
         return False
@@ -229,11 +225,9 @@ class InsituBlock(DataBlock):
 
             needs_reprocessing = self.should_reprocess_data()
             if needs_reprocessing:
-                LOGGER.info("Processing new data...")
                 if not self.process_and_store_data():
                     return None, []
             else:
-                LOGGER.info("Using stored data...")
                 self.data["processing_params"]["ppm1"] = float(
                     self.data.get("ppm1", self.defaults["ppm1"])
                 )

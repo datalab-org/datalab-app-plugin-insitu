@@ -1,5 +1,5 @@
+import os
 import re
-import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -8,6 +8,55 @@ import nmrglue as ng
 import numpy as np
 import pandas as pd
 from navani import echem as ec
+
+
+def should_skip_path(path: Union[str, Path]) -> bool:
+    """
+    Check if a path should be skipped (macOS system files, hidden files, etc.)
+
+    Args:
+        path: Path or string to check
+
+    Returns:
+        bool: True if the path should be skipped, False otherwise
+    """
+    path_str = str(path)
+    return "__MACOSX" in path_str or Path(path_str).name.startswith(".")
+
+
+def _find_folder_path(base_path: Path, target_folder_name: str) -> Optional[Path]:
+    """
+    Find a folder path inside a zip regardless of whether the zip has an extra level of nesting.
+
+    Args:
+        base_path: Base directory to start the search
+        target_folder_name: Name of the folder to find
+
+    Returns:
+        Optional[Path]: Path to the found folder, or None if not found
+    """
+    target_folder_name = Path(target_folder_name).stem
+
+    direct_path = base_path / target_folder_name
+    if direct_path.exists() and direct_path.is_dir():
+        return direct_path
+
+    for item in base_path.iterdir():
+        if should_skip_path(item):
+            continue
+
+        if item.is_dir():
+            nested_path = item / target_folder_name
+            if nested_path.exists() and nested_path.is_dir():
+                return nested_path
+
+    for root, dirs, _ in os.walk(str(base_path)):
+        dirs[:] = [d for d in dirs if not should_skip_path(Path(d))]
+
+        if target_folder_name in dirs:
+            return Path(root) / target_folder_name
+
+    return None
 
 
 def check_nmr_dimension(nmr_folder_path: Path) -> str:
@@ -33,10 +82,7 @@ def check_nmr_dimension(nmr_folder_path: Path) -> str:
         exp_folders = [
             d
             for d in Path(nmr_folder_path).iterdir()
-            if d.is_dir()
-            and d.name.isdigit()
-            and not d.name.startswith(".")
-            and "__MACOSX" not in str(d)
+            if d.is_dir() and d.name.isdigit() and not should_skip_path(d)
         ]
 
         if not exp_folders:
@@ -213,32 +259,19 @@ def process_echem_data(
 
     try:
         if isinstance(echem_folder_path, str):
-            paths_to_try = [
-                Path(base_folder) / echem_folder_path / "eChem",
-                Path(base_folder) / echem_folder_path,
-            ]
+            echem_folder_path = Path(echem_folder_path)
 
-            for path in paths_to_try:
-                if path.exists():
-                    echem_folder_path = path
-                    break
-            else:
-                warnings.warn("Echem folder not found in any of the expected locations")
-                return None
-        else:
-            echem_subfolder = echem_folder_path / "eChem"
-            if echem_subfolder.exists():
-                echem_folder_path = echem_subfolder
+        echem_subfolder = echem_folder_path / "eChem"
+        if echem_subfolder.exists():
+            echem_folder_path = echem_subfolder
 
         if not echem_folder_path.exists():
-            warnings.warn(f"Echem folder not found at {echem_folder_path}")
-            return None
+            raise FileNotFoundError(f"Echem folder not found at {echem_folder_path}")
 
         mpr_files = [f for f in echem_folder_path.iterdir() if f.suffix.upper() == ".MPR"]
 
         if not mpr_files:
-            warnings.warn(f"No MPR files found in {echem_folder_path}")
-            return None
+            raise FileNotFoundError(f"No MPR files found in {echem_folder_path}")
 
         if len(mpr_files) == 1:
             file_to_process = mpr_files[0]
@@ -360,21 +393,11 @@ def _process_data(
 
         echem_folder_path = None
         if echem_folder_name:
-            echem_folder_name_stem = Path(echem_folder_name).stem
-            direct_path = base_folder / echem_folder_name_stem
-            if direct_path.exists() and direct_path.is_dir():
-                echem_folder_path = direct_path
-            else:
-                for item in base_folder.iterdir():
-                    if item.is_dir():
-                        nested_path = item / echem_folder_name_stem
-                        if nested_path.exists() and nested_path.is_dir():
-                            echem_folder_path = nested_path
-                            break
+            echem_folder_path = _find_folder_path(base_folder, echem_folder_name)
+            if not echem_folder_path:
+                raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
 
-            merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
-        else:
-            merged_df = None
+        merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
 
         return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
 

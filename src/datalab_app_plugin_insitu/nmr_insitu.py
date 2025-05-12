@@ -1,49 +1,10 @@
 import os
 import tempfile
-import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .utils import _process_data
-
-
-def _find_folder_path(base_path: Path, target_folder_name: str) -> Optional[Path]:
-    """
-    Find a folder path inside a zip regardless of whether the zip has an extra level of nesting.
-
-    Args:
-        base_path: Base directory to start the search
-        target_folder_name: Name of the folder to find
-
-    Returns:
-        Optional[Path]: Path to the found folder, or None if not found
-    """
-    target_folder_name = Path(target_folder_name).stem
-
-    def should_skip(path):
-        return "__MACOSX" in str(path) or path.name.startswith(".")
-
-    direct_path = base_path / target_folder_name
-    if direct_path.exists() and direct_path.is_dir():
-        return direct_path
-
-    for item in base_path.iterdir():
-        if should_skip(item):
-            continue
-
-        if item.is_dir():
-            nested_path = item / target_folder_name
-            if nested_path.exists() and nested_path.is_dir():
-                return nested_path
-
-    for root, dirs, _ in os.walk(str(base_path)):
-        dirs[:] = [d for d in dirs if "__MACOSX" not in d and not d.startswith(".")]
-
-        if target_folder_name in dirs:
-            return Path(root) / target_folder_name
-
-    return None
+from .utils import _find_folder_path, _process_data
 
 
 def process_local_data(
@@ -80,20 +41,24 @@ def process_local_data(
                         try:
                             zip_ref.extract(member, tmpdir)
                         except Exception as e:
-                            warnings.warn(f"Could not extract {member}: {e}")
+                            raise RuntimeError(
+                                f"Failed to extract {member}: {str(e)}")
                 base_path = Path(tmpdir)
             else:
                 base_path = Path(folder_name)
 
             nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
             if not nmr_folder_path:
-                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_folder_name}")
 
             echem_folder_path = None
             if echem_folder_name:
-                echem_folder_path = _find_folder_path(base_path, echem_folder_name)
+                echem_folder_path = _find_folder_path(
+                    base_path, echem_folder_name)
                 if not echem_folder_path:
-                    warnings.warn(f"Echem folder not found: {echem_folder_name}")
+                    raise FileNotFoundError(
+                        f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
                 base_path,
@@ -165,13 +130,15 @@ def process_datalab_data(
                     try:
                         zip_ref.extract(member, tmpdir)
                     except Exception as e:
-                        warnings.warn(f"Could not extract {member}: {e}")
+                        raise RuntimeError(
+                            f"Failed to extract {member}: {str(e)}")
 
             base_path = Path(tmpdir)
 
             nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
             if not nmr_folder_path:
-                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(
+                    f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
                 base_path,
