@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -211,14 +210,12 @@ def process_echem_data(base_folder: Path, echem_folder_name: str) -> Optional[pd
             echem_folder_path = Path(base_folder) / echem_folder_name
 
             if not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found at {echem_folder_path}")
-                return None
+                raise FileNotFoundError(f"Echem folder not found at {echem_folder_path}")
 
         mpr_files = [f for f in echem_folder_path.iterdir() if f.suffix.upper() == ".MPR"]
 
         if not mpr_files:
-            warnings.warn(f"No MPR files found in {echem_folder_path}")
-            return None
+            raise FileNotFoundError(f"No MPR files found in {echem_folder_path}")
 
         if len(mpr_files) == 1:
             file_to_process = mpr_files[0]

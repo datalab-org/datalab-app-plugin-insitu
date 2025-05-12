@@ -1,6 +1,5 @@
 import os
 import tempfile
-import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -48,12 +47,11 @@ def process_local_data(
                 echem_folder_name = Path(echem_folder_name).stem
 
             if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
             if echem_folder_path and not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found: {echem_folder_name}")
+                raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
                 Path(tmpdir) / folder_name,
@@ -125,8 +123,7 @@ def process_datalab_data(
             nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
 
             if not nmr_folder_path.exists():
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
                 Path(tmpdir) / folder_name,
