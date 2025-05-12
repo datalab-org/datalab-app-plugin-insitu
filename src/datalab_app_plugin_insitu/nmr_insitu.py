@@ -41,24 +41,20 @@ def process_local_data(
                         try:
                             zip_ref.extract(member, tmpdir)
                         except Exception as e:
-                            raise RuntimeError(
-                                f"Failed to extract {member}: {str(e)}")
+                            raise RuntimeError(f"Failed to extract {member}: {str(e)}")
                 base_path = Path(tmpdir)
             else:
                 base_path = Path(folder_name)
 
             nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
             if not nmr_folder_path:
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             echem_folder_path = None
             if echem_folder_name:
-                echem_folder_path = _find_folder_path(
-                    base_path, echem_folder_name)
+                echem_folder_path = _find_folder_path(base_path, echem_folder_name)
                 if not echem_folder_path:
-                    raise FileNotFoundError(
-                        f"Echem folder not found: {echem_folder_name}")
+                    raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
                 base_path,
@@ -130,15 +126,13 @@ def process_datalab_data(
                     try:
                         zip_ref.extract(member, tmpdir)
                     except Exception as e:
-                        raise RuntimeError(
-                            f"Failed to extract {member}: {str(e)}")
+                        raise RuntimeError(f"Failed to extract {member}: {str(e)}")
 
             base_path = Path(tmpdir)
 
             nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
             if not nmr_folder_path:
-                raise FileNotFoundError(
-                    f"NMR folder not found: {nmr_folder_name}")
+                raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
                 base_path,
