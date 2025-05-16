@@ -1,11 +1,10 @@
 import os
 import tempfile
-import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .utils import _process_data
+from .utils import _find_folder_path, _process_data
 
 
 def process_local_data(
@@ -35,27 +34,30 @@ def process_local_data(
         with tempfile.TemporaryDirectory() as tmpdir:
             if folder_name.endswith(".zip"):
                 with zipfile.ZipFile(folder_name, "r") as zip_ref:
-                    zip_ref.extractall(tmpdir)
+                    members = [
+                        m for m in zip_ref.namelist() if not ("__MACOSX" in m or m.startswith("."))
+                    ]
+                    for member in members:
+                        try:
+                            zip_ref.extract(member, tmpdir)
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to extract {member}: {str(e)}")
                 base_path = Path(tmpdir)
             else:
                 base_path = Path(folder_name)
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
-
-            if echem_folder_name:
-                echem_folder_name = Path(echem_folder_name).stem
-
-            if not nmr_folder_path.exists():
+            nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
+            if not nmr_folder_path:
                 raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
-            echem_folder_path = base_path / echem_folder_name if echem_folder_name else None
-            if echem_folder_path and not echem_folder_path.exists():
-                warnings.warn(f"Echem folder not found: {echem_folder_name}")
+            echem_folder_path = None
+            if echem_folder_name:
+                echem_folder_path = _find_folder_path(base_path, echem_folder_name)
+                if not echem_folder_path:
+                    raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
 
             return _process_data(
-                Path(tmpdir) / folder_name,
+                base_path,
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
@@ -117,17 +119,23 @@ def process_datalab_data(
                 raise FileNotFoundError(f"ZIP file not found: {folder_name}")
 
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(tmpdir)
+                members = [
+                    m for m in zip_ref.namelist() if not ("__MACOSX" in m or m.startswith("."))
+                ]
+                for member in members:
+                    try:
+                        zip_ref.extract(member, tmpdir)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to extract {member}: {str(e)}")
 
-            folder_name = Path(folder_name).stem
-            nmr_folder_name = Path(nmr_folder_name).stem
-            nmr_folder_path = Path(tmpdir) / folder_name / nmr_folder_name
+            base_path = Path(tmpdir)
 
-            if not nmr_folder_path.exists():
+            nmr_folder_path = _find_folder_path(base_path, nmr_folder_name)
+            if not nmr_folder_path:
                 raise FileNotFoundError(f"NMR folder not found: {nmr_folder_name}")
 
             return _process_data(
-                Path(tmpdir) / folder_name,
+                base_path,
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
