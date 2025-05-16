@@ -39,7 +39,6 @@ def find_absorbance(data_df, reference_df):
 
 
 def process_data(
-    base_folder: Path,
     uvvis_folder: Path,
     reference_folder: Path,
     echem_folder: Path,
@@ -49,6 +48,20 @@ def process_data(
     exclude_exp: Optional[List[int]] = None,
     scan_time: Optional[float] = None,
 ) -> Dict:
+    """
+    Processes UV-Vis and Echem data from specified folders.
+    Args:
+        uvvis_folder (Path): Path to the folder containing UV-Vis data files
+        reference_folder (Path): Path to the folder containing the reference data file
+        echem_folder (Path): Path to the folder containing Echem data files
+        start_at (int): Index to start processing from
+        sample_file_extension (str): File extension for sample files
+        reference_file_extension (str): File extension for reference files
+        exclude_exp (Optional[List[int]]): List of indices to exclude from processing
+        scan_time (Optional[float]): Time taken for the scan in seconds
+    Returns:
+        Dict: Dictionary containing two keys, the processed UV-Vis data [2D data] and Echem data [echem data]
+    """
     # Check there is one file in the reference folder with the right extension - if so parse it for the reference scan
     if not reference_folder.exists():
         raise FileNotFoundError(f"Reference folder not found: {reference_folder}")
