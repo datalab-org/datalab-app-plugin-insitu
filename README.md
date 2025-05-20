@@ -15,7 +15,7 @@
 </div>
 
 
-A Python plugin for processing and visualizing *in situ* NMR data within [_datalab_](https://github.com/datalab-org/datalab) instances. 
+A Python plugin for processing and visualizing *in situ* NMR data within [_datalab_](https://github.com/datalab-org/datalab) instances.
 
 The project was originally developed in the [Grey Group](https://www.ch.cam.ac.uk/group/grey/) in the Department of Chemistry at the University of Cambridge.
 
