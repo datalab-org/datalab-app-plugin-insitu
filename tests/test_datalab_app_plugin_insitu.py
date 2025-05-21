@@ -18,7 +18,7 @@ def test_data_zip(tmp_path):
     test_data_zip_path = tmp_path / "Example-TEGDME.zip"
 
     # Create a zip file of the test data directory
-    shutil.make_archive(str(test_data_zip_path).rstrip(".zip"), "zip", test_data_dir)
+    shutil.make_archive(str(test_data_zip_path.with_suffix("")), "zip", test_data_dir)
 
     yield test_data_zip_path
     test_data_zip_path.unlink(missing_ok=True)
