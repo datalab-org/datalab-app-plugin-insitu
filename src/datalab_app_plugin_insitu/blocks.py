@@ -7,7 +7,6 @@ import bokeh.embed
 import numpy as np
 from pydatalab.blocks.base import DataBlock
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
-from pydatalab.file_utils import get_file_info_by_id
 
 from .nmr_insitu import process_local_data
 from .plotting import create_linked_insitu_plots, prepare_plot_data
@@ -170,6 +169,12 @@ class InsituBlock(DataBlock):
         if not file_path:
             if "file_id" not in self.data:
                 raise ValueError("No file set in the DataBlock")
+            try:
+                from pydatalab.file_utils import get_file_info_by_id
+            except ImportError:
+                raise RuntimeError(
+                    "The `datalab-server[server]` extra must be installed to use this block with a database."
+                )
 
             file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
             file_path = Path(file_info["location"])
