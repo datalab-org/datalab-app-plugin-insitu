@@ -377,7 +377,7 @@ provides-extras = ["local"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datalab-server", specifier = "~=0.5" },
+    { name = "datalab-server", specifier = ">0.5.3" },
     { name = "mkdocs", specifier = "~=1.6" },
     { name = "mkdocs-awesome-pages-plugin", specifier = "~=2.9" },
     { name = "mkdocs-material", specifier = "~=9.5" },
