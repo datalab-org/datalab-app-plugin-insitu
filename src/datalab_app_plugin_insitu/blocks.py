@@ -41,28 +41,21 @@ class InsituBlock(DataBlock):
     def plot_functions(self):
         return (self.generate_insitu_nmr_plot,)
 
-    def get_available_folders(self) -> List[str]:
+    def get_available_folders(self, file_path: Path) -> List[str]:
         """
         Extract and return a list of available folders from the zip file.
 
         This method opens the zip file identified by file_id, extracts the main folder
         and its subfolders, and returns a sorted list of subfolder names.
 
+        Parameters:
+            file_path: Path to the zip file.
+
         Returns:
             List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
         """
-        if "file_id" not in self.data:
-            raise ValueError("No file_id in data")
-
-        main_folder = self.data.get("folder_name")
-
-        if not main_folder:
-            raise ValueError("Main folder name not specified")
 
         try:
-            file_info = get_file_info_by_id(self.data["file_id"])
-            file_path = file_info.get("location")
-
             if not file_path or not os.path.exists(file_path):
                 raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -83,78 +76,62 @@ class InsituBlock(DataBlock):
         except Exception as e:
             raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
 
-    def process_and_store_data(self) -> bool:
+    def process_and_store_data(self, file_path: str | Path):
         """
         Process insitu NMR and electrochemical data and store results.
 
         This method validates input parameters, extracts data from the specified folders,
         and stores the processed data in the block's data attribute.
 
-        Returns:
-            bool: True if processing was successful, False otherwise.
-
         """
-        folders = self.get_available_folders()
+        file_path = Path(file_path)
+        folders = self.get_available_folders(file_path)
         self.data["available_folders"] = folders
 
         nmr_folder_name = self.data.get("nmr_folder_name")
         echem_folder_name = self.data.get("echem_folder_name")
 
-        file_path = get_file_info_by_id(self.data["file_id"])["location"]
+        if not all([nmr_folder_name, echem_folder_name]):
+            raise ValueError("Both NMR and Echem folder names are required")
 
-        if not nmr_folder_name or not echem_folder_name:
-            raise ValueError("Both NMR and Echem folder names must be specified")
+        start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
+        exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
         try:
-            nmr_folder_name = self.data.get("nmr_folder_name")
-            echem_folder_name = self.data.get("echem_folder_name")
-
-            if not all([nmr_folder_name, echem_folder_name]):
-                raise ValueError("Both NMR and Echem folder names are required")
-
-            start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
-            exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
-
-            try:
-                result = process_local_data(
-                    folder_name=file_path,
-                    nmr_folder_name=nmr_folder_name,
-                    echem_folder_name=echem_folder_name,
-                    start_at=start_exp,
-                    exclude_exp=exclude_exp,
-                )
-
-            except FileNotFoundError as e:
-                raise FileNotFoundError(f"Folder not found: {str(e)}")
-
-            except Exception as e:
-                raise RuntimeError(f"Error processing data: {str(e)}")
-
-            nmr_data = result["nmr_spectra"]
-            ppm_values = np.array(nmr_data.get("ppm", []))
-
-            ppm1 = self.data["ppm1"] = min(ppm_values)
-            ppm2 = self.data["ppm2"] = max(ppm_values)
-
-            self.data.update(
-                {
-                    "nmr_data": result["nmr_spectra"],
-                    "echem_data": result.get("echem", {}),
-                    "metadata": result["metadata"],
-                    "processing_params": {
-                        "ppm1": ppm1,
-                        "ppm2": ppm2,
-                        "file_id": self.data.get("file_id"),
-                        "start_exp": start_exp,
-                        "exclude_exp": exclude_exp,
-                    },
-                }
+            result = process_local_data(
+                folder_name=str(file_path),
+                nmr_folder_name=nmr_folder_name,
+                echem_folder_name=echem_folder_name,
+                start_at=start_exp,
+                exclude_exp=exclude_exp,
             )
 
-            return True
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Folder not found: {str(e)}")
 
         except Exception as e:
             raise RuntimeError(f"Error processing data: {str(e)}")
+
+        nmr_data = result["nmr_spectra"]
+        ppm_values = np.array(nmr_data.get("ppm", []))
+
+        ppm1 = self.data["ppm1"] = min(ppm_values)
+        ppm2 = self.data["ppm2"] = max(ppm_values)
+
+        self.data.update(
+            {
+                "nmr_data": result["nmr_spectra"],
+                "echem_data": result.get("echem", {}),
+                "metadata": result["metadata"],
+                "processing_params": {
+                    "ppm1": ppm1,
+                    "ppm2": ppm2,
+                    "file_id": self.data.get("file_id"),
+                    "start_exp": start_exp,
+                    "exclude_exp": exclude_exp,
+                },
+            }
+        )
 
     def should_reprocess_data(self) -> bool:
         """
@@ -177,26 +154,32 @@ class InsituBlock(DataBlock):
 
         return False
 
-    def generate_insitu_nmr_plot(self):
+    def generate_insitu_nmr_plot(self, file_path: str | Path | None = None):
         """Generate combined NMR and electrochemical plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
         them into a unified visualization.
 
-        """
-        if "file_id" not in self.data:
-            raise ValueError("No file set in the DataBlock")
+        Parameters:
+            file_path: Path to the zip file containing NMR and electrochemical data,
+                rather than looking up in the database for attached files.
 
-        file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
-        if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
+        """
+        if not file_path:
+            if "file_id" not in self.data:
+                raise ValueError("No file set in the DataBlock")
+
+            file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
+            file_path = Path(file_info["location"])
+
+        if Path(file_path).suffix.lower() not in self.accepted_file_extensions:
             raise ValueError(
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
-        needs_reprocessing = self.should_reprocess_data()
-        if needs_reprocessing:
-            if not self.process_and_store_data():
-                return None
+        if self.should_reprocess_data():
+            self.process_and_store_data(file_path)
+
         else:
             self.data["processing_params"]["ppm1"] = float(
                 self.data.get("ppm1", self.defaults["ppm1"])
