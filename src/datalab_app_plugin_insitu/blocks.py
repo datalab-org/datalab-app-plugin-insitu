@@ -154,7 +154,9 @@ class InsituBlock(DataBlock):
 
         return False
 
-    def generate_insitu_nmr_plot(self, file_path: str | Path | None = None):
+    def generate_insitu_nmr_plot(
+        self, file_path: str | Path | None = None, link_plots: bool = False
+    ):
         """Generate combined NMR and electrochemical plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
@@ -195,6 +197,6 @@ class InsituBlock(DataBlock):
         ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
 
-        gp = create_linked_insitu_plots(plot_data, ppm_range=(ppm1, ppm2))
+        gp = create_linked_insitu_plots(plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots)
 
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
