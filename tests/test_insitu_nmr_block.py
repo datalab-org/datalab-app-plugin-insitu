@@ -30,5 +30,5 @@ def test_block(test_data_zip):
     block = InsituBlock(item_id="test-nmr-insitu")
     block.data["nmr_folder_name"] = "2023-08-11_jana_insituLiLiTEGDME-02_galv"
     block.data["echem_folder_name"] = "LiLiTEGDMEinsitu_02"
-    block.generate_insitu_nmr_plot(file_path=test_data_zip)
+    block.generate_insitu_nmr_plot(file_path=test_data_zip, link_plots=False)
     assert block.data["bokeh_plot_data"] is not None

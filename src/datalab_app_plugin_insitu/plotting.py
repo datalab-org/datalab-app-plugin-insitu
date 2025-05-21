@@ -16,7 +16,7 @@ from bokeh.models import (
 from bokeh.plotting import figure
 
 
-def create_linked_insitu_plots(plot_data, ppm_range):
+def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
     shared_ranges = _create_shared_ranges(plot_data, ppm_range=ppm_range)
     heatmap_figure = _create_heatmap_figure(plot_data, shared_ranges)
     nmrplot_figure = _create_nmr_line_figure(plot_data, shared_ranges)
@@ -32,7 +32,8 @@ def create_linked_insitu_plots(plot_data, ppm_range):
         DoubleTap, CustomJS(args=dict(p=echemplot_figure), code="p.reset.emit()")
     )
 
-    _link_plots(heatmap_figure, nmrplot_figure, echemplot_figure, plot_data)
+    if link_plots:
+        _link_plots(heatmap_figure, nmrplot_figure, echemplot_figure, plot_data)
 
     grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
@@ -144,7 +145,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
         tools=tools,
     )
 
-    color_mapper = LinearColorMapper(palette="Turbo256", low=intensity_min, high=intensity_max)
+    color_mapper = LinearColorMapper(palette="Viridis256", low=intensity_min, high=intensity_max)
 
     heatmap_figure.image(
         image=[intensity_matrix],
