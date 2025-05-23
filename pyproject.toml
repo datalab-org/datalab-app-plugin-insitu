@@ -38,7 +38,7 @@ dependencies = [
     "navani>=0.1.11",
 ]
 [project.optional-dependencies]
-local = ["datalab-api >= 0.2.8"]
+local = ["datalab-api >= 0.2.10"]
 
 [project.urls]
 homepage = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
