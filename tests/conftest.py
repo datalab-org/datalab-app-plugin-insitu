@@ -1,9 +1,6 @@
-import os
-
-import pyreadr
 import pytest
 
-from src.datalab_app_plugin_insitu.nmr_insitu import process_datalab_data
+from datalab_app_plugin_insitu.nmr_insitu import process_datalab_data
 
 DATALAB_API_URL = "https://demo-api.datalab-org.io"
 
@@ -93,40 +90,6 @@ def percentage_difference():
 def get_tests_data():
     """Download test data from the datalab instance."""
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    import_data_path = os.path.join(
-        base_dir,
-        "example_data",
-        "Example-TEGDME",
-        "LiLiTEGDMEinsitu_02",
-        "dfenv_LiLiTEGDMEinsitu_02.rds",
-    )
-
-    if not os.path.exists(import_data_path):
-        raise FileNotFoundError(f"The file {import_data_path} does not exist.")
-
-    df = pyreadr.read_r(import_data_path)
-    import_data = df[None]
-    import_data["time"] = import_data["time"] / 3600
-
-    fit_peaks_path = os.path.join(
-        base_dir, "example_data", "Example-TEGDME", "LiLiTEGDMEinsitu_02", "LiLiTEGDMEinsitu_02.rds"
-    )
-    fit_data = pyreadr.read_r(fit_peaks_path)
-    df_fit_base = fit_data[None]
-    df_fit_total_df = df_fit_base[df_fit_base["peak"] == "Total intensity"]
-    df_fit_peak1_df = df_fit_base[df_fit_base["peak"] == "Peak 1"]
-    df_fit_peak2_df = df_fit_base[df_fit_base["peak"] == "Peak 2"]
-
-    fit_peaks = {
-        "data_df": df_fit_total_df[["time", "intensity", "norm_intensity"]],
-        "df_peakfit1": df_fit_peak1_df[["time", "intensity", "norm_intensity"]],
-        "df_peakfit2": df_fit_peak2_df[["time", "intensity", "norm_intensity"]],
-    }
-
-    for _, data in fit_peaks.items():
-        data.loc[:, "time"] = data["time"] / 3600
-
     result = process_datalab_data(
         DATALAB_API_URL,
         "bc_insitu_block",
@@ -137,4 +100,4 @@ def get_tests_data():
         [],
     )
 
-    yield result, import_data, fit_peaks
+    yield result
