@@ -3,7 +3,7 @@ import os
 import pyreadr
 import pytest
 
-from src.datalab_app_plugin_insitu.nmr_insitu import process_datalab_data
+from datalab_app_plugin_insitu.nmr_insitu import process_datalab_data
 
 DATALAB_API_URL = "https://demo-api.datalab-org.io"
 
