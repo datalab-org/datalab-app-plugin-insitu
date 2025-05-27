@@ -443,7 +443,8 @@ def get_cache_path(key: str) -> str:
 
 def save_data_to_cache(file_id: str, data: Dict) -> None:
     """Save processed data to HDF5 cache file."""
-    cache_path = get_cache_path(file_id)
+
+    cache_path = f"{get_cache_path(file_id)}_data.h5"
 
     try:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
@@ -481,7 +482,9 @@ def save_data_to_cache(file_id: str, data: Dict) -> None:
 
 def load_data_from_cache(file_id: str) -> Optional[Dict]:
     """Load processed data from HDF5 cache file."""
-    cache_path = get_cache_path(file_id)
+
+    cache_path = f"{get_cache_path(file_id)}_data.h5"
+
     if not os.path.exists(cache_path):
         return None
 
@@ -525,7 +528,7 @@ def load_data_from_cache(file_id: str) -> Optional[Dict]:
 
 def save_plot_to_cache(cache_key: str, plot_data: Dict) -> None:
     """Save plot data to a separate JSON cache file."""
-    plot_cache_path = f"{get_cache_path(cache_key)}.json"
+    plot_cache_path = f"{get_cache_path(cache_key)}_plot.json"
 
     try:
         os.makedirs(os.path.dirname(plot_cache_path), exist_ok=True)
@@ -537,7 +540,7 @@ def save_plot_to_cache(cache_key: str, plot_data: Dict) -> None:
 
 def load_plot_from_cache(cache_key: str) -> Optional[Dict]:
     """Load plot data from the JSON cache file."""
-    plot_cache_path = f"{get_cache_path(cache_key)}.json"
+    plot_cache_path = f"{get_cache_path(cache_key)}_plot.json"
 
     if not os.path.exists(plot_cache_path):
         return None
