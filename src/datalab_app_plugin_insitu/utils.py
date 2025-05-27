@@ -1,9 +1,11 @@
+import json
 import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+import h5py
 import nmrglue as ng
 import numpy as np
 import pandas as pd
@@ -308,6 +310,9 @@ def prepare_for_bokeh(
 ) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
 
+    if nmr_data is None or df is None:
+        raise ValueError("Required NMR data or integrated data is None")
+
     result = {
         "metadata": {
             "time_range": {"start": df["time"].min(), "end": df["time"].max()},
@@ -399,7 +404,149 @@ def _process_data(
 
         merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
 
-        return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
+        result = prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
+
+        if result is None:
+            raise RuntimeError("prepare_for_bokeh returned None instead of expected data")
+
+        return result
 
     except Exception as e:
         raise RuntimeError(f"Error in common processing: {str(e)}")
+
+
+def get_cache_path(key: str) -> str:
+    """
+    Get the path to the cache file for a given key.
+    If key is a composite key (e.g. "file_id_subfolder1_subfolder2"),
+    it extracts the file_id and uses it to determine the cache location.
+    Uses the parent directory of the original file location for cache storage.
+    """
+
+    file_id = key.split("_")[0] if "_" in key else key
+
+    try:
+        from pydatalab.file_utils import get_file_info_by_id
+
+        file_info = get_file_info_by_id(file_id)
+        if file_info and "location" in file_info:
+            file_location = Path(file_info["location"])
+            cache_dir = file_location.parent / ".datalab_cache"
+        else:
+            cache_dir = Path(os.path.expanduser("~")) / ".datalab_cache"
+    except Exception:
+        cache_dir = Path(os.path.expanduser("~")) / ".datalab_cache"
+
+    os.makedirs(cache_dir, exist_ok=True)
+    return str(cache_dir / key)
+
+
+def save_data_to_cache(file_id: str, data: Dict) -> None:
+    """Save processed data to HDF5 cache file."""
+
+    cache_path = f"{get_cache_path(file_id)}_data.h5"
+
+    try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+
+        with h5py.File(cache_path, "w") as f:
+            if "metadata" in data:
+                f.attrs["metadata"] = json.dumps(data["metadata"])
+
+            if "nmr_spectra" in data:
+                nmr_group = f.create_group("nmr_spectra")
+                nmr_group.create_dataset("ppm", data=data["nmr_spectra"]["ppm"])
+
+                spectra_group = nmr_group.create_group("spectra")
+                for i, spectrum in enumerate(data["nmr_spectra"]["spectra"]):
+                    spectrum_group = spectra_group.create_group(str(i))
+                    spectrum_group.attrs["time"] = spectrum["time"]
+                    spectrum_group.attrs["experiment_number"] = spectrum.get(
+                        "experiment_number", i + 1
+                    )
+                    spectrum_group.create_dataset("intensity", data=spectrum["intensity"])
+
+            if "integrated_data" in data:
+                integrated_group = f.create_group("integrated_data")
+                for key, values in data["integrated_data"].items():
+                    integrated_group.create_dataset(key, data=values)
+
+            if "echem" in data and data["echem"]:
+                echem_group = f.create_group("echem")
+                for key, values in data["echem"].items():
+                    echem_group.create_dataset(key, data=values)
+
+    except Exception as e:
+        raise RuntimeError(f"Error saving to cache: {str(e)}")
+
+
+def load_data_from_cache(file_id: str) -> Optional[Dict]:
+    """Load processed data from HDF5 cache file."""
+
+    cache_path = f"{get_cache_path(file_id)}_data.h5"
+
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+        with h5py.File(cache_path, "r") as f:
+            data = {}
+
+            if "metadata" in f.attrs:
+                data["metadata"] = json.loads(f.attrs["metadata"])
+
+            if "nmr_spectra" in f:
+                nmr_group = f["nmr_spectra"]
+                data["nmr_spectra"] = {"ppm": nmr_group["ppm"][:].tolist(), "spectra": []}
+
+                for i in range(len(nmr_group["spectra"])):
+                    spectrum_group = nmr_group["spectra"][str(i)]
+                    data["nmr_spectra"]["spectra"].append(
+                        {
+                            "time": float(spectrum_group.attrs["time"]),
+                            "experiment_number": int(spectrum_group.attrs["experiment_number"]),
+                            "intensity": spectrum_group["intensity"][:].tolist(),
+                        }
+                    )
+
+            if "integrated_data" in f:
+                integrated_group = f["integrated_data"]
+                data["integrated_data"] = {}
+                for key in integrated_group.keys():
+                    data["integrated_data"][key] = integrated_group[key][:].tolist()
+
+            if "echem" in f:
+                echem_group = f["echem"]
+                data["echem"] = {}
+                for key in echem_group.keys():
+                    data["echem"][key] = echem_group[key][:].tolist()
+
+            return data
+    except Exception as e:
+        raise RuntimeError(f"Error loading from cache: {str(e)}")
+
+
+def save_plot_to_cache(cache_key: str, plot_data: Dict) -> None:
+    """Save plot data to a separate JSON cache file."""
+    plot_cache_path = f"{get_cache_path(cache_key)}_plot.json"
+
+    try:
+        os.makedirs(os.path.dirname(plot_cache_path), exist_ok=True)
+        with open(plot_cache_path, "w") as f:
+            json.dump(plot_data, f)
+    except Exception as e:
+        raise RuntimeError(f"Error saving plot to cache: {str(e)}")
+
+
+def load_plot_from_cache(cache_key: str) -> Optional[Dict]:
+    """Load plot data from the JSON cache file."""
+    plot_cache_path = f"{get_cache_path(cache_key)}_plot.json"
+
+    if not os.path.exists(plot_cache_path):
+        return None
+
+    try:
+        with open(plot_cache_path) as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Error loading plot from cache: {str(e)}")
