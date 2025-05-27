@@ -283,9 +283,6 @@ class InsituBlock(DataBlock):
             return None, ["Please select both NMR and Echem folders before processing."]
 
         file_id = self.data.get("file_id")
-        nmr_folder_name = self.data.get("nmr_folder_name")
-        echem_folder_name = self.data.get("echem_folder_name")
-
         cache_key = f"{file_id}_{nmr_folder_name}_{echem_folder_name}"
 
         cached_plot = load_plot_from_cache(cache_key)
@@ -295,17 +292,15 @@ class InsituBlock(DataBlock):
 
         file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
         if not file_info:
-            raise ValueError(f"No file info found for ID: {self.data['file_id']}")
+            return None, [f"No file info found for ID: {self.data['file_id']}"]
 
         if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
-            raise ValueError(
-                f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
-            )
+            return None, [f"Unsupported file extension (must be one of {self.accepted_file_extensions})"]
 
         needs_reprocessing = self.should_reprocess_data()
-
         if needs_reprocessing:
-            self.process_and_store_data()
+            if not self.process_and_store_data():
+                return None, []
         else:
             self.data["processing_params"]["ppm1"] = float(
                 self.data.get("ppm1", self.defaults["ppm1"])
@@ -315,6 +310,8 @@ class InsituBlock(DataBlock):
             )
 
         plot_data = self._prepare_plot_data()
+        if not plot_data:
+            return None, []
 
         shared_ranges = self._create_shared_ranges(plot_data)
 
