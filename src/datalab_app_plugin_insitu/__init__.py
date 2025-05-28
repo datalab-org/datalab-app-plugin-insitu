@@ -1,9 +1,8 @@
-"""Datalab plugin for In Situ NMR"""
+"""Datalab plugin for In Situ"""
 
 from importlib.metadata import version
 
-from .blocks import InsituBlock
-from .nmr_insitu import process_datalab_data, process_local_data
+from .apps.nmr import InsituBlock, process_datalab_data, process_local_data
 
 __version__ = version("datalab-app-plugin-insitu")
 

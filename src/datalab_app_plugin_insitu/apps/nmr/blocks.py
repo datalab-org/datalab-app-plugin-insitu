@@ -34,6 +34,8 @@ except ImportError:
     get_file_info_by_id = lambda *args, **kwargs: {}  # noqa
     LOGGER = logging.getLogger(__name__)
 
+__all__ = ("InsituBlock",)
+
 
 class InsituBlock(DataBlock):
     blocktype = "insitu-nmr"
@@ -787,3 +789,7 @@ class InsituBlock(DataBlock):
         )
 
         clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
+
+
+def __dir__():
+    return list(__all__)
