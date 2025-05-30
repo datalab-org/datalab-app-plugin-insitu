@@ -204,6 +204,10 @@ def process_spectral_data(
         data = pd.read_csv(path, header=None, skiprows=1)
         nmr_data[f"{i + 1}"] = data.iloc[:, 1]
 
+    numeric_cols = [f"{i + 1}" for i in range(num_experiments)]
+    global_max_intensity = nmr_data[numeric_cols].values.max()
+    nmr_data[numeric_cols] = (nmr_data[numeric_cols] / global_max_intensity).round(6)
+
     intensities = calculate_intensities(nmr_data)
 
     df = pd.DataFrame(
@@ -308,10 +312,18 @@ def prepare_for_bokeh(
 ) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
 
+    all_intensities = []
+    for i in range(len(df)):
+        spectrum_intensities = nmr_data[str(i + 1)].values
+        all_intensities.extend(spectrum_intensities)
+
+    global_max_intensity = float(max(all_intensities))
+
     result = {
         "metadata": {
             "time_range": {"start": df["time"].min(), "end": df["time"].max()},
             "num_experiments": num_experiments,
+            "global_max_intensity": global_max_intensity,
         },
         "nmr_spectra": {
             "ppm": nmr_data["ppm"].tolist(),
