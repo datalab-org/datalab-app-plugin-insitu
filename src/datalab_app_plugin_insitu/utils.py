@@ -239,6 +239,10 @@ def process_pseudo2d_spectral_data(exp_dir: str) -> Tuple[pd.DataFrame, pd.DataF
     for i in range(num_experiments):
         nmr_data[f"{i + 1}"] = p_data[i]
 
+    numeric_cols = [f"{i + 1}" for i in range(num_experiments)]
+    global_max_intensity = nmr_data[numeric_cols].values.max()
+    nmr_data[numeric_cols] = (nmr_data[numeric_cols] / global_max_intensity).round(6)
+
     intensities = calculate_intensities(nmr_data)
 
     time_points = np.arange(num_experiments, dtype=float)
