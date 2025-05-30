@@ -154,14 +154,39 @@ def extract_date_from_acqus(path: str) -> Optional[datetime]:
 
 
 def setup_paths(
-    nmr_folder_path: Path, start_at: int, exclude_exp: Optional[List[int]]
+    nmr_folder_path: Path,
+    start_at: int,
+    end_at: Optional[int] = None,
+    step: int = 1,
+    exclude_exp: Optional[List[int]] = None,
 ) -> Tuple[List[str], List[str]]:
     """Setup experiment paths and create output directory."""
     exp_folders = [d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
+    max_exp = len(exp_folders)
+
+    if start_at < 1:
+        raise ValueError(f"start_exp must be >= 1, got {start_at}")
+    if start_at > max_exp:
+        raise ValueError(f"start_exp ({start_at}) exceeds available experiments ({max_exp})")
+
+    end_at = end_at if end_at is not None else max_exp
+    end_at = min(end_at, max_exp)
+
+    if step < 1:
+        raise ValueError(f"step_exp must be >= 1, got {step}")
+
+    if end_at < start_at:
+        raise ValueError(f"end_exp ({end_at}) must be >= start_exp ({start_at})")
+
     exp_folder = [
-        exp for exp in range(start_at, len(exp_folders) + 1) if exp not in (exclude_exp or [])
+        exp for exp in range(start_at, end_at + 1, step) if exp not in (exclude_exp or [])
     ]
+
+    if not exp_folder:
+        raise ValueError(
+            f"No experiments selected (start: {start_at}, end: {end_at}, step: {step}, exclude: {exclude_exp})"
+        )
 
     spec_paths = [
         str(Path(nmr_folder_path) / str(exp) / "pdata" / "1" / "ascii-spec.txt")
@@ -371,7 +396,9 @@ def _process_data(
     nmr_folder_path: Path,
     echem_folder_name: str,
     start_at: int,
-    exclude_exp: Optional[List[int]],
+    end_at: Optional[int] = None,
+    step: int = 1,
+    exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
     Common processing logic for both local and Datalab data.
@@ -390,7 +417,9 @@ def _process_data(
         nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
         if nmr_dimension == "1D":
-            spec_paths, acqu_paths = setup_paths(nmr_folder_path, start_at, exclude_exp)
+            spec_paths, acqu_paths = setup_paths(
+                nmr_folder_path, start_at, end_at, step, exclude_exp
+            )
             time_points = process_time_data(acqu_paths)
             nmr_data, df, num_experiments = process_spectral_data(spec_paths, time_points)
 

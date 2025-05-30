@@ -54,6 +54,8 @@ class InsituBlock(DataBlock):
         "ppm1": 0.0,
         "ppm2": 0.0,
         "start_exp": 1,
+        "end_exp": None,
+        "step_exp": 1,
         "exclude_exp": None,
     }
 
@@ -139,6 +141,10 @@ class InsituBlock(DataBlock):
                 raise ValueError("Both NMR and Echem folder names are required")
 
             start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
+            end_exp = self.data.get("end_exp", self.defaults["end_exp"])
+            if end_exp is not None:
+                end_exp = int(end_exp)
+            step_exp = int(self.data.get("step_exp", self.defaults["step_exp"]))
             exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
             try:
@@ -147,6 +153,8 @@ class InsituBlock(DataBlock):
                     nmr_folder_name=nmr_folder_name,
                     echem_folder_name=echem_folder_name,
                     start_at=start_exp,
+                    end_at=end_exp,
+                    step=step_exp,
                     exclude_exp=exclude_exp,
                 )
 
@@ -172,6 +180,8 @@ class InsituBlock(DataBlock):
                         "ppm2": ppm2,
                         "file_id": self.data.get("file_id"),
                         "start_exp": start_exp,
+                        "end_exp": end_exp,
+                        "step_exp": step_exp,
                         "exclude_exp": exclude_exp,
                     },
                 }
@@ -194,8 +204,13 @@ class InsituBlock(DataBlock):
         current_params = {
             "file_id": self.data.get("file_id"),
             "start_exp": int(self.data.get("start_exp", self.defaults["start_exp"])),
+            "end_exp": self.data.get("end_exp", self.defaults["end_exp"]),
+            "step_exp": int(self.data.get("step_exp", self.defaults["step_exp"])),
             "exclude_exp": self.data.get("exclude_exp", self.defaults["exclude_exp"]),
         }
+
+        if current_params["end_exp"] is not None:
+            current_params["end_exp"] = int(current_params["end_exp"])
 
         for key in current_params:
             if params.get(key) != current_params[key]:
@@ -225,8 +240,7 @@ class InsituBlock(DataBlock):
 
             needs_reprocessing = self.should_reprocess_data()
             if needs_reprocessing:
-                if not self.process_and_store_data():
-                    return None, []
+                self.process_and_store_data()
             else:
                 self.data["processing_params"]["ppm1"] = float(
                     self.data.get("ppm1", self.defaults["ppm1"])
@@ -235,9 +249,12 @@ class InsituBlock(DataBlock):
                     self.data.get("ppm2", self.defaults["ppm2"])
                 )
 
+            if "nmr_data" not in self.data:
+                raise ValueError("No NMR data available after processing")
+
             plot_data = self._prepare_plot_data()
             if not plot_data:
-                return None, []
+                raise ValueError("Failed to prepare plot data")
 
             shared_ranges = self._create_shared_ranges(plot_data)
 
