@@ -9,9 +9,9 @@ import numpy as np
 from pydatalab.blocks.base import DataBlock
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
-from .nmr_insitu import process_local_data
-from .plotting import create_linked_insitu_plots, prepare_plot_data
-from .uvvis_utils import process_data
+from datalab_app_plugin_insitu.nmr_insitu import process_local_data
+from datalab_app_plugin_insitu.plotting import create_linked_insitu_plots, prepare_plot_data
+from datalab_app_plugin_insitu.uvvis_utils import process_uvvis_data
 
 
 class GenericInSituBlock(DataBlock, ABC):
@@ -26,44 +26,9 @@ class GenericInSituBlock(DataBlock, ABC):
     defaults: Dict[str, Any] = {}
 
     @abstractmethod
-    def _plot_function(self, file_path: str | Path | None = None, link_plots: bool = True):
+    def _plot_function(self, file_path: str | Path | None = None, link_plots: bool = False):
         """Subclasses must implement this method to generate the in-situ plot."""
         pass
-
-    def get_available_folders(self, file_path: Path) -> List[str]:
-        """Subclasses must implement this method to extract available folders from the zip file."""
-        pass
-
-    @property
-    def plot_functions(self):
-        return (lambda: self._plot_function(),)
-
-class InsituBlock(GenericInSituBlock):
-    blocktype = "insitu-nmr"
-    name = "NMR insitu"
-    description = """This datablock processes in situ NMR data from an input .zip file containing two specific directories:
-
-    - **NMR Data Directory**: Contains multiple Bruker in-situ NMR experiment datasets.
-    - **Echem Data Directory**: Contains echem data files in `.mpr` format.
-
-    If multiple echem experiments are present, their filenames must include `GCPL`.
-
-    """
-    accepted_file_extensions = (".zip",)
-    available_folders: List[str] = []
-    nmr_folder_name = ""
-    echem_folder_name = ""
-    folder_name = ""
-
-    defaults = {
-        "ppm1": 0.0,
-        "ppm2": 0.0,
-        "start_exp": 1,
-        "exclude_exp": None,
-    }
-
-    def _plot_function(self, file_path=None, link_plots=True):
-        return self.generate_insitu_nmr_plot(file_path=file_path, link_plots=link_plots)
 
     def get_available_folders(self, file_path: Path) -> List[str]:
         """
@@ -99,6 +64,43 @@ class InsituBlock(GenericInSituBlock):
             return folder_list
         except Exception as e:
             raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
+
+    @abstractmethod
+    def process_and_store_data(self, file_path: str | Path):
+        """Subclasses must implement this method to process and store data."""
+        # Would like to replace this with a process 2d data mehod and a process time series data method
+        pass
+
+    @property
+    def plot_functions(self):
+        return (lambda: self._plot_function(),)
+
+class InsituBlock(GenericInSituBlock):
+    blocktype = "insitu-nmr"
+    name = "NMR insitu"
+    description = """This datablock processes in situ NMR data from an input .zip file containing two specific directories:
+
+    - **NMR Data Directory**: Contains multiple Bruker in-situ NMR experiment datasets.
+    - **Echem Data Directory**: Contains echem data files in `.mpr` format.
+
+    If multiple echem experiments are present, their filenames must include `GCPL`.
+
+    """
+    accepted_file_extensions = (".zip",)
+    available_folders: List[str] = []
+    nmr_folder_name = ""
+    echem_folder_name = ""
+    folder_name = ""
+
+    defaults = {
+        "ppm1": 0.0,
+        "ppm2": 0.0,
+        "start_exp": 1,
+        "exclude_exp": None,
+    }
+
+    def _plot_function(self, file_path=None, link_plots=False):
+        return self.generate_insitu_nmr_plot(file_path=file_path, link_plots=link_plots)
 
     def process_and_store_data(self, file_path: str | Path):
         """
@@ -228,7 +230,7 @@ class InsituBlock(GenericInSituBlock):
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
 
         gp = create_linked_insitu_plots(plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots)
-
+        self.data["bokeh_gp"] = gp
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
 
 class UVVisInsituBlock(GenericInSituBlock):
@@ -251,52 +253,154 @@ class UVVisInsituBlock(GenericInSituBlock):
     defaults = {
         "start_exp": 1,
         "exclude_exp": None,
-        "wavelength_range": (0, 0),
-        "wavelengths": [],
         "echem_data": None,
         "metadata": None,
     }
 
-    def _plot_function(self, file_path=None, link_plots=True):
+    def _plot_function(self, file_path=None, link_plots=False):
         return self.generate_insitu_uvvis_plot(file_path=file_path, link_plots=link_plots)
 
-    def get_available_folders(self, file_path: Path) -> List[str]:
+    def process_and_store_data(self, file_path: str | Path):
         """
-        Extract and return a list of available folders from the zip file.
-
-        This method opens the zip file identified by file_id, extracts the main folder
-        and its subfolders, and returns a sorted list of subfolder names.
-
-        Parameters:
-            file_path: Path to the zip file.
-
-        Returns:
-            List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
+        Process all in situ UV-Vis and electrochemical data and store results.
+        This method is a wrapper for processing both UV-Vis and electrochemical data.
         """
+        self.process_and_2D_store_data(file_path)
+        self.process_and_store_time_series_data(self.echem_folder_name[0])
 
-        try:
-            if not file_path or not os.path.exists(file_path):
-                raise FileNotFoundError(f"File not found: {file_path}")
+    def process_and_store_time_series_data(self, echem_folder: str | Path):
+        """
+        Process electrochemical data from the specified folder and store it in the data block.
+        """
+        from .uvvis_utils import process_echem_data
 
-            folders = set()
-            with zipfile.ZipFile(file_path, "r") as zip_folder:
-                main_folder = zip_folder.namelist()[0].split("/")[0]
+        echem_folder = Path(echem_folder)
+        if not echem_folder.exists():
+            raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
 
-                for file in zip_folder.namelist():
-                    if file.startswith(main_folder + "/"):
-                        sub_path = file[len(main_folder) + 1 :]
-                        sub_folder = sub_path.split("/")[0] if "/" in sub_path else None
-                        if sub_folder:
-                            folders.add(sub_folder)
+        echem_data = process_echem_data(echem_folder)
+        self.data["Time_series_data"] = echem_data
+        min_time = min(echem_data["Time"])
+        max_time = max(echem_data["Time"])
+        self.data["time_series_range"] = {
+            "min_time": min_time,
+            "max_time": max_time,
+        }
 
-            folder_list = sorted(list(folders))
-
-            return folder_list
-        except Exception as e:
-            raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
-
-    def process_uvvis_data(self, file_path: str | Path):
+    def process_and_2D_store_data(self, file_path: str | Path):
         """
         Process in situ UV-Vis and electrochemical data and store results.
         """
-        
+        file_path = Path(file_path)
+        folders = self.get_available_folders(file_path)
+        self.data["available_folders"] = folders
+
+        # uvvis_folder_name = self.data.get("uvvis_folder_name")
+        # echem_folder_name = self.data.get("echem_folder_name")
+        # reference_folder_name = self.data.get("reference_folder_name")
+
+        echem_folder_name = self.echem_folder_name[0]
+        uvvis_folder_name = self.uvvis_folder_name[0]
+        reference_folder_name = self.reference_folder_name[0]
+
+        if not all([uvvis_folder_name, echem_folder_name]):
+            raise ValueError("Both UV-Vis and Echem folder names are required")
+
+        start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
+        exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
+
+        try:
+            result = process_uvvis_data(
+                uvvis_folder=uvvis_folder_name,
+                reference_folder=reference_folder_name,
+                echem_folder=echem_folder_name,
+                start_at=start_exp,
+                exclude_exp=exclude_exp,
+                # Needs to be made more generic
+                sample_file_extension=".Raw8.txt",
+                reference_file_extension=".Raw8.TXT",
+                scan_time=60.15
+            )
+
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Folder not found: {str(e)}")
+
+        except Exception as e:
+            raise RuntimeError(f"Error processing data: {str(e)}")
+
+        min_wavelength = min(result["wavelength"])
+        max_wavelength = max(result["wavelength"])
+
+        self.data.update(
+            {
+                "2D_data": result["2D data"],
+                "wavelength": result["wavelength"],
+                "time_of_scan": result["time_of_scan"],
+                "metadata": result["metadata"],
+                "processing_params": {
+                    "lambda1": min_wavelength,
+                    "lambda2": max_wavelength,
+                    "file_id": self.data.get("file_id"),
+                    "start_exp": start_exp,
+                    "exclude_exp": exclude_exp,
+                },
+            }
+        )
+
+    def generate_insitu_uvvis_plot(
+        self, file_path: str | Path | None = None, link_plots: bool = False
+    ):
+        """Generate combined NMR and electrochemical plots using the operando-style layout.
+
+        This method coordinates the creation of various plot components and combines
+        them into a unified visualization.
+
+        Parameters:
+            file_path: Path to the zip file containing NMR and electrochemical data,
+                rather than looking up in the database for attached files.
+
+        """
+        from .plotting_uvvis import create_linked_insitu_plots, prepare_uvvis_plot_data
+
+        if not file_path:
+            if "file_id" not in self.data:
+                raise ValueError("No file set in the DataBlock")
+            try:
+                from pydatalab.file_utils import get_file_info_by_id
+            except ImportError:
+                raise RuntimeError(
+                    "The `datalab-server[server]` extra must be installed to use this block with a database."
+                )
+
+            file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
+            file_path = Path(file_info["location"])
+
+        if Path(file_path).suffix.lower() not in self.accepted_file_extensions:
+            raise ValueError(
+                f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
+            )
+
+        # if self.should_reprocess_data():
+        #     self.process_and_store_data(file_path)
+
+        # else:
+        #     self.data["processing_params"]["ppm1"] = float(
+        #         self.data.get("ppm1", self.defaults["ppm1"])
+        #     )
+        #     self.data["processing_params"]["ppm2"] = float(
+        #         self.data.get("ppm2", self.defaults["ppm2"])
+        #     )
+
+        plot_data = prepare_uvvis_plot_data(
+            self.data["2D_data"], self.data["wavelength"], self.data["Time_series_data"], self.data["metadata"]
+        )
+
+        # ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
+        # ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
+
+        # ppm1 = float(self.data["processing_params"]["lambda1"])
+        # ppm2 = float(self.data["processing_params"]["lambda2"])
+
+        gp = create_linked_insitu_plots(plot_data, self.data["time_series_range"], self.data["metadata"]["time_range"], link_plots=link_plots)
+        self.data["bokeh_gp"] = gp
+        self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
