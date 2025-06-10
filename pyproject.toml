@@ -55,6 +55,7 @@ namespaces = true
 
 [project.entry-points.'pydatalab.apps.plugins']
 insitu_nmr = "datalab_app_plugin_insitu:InsituBlock"
+insitu_uvvis = "datalab_app_plugin_insitu:UVVisInsituBlock"
 
 [tool.setuptools.package-data]
 datalab_app_plugin_insitu = ["py.typed"]
