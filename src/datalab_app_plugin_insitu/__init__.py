@@ -1,4 +1,4 @@
-"""Datalab plugin for In Situ"""
+"""datalab plugin for in situ measurements."""
 
 from importlib.metadata import version
 
