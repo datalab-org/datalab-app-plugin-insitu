@@ -34,16 +34,21 @@ except ImportError:
     get_file_info_by_id = lambda *args, **kwargs: {}  # noqa
     LOGGER = logging.getLogger(__name__)
 
+__all__ = ("InsituBlock",)
+
 
 class InsituBlock(DataBlock):
-    blocktype = "insitu-nmr"
-    name = "NMR insitu"
-    description = """This datablock processes an input .zip file containing two specific directories:
+    """This datablock processes an input .zip file containing two specific directories:
 
     - **NMR Data Directory**: Contains multiple Bruker in-situ NMR experiment datasets.
     - **Echem Data Directory**: Contains echem data files in `.mpr` format.
     If multiple echem experiments are present, their filenames must include `GCPL`.
     """
+
+    blocktype = "insitu-nmr"
+    name = "NMR insitu"
+    description = __doc__
+
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
     nmr_folder_name = ""
@@ -787,3 +792,7 @@ class InsituBlock(DataBlock):
         )
 
         clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
+
+
+def __dir__():
+    return list(__all__)
