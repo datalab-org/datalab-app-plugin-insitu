@@ -1,4 +1,3 @@
-import logging
 import os
 import zipfile
 from pathlib import Path
@@ -20,19 +19,10 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
+from pydatalab.blocks.base import DataBlock
+from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 from .nmr_insitu import process_local_data
-
-try:
-    from pydatalab.blocks.base import DataBlock
-    from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
-    from pydatalab.file_utils import get_file_info_by_id
-    from pydatalab.logger import LOGGER
-except ImportError:
-    DataBlock = object
-    DATALAB_BOKEH_THEME = None
-    get_file_info_by_id = lambda *args, **kwargs: {}  # noqa
-    LOGGER = logging.getLogger(__name__)
 
 __all__ = ("InsituBlock",)
 
@@ -64,18 +54,11 @@ class InsituBlock(DataBlock):
         "exclude_exp": None,
     }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not hasattr(self.data, "get"):
-            self.data = {}
-        for key, value in self.defaults.items():
-            self.data.setdefault(key, value)
-
     @property
     def plot_functions(self):
         return (self.generate_insitu_nmr_plot,)
 
-    def get_available_folders(self) -> List[str]:
+    def get_available_folders(self, file_path: Path) -> List[str]:
         """
         Extract and return a list of available folders from the zip file.
 
@@ -85,18 +68,7 @@ class InsituBlock(DataBlock):
         Returns:
             List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
         """
-        if "file_id" not in self.data:
-            raise ValueError("No file_id in data")
-
-        main_folder = self.data.get("folder_name")
-
-        if not main_folder:
-            raise ValueError("Main folder name not specified")
-
         try:
-            file_info = get_file_info_by_id(self.data["file_id"])
-            file_path = file_info.get("location")
-
             if not file_path or not os.path.exists(file_path):
                 raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -117,7 +89,7 @@ class InsituBlock(DataBlock):
         except Exception as e:
             raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
 
-    def process_and_store_data(self) -> bool:
+    def process_and_store_data(self, file_path: str | Path) -> bool:
         """
         Process insitu NMR and electrochemical data and store results.
 
@@ -127,13 +99,12 @@ class InsituBlock(DataBlock):
         Returns:
             bool: True if processing was successful, False otherwise.
         """
-        folders = self.get_available_folders()
+        file_path = Path(file_path)
+        folders = self.get_available_folders(file_path)
         self.data["available_folders"] = folders
 
         nmr_folder_name = self.data.get("nmr_folder_name")
         echem_folder_name = self.data.get("echem_folder_name")
-
-        file_path = get_file_info_by_id(self.data["file_id"])["location"]
 
         if not nmr_folder_name or not echem_folder_name:
             raise ValueError("Both NMR and Echem folder names must be specified")
@@ -154,7 +125,7 @@ class InsituBlock(DataBlock):
 
             try:
                 result = process_local_data(
-                    folder_name=file_path,
+                    folder_name=str(file_path),
                     nmr_folder_name=nmr_folder_name,
                     echem_folder_name=echem_folder_name,
                     start_at=start_exp,
@@ -223,7 +194,9 @@ class InsituBlock(DataBlock):
 
         return False
 
-    def generate_insitu_nmr_plot(self) -> Tuple[pd.DataFrame, List[str]]:
+    def generate_insitu_nmr_plot(
+        self, file_path: str | Path | None = None
+    ) -> Tuple[pd.DataFrame, List[str]]:
         """
         Generate combined NMR and electrochemical plots using the operando-style layout.
 
@@ -233,19 +206,27 @@ class InsituBlock(DataBlock):
         Returns:
             Tuple[pd.DataFrame, List[str]]: Time data and status messages.
         """
-        if "file_id" not in self.data:
-            raise ValueError("No file set in the DataBlock")
+        if not file_path:
+            if "file_id" not in self.data:
+                raise ValueError("No file set in the DataBlock")
+
+            try:
+                from pydatalab.file_utils import get_file_info_by_id
+
+                file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
+                if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
+                    raise ValueError(
+                        f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
+                    )
+
+                file_path = Path(file_info["location"])
+            except Exception:
+                raise RuntimeError("Failed to retrieve file information. Please check the file ID.")
 
         try:
-            file_info = get_file_info_by_id(self.data["file_id"], update_if_live=True)
-            if Path(file_info["location"]).suffix.lower() not in self.accepted_file_extensions:
-                raise ValueError(
-                    f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
-                )
-
             needs_reprocessing = self.should_reprocess_data()
             if needs_reprocessing:
-                self.process_and_store_data()
+                self.process_and_store_data(file_path)
             else:
                 self.data["processing_params"]["ppm1"] = float(
                     self.data.get("ppm1", self.defaults["ppm1"])
