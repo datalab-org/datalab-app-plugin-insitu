@@ -172,7 +172,7 @@ class InsituBlock(DataBlock):
         return False
 
     def generate_insitu_nmr_plot(
-        self, file_path: str | Path | None = None, link_plots: bool = False
+        self, file_path: str | Path | None = None, link_plots: bool = True
     ):
         """Generate combined NMR and electrochemical plots using the operando-style layout.
 
@@ -182,6 +182,8 @@ class InsituBlock(DataBlock):
         Parameters:
             file_path: Optional path to the zip file containing NMR and echem data,
                 removing the need to lookup in a database.
+            link_plots: If True, links the plots for synchronized interaction, otherwise
+                time can be saved by leaving them unlinked.
 
         """
         if not file_path:
