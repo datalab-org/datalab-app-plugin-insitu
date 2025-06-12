@@ -6,7 +6,6 @@ from typing import List
 import numpy as np
 from pydatalab.blocks.base import DataBlock
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
-from pydatalab.file_utils import get_file_info_by_id
 
 from datalab_app_plugin_insitu.plotting import create_linked_insitu_plots, prepare_plot_data
 
@@ -95,8 +94,6 @@ class InsituBlock(DataBlock):
 
         nmr_folder_name = self.data.get("nmr_folder_name")
         echem_folder_name = self.data.get("echem_folder_name")
-
-        file_path = get_file_info_by_id(self.data["file_id"])["location"]
 
         if not all([nmr_folder_name, echem_folder_name]):
             raise ValueError("Both NMR and Echem folder names must be specified")
@@ -201,32 +198,45 @@ class InsituBlock(DataBlock):
                     )
 
                 file_path = Path(file_info["location"])
+            except ImportError:
+                raise RuntimeError(
+                    """The `datalab-server[server]` extra must be installed to use this block with a database,
+                    and this code should be used within a running datalab instance. Manually pass a file path
+                    if you are not expecting this."""
+                )
             except Exception:
                 raise RuntimeError("Failed to retrieve file information. Please check the file ID.")
 
-        try:
-            needs_reprocessing = self.should_reprocess_data()
-            if needs_reprocessing:
-                self.process_and_store_data(file_path)
-            else:
-                self.data["processing_params"]["ppm1"] = float(
-                    self.data.get("ppm1", self.defaults["ppm1"])
-                )
-                self.data["processing_params"]["ppm2"] = float(
-                    self.data.get("ppm2", self.defaults["ppm2"])
-                )
-
-            if "nmr_data" not in self.data:
-                raise ValueError("No NMR data available after processing")
-
-            plot_data = prepare_plot_data(
-                self.data["nmr_data"], self.data["echem_data"], self.data["metadata"]
+        file_path = Path(file_path)
+        extension: str = file_path.suffix.lower()
+        if extension not in self.accepted_file_extensions:  # type: ignore[union-attr]
+            raise ValueError(
+                f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
-            ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
-            ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
-            gp = create_linked_insitu_plots(
-                plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots
+        needs_reprocessing = self.should_reprocess_data()
+        if needs_reprocessing:
+            self.process_and_store_data(file_path)
+        else:
+            self.data["processing_params"]["ppm1"] = float(
+                self.data.get("ppm1", self.defaults["ppm1"])
+            )
+            self.data["processing_params"]["ppm2"] = float(
+                self.data.get("ppm2", self.defaults["ppm2"])
             )
 
-            self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
+
+        if "nmr_data" not in self.data:
+            raise ValueError("No NMR data available after processing")
+
+        plot_data = prepare_plot_data(
+            self.data["nmr_data"], self.data["echem_data"], self.data["metadata"]
+        )
+
+        ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
+        ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
+        gp = create_linked_insitu_plots(
+            plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots
+        )
+
+        self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
