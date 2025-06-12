@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
 import numpy as np
+import bokeh.embed
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
 from bokeh.models import (
@@ -14,6 +15,8 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
+
+from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 
 def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
@@ -38,7 +41,7 @@ def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
     grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
 
-    return gp
+    return bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
 
 
 def prepare_plot_data(nmr_data, echem_data, metadata) -> Optional[Dict[str, Any]]:
