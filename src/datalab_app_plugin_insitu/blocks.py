@@ -2,7 +2,7 @@ import os
 import zipfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import bokeh.embed
 import numpy as np
@@ -11,7 +11,7 @@ from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 from datalab_app_plugin_insitu.nmr_insitu import process_local_data
 from datalab_app_plugin_insitu.plotting import create_linked_insitu_plots, prepare_plot_data
-from datalab_app_plugin_insitu.uvvis_utils import process_uvvis_data
+from datalab_app_plugin_insitu.uvvis_utils import process_local_uvvis_data
 
 
 class GenericInSituBlock(DataBlock, ABC):
@@ -19,6 +19,7 @@ class GenericInSituBlock(DataBlock, ABC):
     Abstract base class for an in-situ data block.
     Manages data loading, processing, parameter handling, and plotting.
     """
+
     blocktype: str = "generic-insitu"
     name: str = "Generic Data Block"
     description: str = "A base class for in-situ data processing blocks."
@@ -74,6 +75,7 @@ class GenericInSituBlock(DataBlock, ABC):
     @property
     def plot_functions(self):
         return (lambda: self._plot_function(),)
+
 
 class InsituBlock(GenericInSituBlock):
     blocktype = "insitu-nmr"
@@ -230,11 +232,11 @@ class InsituBlock(GenericInSituBlock):
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
 
         gp = create_linked_insitu_plots(plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots)
-        self.data["bokeh_gp"] = gp
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
 
+
 class UVVisInsituBlock(GenericInSituBlock):
-    blocktype = "uvvis-insitu"
+    blocktype = "insitu-uvvis"
     name = "UV-Vis insitu"
     description = """This datablock processes in situ UV-Vis data from an input .zip file containing two specific directories:
 
@@ -260,21 +262,74 @@ class UVVisInsituBlock(GenericInSituBlock):
     def _plot_function(self, file_path=None, link_plots=False):
         return self.generate_insitu_uvvis_plot(file_path=file_path, link_plots=link_plots)
 
-    def process_and_store_data(self, file_path: str | Path):
+    def process_and_store_data(self, file_path: str | Path, echem_folder_name: str | Path = None):
         """
         Process all in situ UV-Vis and electrochemical data and store results.
         This method is a wrapper for processing both UV-Vis and electrochemical data.
         """
-        self.process_and_2D_store_data(file_path)
-        self.process_and_store_time_series_data(self.echem_folder_name[0])
+        file_path = Path(file_path)
+        folders = self.get_available_folders(file_path)
+        self.data["available_folders"] = folders
 
-    def process_and_store_time_series_data(self, echem_folder: str | Path):
+        uvvis_folder_name = Path(self.data.get("uvvis_folder_name"))
+        if not uvvis_folder_name:
+            raise ValueError("UV-Vis folder name is required")
+        reference_folder_name = Path(self.data.get("uvvis_reference_folder_name"))
+        if not reference_folder_name:
+            raise ValueError("UV-Vis folder name is required")
+        echem_folder_name = Path(self.data.get("echem_folder_name"))
+        if not echem_folder_name:
+            raise ValueError("Echem folder name is required")
+
+        start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
+        exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
+
+        try:
+            data = process_local_uvvis_data(
+                folder_name=file_path,
+                uvvis_folder=uvvis_folder_name,
+                reference_folder=reference_folder_name,
+                echem_folder=echem_folder_name,
+                start_at=start_exp,
+                exclude_exp=exclude_exp,
+                # Needs to be made more generic
+                sample_file_extension=".Raw8.txt",
+                reference_file_extension=".Raw8.TXT",
+                scan_time=60.15,
+            )
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Folder not found: {str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"Error processing data: {str(e)}")
+
+        return data
+        # min_wavelength = min(data["wavelength"])
+        # max_wavelength = max(data["wavelength"])
+
+        # self.data.update(
+        #     {
+        #         "2D_data": data["2D data"],
+        #         "wavelength": data["wavelength"],
+        #         "time_of_scan": data["time_of_scan"],
+        #         "metadata": data["metadata"],
+        #         "processing_params": {
+        #             "lambda1": min_wavelength,
+        #             "lambda2": max_wavelength,
+        #             "file_id": self.data.get("file_id"),
+        #             "start_exp": start_exp,
+        #             "exclude_exp": exclude_exp,
+        #         },
+        #     }
+        # )
+
+    def process_and_store_time_series_data(self, echem_folder_name: str | Path = None):
         """
         Process electrochemical data from the specified folder and store it in the data block.
         """
         from .uvvis_utils import process_echem_data
 
-        echem_folder = Path(echem_folder)
+        if echem_folder_name is None:
+            echem_folder = Path(self.data.get("echem_folder_name"))
         if not echem_folder.exists():
             raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
 
@@ -292,16 +347,17 @@ class UVVisInsituBlock(GenericInSituBlock):
         Process in situ UV-Vis and electrochemical data and store results.
         """
         file_path = Path(file_path)
+        print(file_path)
         folders = self.get_available_folders(file_path)
         self.data["available_folders"] = folders
 
-        # uvvis_folder_name = self.data.get("uvvis_folder_name")
-        # echem_folder_name = self.data.get("echem_folder_name")
-        # reference_folder_name = self.data.get("reference_folder_name")
+        uvvis_folder_name = Path(self.data.get("uvvis_folder_name"))
+        echem_folder_name = Path(self.data.get("echem_folder_name"))
+        reference_folder_name = Path(self.data.get("uvvis_reference_folder_name"))
 
-        echem_folder_name = self.echem_folder_name[0]
-        uvvis_folder_name = self.uvvis_folder_name[0]
-        reference_folder_name = self.reference_folder_name[0]
+        # echem_folder_name = self.echem_folder_name[0]
+        # uvvis_folder_name = self.uvvis_folder_name[0]
+        # reference_folder_name = self.reference_folder_name[0]
 
         if not all([uvvis_folder_name, echem_folder_name]):
             raise ValueError("Both UV-Vis and Echem folder names are required")
@@ -310,16 +366,16 @@ class UVVisInsituBlock(GenericInSituBlock):
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
         try:
-            result = process_uvvis_data(
+            result = process_local_uvvis_data(
+                folder_name=file_path,
                 uvvis_folder=uvvis_folder_name,
                 reference_folder=reference_folder_name,
-                echem_folder=echem_folder_name,
                 start_at=start_exp,
                 exclude_exp=exclude_exp,
                 # Needs to be made more generic
                 sample_file_extension=".Raw8.txt",
                 reference_file_extension=".Raw8.TXT",
-                scan_time=60.15
+                scan_time=60.15,
             )
 
         except FileNotFoundError as e:
@@ -346,6 +402,27 @@ class UVVisInsituBlock(GenericInSituBlock):
                 },
             }
         )
+
+    def should_reprocess_data(self) -> bool:
+        """
+        Determine if data needs to be reprocessed based on parameter changes.
+        PPM changes should not trigger reprocessing.
+        """
+        if "processing_params" not in self.data or "2D_data" not in self.data:
+            return True
+
+        params = self.data["processing_params"]
+        current_params = {
+            "file_id": self.data.get("file_id"),
+            "start_exp": int(self.data.get("start_exp", self.defaults["start_exp"])),
+            "exclude_exp": self.data.get("exclude_exp", self.defaults["exclude_exp"]),
+        }
+
+        for key in current_params:
+            if params.get(key) != current_params[key]:
+                return True
+
+        return False
 
     def generate_insitu_uvvis_plot(
         self, file_path: str | Path | None = None, link_plots: bool = False
@@ -380,6 +457,7 @@ class UVVisInsituBlock(GenericInSituBlock):
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
+        data = self.process_and_store_data(file_path)
         # if self.should_reprocess_data():
         #     self.process_and_store_data(file_path)
 
@@ -392,7 +470,11 @@ class UVVisInsituBlock(GenericInSituBlock):
         #     )
 
         plot_data = prepare_uvvis_plot_data(
-            self.data["2D_data"], self.data["wavelength"], self.data["Time_series_data"], self.data["metadata"]
+            # self.data["2D_data"], self.data["wavelength"], self.data["Time_series_data"], self.data["metadata"]
+            data["2D_data"],
+            data["wavelength"],
+            data["Time_series_data"],
+            data["metadata"],
         )
 
         # ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
@@ -401,6 +483,10 @@ class UVVisInsituBlock(GenericInSituBlock):
         # ppm1 = float(self.data["processing_params"]["lambda1"])
         # ppm2 = float(self.data["processing_params"]["lambda2"])
 
-        gp = create_linked_insitu_plots(plot_data, self.data["time_series_range"], self.data["metadata"]["time_range"], link_plots=link_plots)
-        self.data["bokeh_gp"] = gp
+        gp = create_linked_insitu_plots(
+            plot_data,
+            data["Time_series_data"]["metadata"],
+            data["metadata"]["time_range"],
+            link_plots=link_plots,
+        )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)

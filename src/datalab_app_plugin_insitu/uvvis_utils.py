@@ -1,9 +1,13 @@
+import tempfile
+import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from navani import echem as ec
+
+from datalab_app_plugin_insitu.utils import _find_folder_path
 
 
 def parse_uvvis_txt(filename: Path) -> pd.DataFrame:
@@ -37,6 +41,80 @@ def find_absorbance(data_df, reference_df):
     absorbance_data = pd.DataFrame({"Wavelength": data_df["Wavelength"], "Absorbance": absorbance})
     return absorbance_data
 
+
+def process_local_uvvis_data(
+    folder_name: Path,
+    uvvis_folder: str,
+    reference_folder: str,
+    echem_folder: str,
+    start_at: int = 1,
+    sample_file_extension: str = ".Raw8.txt",
+    reference_file_extension: str = ".Raw8.TXT",
+    exclude_exp: Optional[List[int]] = None,
+    scan_time: Optional[float] = None,
+) -> Dict:
+    # Check if the folder exists
+    if not all([uvvis_folder, reference_folder]):
+        raise ValueError("Both UV-Vis and reference folders must be specified.")
+
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            if folder_name.suffix == ".zip":
+                with zipfile.ZipFile(folder_name, "r") as zip_ref:
+                    members = [
+                        m for m in zip_ref.namelist() if not ("__MACOSX" in m or m.startswith("."))
+                    ]
+                    for member in members:
+                        try:
+                            zip_ref.extract(member, tmpdir)
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to extract {member}: {str(e)}")
+                base_path = Path(tmpdir)
+            else:
+                base_path = Path(folder_name)
+
+            # Find the relative paths to the UV-Vis and reference folders
+            uvvis_folder = _find_folder_path(base_path, uvvis_folder)
+            reference_folder = _find_folder_path(base_path, reference_folder)
+            echem_folder = _find_folder_path(base_path, echem_folder)
+            # Check there is one file in the reference folder with the right extension - if so parse it for the reference scan
+            if not reference_folder.exists():
+                raise FileNotFoundError(f"Reference folder not found: {reference_folder}")
+            if not reference_folder.is_dir():
+                raise ValueError(f"Reference folder is not a directory: {reference_folder}")
+
+            # Grab all the files in the uvvis folder with the right extension
+            if not uvvis_folder.exists():
+                raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_folder}")
+
+            if not uvvis_folder.is_dir():
+                raise ValueError(f"UV-Vis folder is not a directory: {uvvis_folder}")
+
+            if not echem_folder.exists():
+                raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
+            if not echem_folder.is_dir():
+                raise ValueError(f"Echem folder is not a directory: {echem_folder}")
+
+            uvvis_data = process_uvvis_data(
+                uvvis_folder,
+                reference_folder,
+                start_at,
+                sample_file_extension,
+                reference_file_extension,
+                exclude_exp,
+                scan_time,
+            )
+
+            echem_data = process_echem_data(echem_folder)
+            # Combine the UV-Vis and Echem data into a single dictionary
+            uvvis_data["Time_series_data"] = echem_data
+
+            return uvvis_data
+
+    except Exception as e:
+        raise RuntimeError(f"Error Unzipping and finding filepaths to data: {str(e)}")
+
+
 def process_echem_data(echem_folder: Path) -> Dict:
     """
     Processes Echem data from a specified file.
@@ -62,12 +140,25 @@ def process_echem_data(echem_folder: Path) -> Dict:
 
     else:
         raise ValueError(f"Echem folder not found: {echem_folder}")
-    return echem_data
+
+    min_time = echem_data["Time"].min()
+    max_time = echem_data["Time"].max()
+
+    return_dict = {
+        "time": echem_data["Time"],
+        "Voltage": echem_data["Voltage"],
+        "metadata": {
+            "min_time": min_time,
+            "max_time": max_time,
+        },
+    }
+
+    return return_dict
+
 
 def process_uvvis_data(
     uvvis_folder: Path,
     reference_folder: Path,
-    echem_folder: Path,
     start_at: int = 1,
     sample_file_extension: str = ".Raw8.txt",
     reference_file_extension: str = ".Raw8.TXT",
@@ -88,29 +179,21 @@ def process_uvvis_data(
     Returns:
         Dict: Dictionary containing two keys, the processed UV-Vis data [2D data] and Echem data [echem data]
     """
-    # Check there is one file in the reference folder with the right extension - if so parse it for the reference scan
-    print(type(reference_folder))
-    if not reference_folder.exists():
-        raise FileNotFoundError(f"Reference folder not found: {reference_folder}")
-    if not reference_folder.is_dir():
-        raise ValueError(f"Reference folder is not a directory: {reference_folder}")
+
     reference_files = list(reference_folder.glob("*" + reference_file_extension))
     if len(reference_files) != 1:
+        print(f"Reference files found: {len(reference_files)}")
+        print(f"Reference folder: {reference_folder}")
         raise ValueError(
             f"Reference folder should contain exactly one {reference_file_extension} file: {reference_folder}"
         )
+
     reference_file = reference_files[0]
     reference_df = parse_uvvis_txt(reference_file)
     wavelength = reference_df["Wavelength"].values
 
     # Calculate absorbance for all the sample files
     # Grab all the files in the uvvis folder with the right extension
-    if not uvvis_folder.exists():
-        raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_folder}")
-
-    if not uvvis_folder.is_dir():
-        raise ValueError(f"UV-Vis folder is not a directory: {uvvis_folder}")
-
     all_files = list(uvvis_folder.glob("*" + sample_file_extension))
 
     # Grab file numbers for sorting - this might need to be made more flexible - currently assumes numbers are at the end of the filename
@@ -132,10 +215,13 @@ def process_uvvis_data(
         absorbance = find_absorbance(df, reference_df)["Absorbance"].values
         X.loc[idx, X.columns] = absorbance
         if min(absorbance) < -0.1:
-            print(f"Warning: Negative absorbance values found in file {idx}. This may indicate an issue with the data.")
+            print(
+                f"Warning: Negative absorbance values found in file {idx}. This may indicate an issue with the data."
+            )
 
     # Remove index if it is in the exclude list
     from collections.abc import Iterable
+
     if exclude_exp is not None:
         if not isinstance(exclude_exp, Iterable):
             raise ValueError("exclude_exp should be an iterable of indices to exclude.")
@@ -175,10 +261,7 @@ def process_uvvis_data(
 
     print(X.index)
     metadata = {
-       "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
-            "num_experiments": len(X.index),
-        }
-    return {"2D data": X,
-            "wavelength": wavelength,
-            "metadata": metadata,
-            "time_of_scan": X.index}
+        "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
+        "num_experiments": len(X.index),
+    }
+    return {"2D_data": X, "wavelength": wavelength, "metadata": metadata, "time_of_scan": X.index}

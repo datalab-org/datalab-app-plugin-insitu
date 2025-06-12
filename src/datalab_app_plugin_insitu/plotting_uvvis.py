@@ -1,8 +1,8 @@
 # Plotting UV-Vis module
-import pandas as pd
 from typing import Any, Dict, Optional
-import numpy as np
 
+import numpy as np
+import pandas as pd
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
 from bokeh.models import (
@@ -17,7 +17,10 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 
-def create_linked_insitu_plots(plot_data, time_series_time_range, heatmap_time_range, link_plots: bool = False):
+
+def create_linked_insitu_plots(
+    plot_data, time_series_time_range, heatmap_time_range, link_plots: bool = False
+):
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
     heatmap_figure = _create_heatmap_figure(plot_data, shared_ranges)
     nmrplot_figure = _create_top_line_figure(plot_data, shared_ranges)
@@ -41,10 +44,10 @@ def create_linked_insitu_plots(plot_data, time_series_time_range, heatmap_time_r
 
     return gp
 
-def prepare_uvvis_plot_data(two_d_data: pd.DataFrame,
-                            wavelength: pd.Series,
-                            echem_data,
-                            metadata) -> Optional[Dict[str, Any]]:
+
+def prepare_uvvis_plot_data(
+    two_d_data: pd.DataFrame, wavelength: pd.Series, echem_data, metadata
+) -> Optional[Dict[str, Any]]:
     """
     Need heatmap data in two forms:
     1. Two-dimensional array for numpy.
@@ -61,12 +64,12 @@ def prepare_uvvis_plot_data(two_d_data: pd.DataFrame,
 
     echem_data = {
         "Voltage": echem_data["Voltage"].values,
-        "time": echem_data["Time"].values,
+        "time": echem_data["time"].values,
     }
 
     return {
-        "heatmap x_values": wavelength, #ppm_values
-        "heatmap y_values": two_d_data.index, #not in ben Cs code
+        "heatmap x_values": wavelength,  # ppm_values
+        "heatmap y_values": two_d_data.index,  # not in ben Cs code
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
@@ -76,6 +79,7 @@ def prepare_uvvis_plot_data(two_d_data: pd.DataFrame,
         "intensity_max": intensity_max,
         "echem_data": echem_data,
     }
+
 
 def _create_shared_ranges(
     plot_data: Dict[str, Any],
@@ -93,15 +97,15 @@ def _create_shared_ranges(
     """
     overall_min_time = min(time_series_time_range["min_time"], heatmap_time_range["min_time"])
     overall_max_time = max(time_series_time_range["max_time"], heatmap_time_range["max_time"])
-    time_range = {"min_time": overall_min_time,
-                  "max_time": overall_max_time}
+    time_range = {"min_time": overall_min_time, "max_time": overall_max_time}
     intensity_min = np.min(plot_data["intensity_matrix"])
     intensity_max = np.max(plot_data["intensity_matrix"])
     print(f"Intensity range: {intensity_min} to {intensity_max}")
     shared_y_range = Range1d(start=time_range["min_time"], end=time_range["max_time"])
 
-
-    shared_x_range = Range1d(start=min(plot_data["heatmap x_values"]), end=max(plot_data["heatmap x_values"]))
+    shared_x_range = Range1d(
+        start=min(plot_data["heatmap x_values"]), end=max(plot_data["heatmap x_values"])
+    )
 
     intensity_range = Range1d(start=intensity_min, end=intensity_max)
 
@@ -110,6 +114,7 @@ def _create_shared_ranges(
         "shared_x_range": shared_x_range,
         "intensity_range": intensity_range,
     }
+
 
 def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
@@ -161,7 +166,8 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
                 "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
                 "y": times,
                 "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
-                "height": [(time_range["max_time"] - time_range["min_time"]) / time_points] * time_points,
+                "height": [(time_range["max_time"] - time_range["min_time"]) / time_points]
+                * time_points,
                 "exp_num": experiment_numbers,
             }
         )
@@ -193,6 +199,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
     return heatmap_figure
 
+
 def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
     Create the NMR line plot figure component.
@@ -209,7 +216,9 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
 
     tools = "pan,wheel_zoom,box_zoom,reset,save"
 
-    heatmap_x_value_list = heatmap_x_values.tolist() if isinstance(heatmap_x_values, np.ndarray) else heatmap_x_values
+    heatmap_x_value_list = (
+        heatmap_x_values.tolist() if isinstance(heatmap_x_values, np.ndarray) else heatmap_x_values
+    )
     intensity_list = (
         first_spectrum_intensities.tolist()
         if isinstance(first_spectrum_intensities, np.ndarray)
@@ -259,6 +268,7 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
     plot_data["line_source"] = line_source
     plot_data["clicked_spectra_source"] = clicked_spectra_source
     return plot_figure
+
 
 def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
@@ -517,4 +527,3 @@ def _link_plots(
     )
 
     clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
-
