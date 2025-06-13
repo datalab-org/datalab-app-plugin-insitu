@@ -88,22 +88,8 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
-    "datalab-server ~= 0.5",
+    "datalab-server > 0.5.3",
 ]
 
-[tool.coverage.run]
-include = ["src/*"]
-parallel = true
-branch = true
-
-[tool.coverage.paths]
-source = ["src/"]
-
-[tool.coverage.report]
-skip_covered = true
-show_missing = true
-exclude_lines = [
-    '^\s*assert False(,|$)',
-    'if typing.TYPE_CHECKING:',
-    '^\s*@overload( |$)',
-]
+[tool.pytest.ini_options]
+addopts = "--cov-report=term --cov-report=xml --cov ./src/datalab_app_plugin_insitu"
