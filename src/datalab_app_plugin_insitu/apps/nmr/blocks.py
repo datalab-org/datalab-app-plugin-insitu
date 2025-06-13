@@ -185,7 +185,6 @@ class InsituBlock(DataBlock):
                 time can be saved by leaving them unlinked.
 
         """
-        import bokeh.embed
         if not file_path:
             if "file_id" not in self.data:
                 raise ValueError("No file set in the DataBlock")
@@ -236,4 +235,6 @@ class InsituBlock(DataBlock):
 
         ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
-        self.data["bokeh_plot_data"] = create_linked_insitu_plots(plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots)
+        self.data["bokeh_plot_data"] = create_linked_insitu_plots(
+            plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots
+        )

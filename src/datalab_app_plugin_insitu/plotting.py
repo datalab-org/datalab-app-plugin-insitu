@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
-import numpy as np
 import bokeh.embed
+import numpy as np
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
 from bokeh.models import (
@@ -15,7 +15,6 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
-
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 
