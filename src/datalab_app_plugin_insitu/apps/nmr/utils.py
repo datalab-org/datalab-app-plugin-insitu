@@ -2,7 +2,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import nmrglue as ng
 import numpy as np
@@ -336,17 +336,34 @@ def process_echem_data(
         raise RuntimeError(f"Error in electrochemical data processing: {str(e)}")
 
 
+def compress_1d_spectrum(
+    spectrum: np.ndarray,
+    x_values: np.ndarray | None = None,
+    n_target: int = 100,
+    method: Literal["strided", "max_window"] = "strided",
+) -> np.ndarray:
+    """Given a 1D spectrum with N points, reduce the array to
+    near `n_target` points and provide either the indices or values
+    (if `x_values` is provided) of the returned spectrum.
+
+    Parameters:
+        spectrum: The 1D spectrum to reduce.
+        x_values: Optional x values to return for the chosen points.
+        method: The method to use for compression.
+
+    Returns:
+        (2, n) numpy array of indices and spectrum values.
+
+    """
+    raise NotImplementedError
+
+
 def prepare_for_bokeh(
     nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame], num_experiments: int
 ) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
 
-    all_intensities = []
-    for i in range(len(df)):
-        spectrum_intensities = nmr_data[str(i + 1)].values
-        all_intensities.extend(spectrum_intensities)
-
-    global_max_intensity = float(max(all_intensities))
+    global_max_intensity = max(nmr_data[str(i + 1)].max() for i in range(num_experiments))
 
     result = {
         "metadata": {
@@ -360,6 +377,7 @@ def prepare_for_bokeh(
                 {
                     "time": float(df["time"][i]),
                     "intensity": nmr_data[str(i + 1)].tolist(),
+                    # "intensity": compress_1d_spectrum(nmr_data[str(i + 1)].values, n_target=100, method="max_window"),
                     "experiment_number": i + 1,
                 }
                 for i in range(len(df))
