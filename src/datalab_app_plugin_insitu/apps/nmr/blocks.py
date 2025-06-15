@@ -20,7 +20,7 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 from pydatalab.blocks.base import DataBlock
-from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
+from pydatalab.bokeh_plots import COLORS, DATALAB_BOKEH_THEME
 
 from .nmr_insitu import process_local_data
 
@@ -140,8 +140,7 @@ class InsituBlock(DataBlock):
             except Exception as e:
                 raise RuntimeError(f"Error processing data: {str(e)}")
 
-            nmr_data = result["nmr_spectra"]
-            ppm_values = np.array(nmr_data.get("ppm", []))
+            ppm_values = result["nmr_spectra"]["ppm"]
 
             ppm1 = self.data["ppm1"] = min(ppm_values)
             ppm2 = self.data["ppm2"] = max(ppm_values)
@@ -268,7 +267,7 @@ class InsituBlock(DataBlock):
             return self.data.get("time_data"), ["Plot successfully generated"]
 
         except Exception as e:
-            raise RuntimeError(f"Failed to generate insitu NMR plot: {str(e)}")
+            raise RuntimeError(f"Failed to generate insitu NMR plot: {str(e)}") from e
 
     def _prepare_plot_data(self) -> Optional[Dict[str, Any]]:
         """
@@ -292,19 +291,27 @@ class InsituBlock(DataBlock):
                 raise ValueError("No spectra found in NMR data")
 
             try:
-                spectra_intensities = [
-                    np.array(spectrum["intensity"]).tolist() for spectrum in spectra
-                ]
+                spectra_intensities = [np.array(spectrum["intensity"]) for spectrum in spectra]
+
+                heatmap_stride = len(spectra_intensities[0].tolist()) // 500
+                heatmap_indices = np.arange(0, len(spectra_intensities[0].tolist()), heatmap_stride)
 
                 intensity_matrix = np.array(
-                    [np.array(spectrum["intensity"]) for spectrum in spectra]
+                    [np.array(spectrum["intensity"])[heatmap_indices] for spectrum in spectra]
                 )
 
+                spectra_stride = len(spectra_intensities[0]) // 1000
+                spectra_intensities = [
+                    np.array(spectrum)[np.arange(0, len(spectrum), spectra_stride)]
+                    for spectrum in spectra_intensities
+                ]
+                ppm_values = ppm_values[np.arange(0, len(ppm_values), spectra_stride)]
+
             except Exception as e:
-                raise ValueError(f"Error processing spectrum intensities: {e}")
+                raise ValueError(f"Error processing spectrum intensities: {e}") from e
 
             time_range = metadata["time_range"]
-            first_spectrum_intensities = np.array(spectra[0]["intensity"])
+            first_spectrum_intensities = spectra_intensities[0]
 
             intensity_min = np.min(intensity_matrix)
             intensity_max = np.max(intensity_matrix)
@@ -376,8 +383,8 @@ class InsituBlock(DataBlock):
         ppm_values = plot_data["ppm_values"]
         intensity_matrix = plot_data["intensity_matrix"]
         time_range = plot_data["time_range"]
-        intensity_min = plot_data["intensity_min"]
-        intensity_max = plot_data["intensity_max"]
+        intensity_min = 0
+        intensity_max = 1
 
         tools = "pan,wheel_zoom,box_zoom,reset,save"
 
@@ -493,8 +500,8 @@ class InsituBlock(DataBlock):
             x="δ (ppm)",
             y="intensity",
             source=line_source,
-            line_width=1,
-            color="blue",
+            line_width=2,
+            color=COLORS[-1],
             legend_label="Reference",
         )
 
@@ -503,7 +510,7 @@ class InsituBlock(DataBlock):
             ys="intensity",
             source=clicked_spectra_source,
             line_color="color",
-            line_width=1,
+            line_width=2,
             legend_field="exp_index",
         )
 
@@ -559,6 +566,7 @@ class InsituBlock(DataBlock):
                 x="voltage",
                 y="time",
                 source=echem_source,
+                color="black",
             )
 
             hover_tool = HoverTool(
@@ -598,18 +606,7 @@ class InsituBlock(DataBlock):
         intensity_matrix = plot_data["intensity_matrix"]
         heatmap_source = plot_data.get("heatmap_source")
 
-        colors = [
-            "red",
-            "green",
-            "orange",
-            "purple",
-            "brown",
-            "darkblue",
-            "teal",
-            "magenta",
-            "olive",
-            "navy",
-        ]
+        colors = COLORS
 
         crosshair = CrosshairTool(dimensions="width", line_color="grey")
         heatmap_figure.add_tools(crosshair)
@@ -656,7 +653,7 @@ class InsituBlock(DataBlock):
                     clicked_spectra_source=clicked_spectra_source,
                     spectra_intensities=spectra_intensities,
                     ppm_values=ppm_values.tolist(),
-                    colors=colors,
+                    colors=colors[: len(colors) - 1],
                 ),
                 code="""
                         const indices = cb_obj.indices;
@@ -693,54 +690,54 @@ class InsituBlock(DataBlock):
 
             heatmap_source.selected.js_on_change("indices", tap_callback)
 
-        heatmap_figure.x_range.js_on_change(
-            "start",
-            CustomJS(
-                args=dict(
-                    color_mapper=heatmap_figure.select_one(LinearColorMapper),
-                    intensity_matrix=intensity_matrix.tolist(),
-                    ppm_array=ppm_values.tolist(),
-                    global_min=np.min(intensity_matrix),
-                    global_max=np.max(intensity_matrix),
-                ),
-                code="""
-                        const start_index = ppm_array.findIndex(ppm => ppm <= cb_obj.end);
-                        const end_index = ppm_array.findIndex(ppm => ppm <= cb_obj.start);
+        # heatmap_figure.x_range.js_on_change(
+        #    "start",
+        #    CustomJS(
+        #        args=dict(
+        #            color_mapper=heatmap_figure.select_one(LinearColorMapper),
+        #            intensity_matrix=intensity_matrix.tolist(),
+        #            ppm_array=ppm_values.tolist(),
+        #            global_min=np.min(intensity_matrix),
+        #            global_max=np.max(intensity_matrix),
+        #        ),
+        #        code="""
+        #                const start_index = ppm_array.findIndex(ppm => ppm <= cb_obj.end);
+        #                const end_index = ppm_array.findIndex(ppm => ppm <= cb_obj.start);
 
-                        if (start_index < 0 || end_index < 0 || start_index >= ppm_array.length || end_index >= ppm_array.length) {
-                            color_mapper.low = global_min;
-                            color_mapper.high = global_max;
-                            return;
-                        }
+        #                if (start_index < 0 || end_index < 0 || start_index >= ppm_array.length || end_index >= ppm_array.length) {
+        #                    color_mapper.low = global_min;
+        #                    color_mapper.high = global_max;
+        #                    return;
+        #                }
 
-                        if (Math.abs(end_index - start_index) < 5) {
-                            return;
-                        }
+        #                if (Math.abs(end_index - start_index) < 5) {
+        #                    return;
+        #                }
 
-                        let min_intensity = Infinity;
-                        let max_intensity = -Infinity;
+        #                let min_intensity = Infinity;
+        #                let max_intensity = -Infinity;
 
-                        for (let i = 0; i < intensity_matrix.length; i++) {
-                            for (let j = Math.min(start_index, end_index); j <= Math.max(start_index, end_index); j++) {
-                                if (j >= 0 && j < intensity_matrix[i].length) {
-                                    const value = intensity_matrix[i][j];
-                                    min_intensity = Math.min(min_intensity, value);
-                                    max_intensity = Math.max(max_intensity, value);
-                                }
-                            }
-                        }
+        #                for (let i = 0; i < intensity_matrix.length; i++) {
+        #                    for (let j = Math.min(start_index, end_index); j <= Math.max(start_index, end_index); j++) {
+        #                        if (j >= 0 && j < intensity_matrix[i].length) {
+        #                            const value = intensity_matrix[i][j];
+        #                            min_intensity = Math.min(min_intensity, value);
+        #                            max_intensity = Math.max(max_intensity, value);
+        #                        }
+        #                    }
+        #                }
 
-                        if (Math.abs(max_intensity - min_intensity) < 0.1 * Math.abs(global_max - global_min)) {
-                            const padding = 0.1 * Math.abs(global_max - global_min);
-                            min_intensity = Math.max(min_intensity - padding, global_min);
-                            max_intensity = Math.min(max_intensity + padding, global_max);
-                        }
+        #                if (Math.abs(max_intensity - min_intensity) < 0.1 * Math.abs(global_max - global_min)) {
+        #                    const padding = 0.1 * Math.abs(global_max - global_min);
+        #                    min_intensity = Math.max(min_intensity - padding, global_min);
+        #                    max_intensity = Math.min(max_intensity + padding, global_max);
+        #                }
 
-                        color_mapper.low = min_intensity;
-                        color_mapper.high = max_intensity;
-                    """,
-            ),
-        )
+        #                color_mapper.low = min_intensity;
+        #                color_mapper.high = max_intensity;
+        #            """,
+        #    ),
+        # )
 
         heatmap_figure.x_range.tags = [ppm_values.tolist(), intensity_matrix.tolist()]
 
