@@ -248,9 +248,9 @@ class UVVisInsituBlock(GenericInSituBlock):
     """
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
-    uvvis_folder_name = ""
-    echem_folder_name = ""
-    folder_name = ""
+    uvvis_folder_name = None
+    echem_folder_name = None
+    folder_name = None
 
     defaults = {
         "start_exp": 1,
@@ -262,7 +262,7 @@ class UVVisInsituBlock(GenericInSituBlock):
     def _plot_function(self, file_path=None, link_plots=False):
         return self.generate_insitu_uvvis_plot(file_path=file_path, link_plots=link_plots)
 
-    def process_and_store_data(self, file_path: str | Path, echem_folder_name: str | Path = None):
+    def process_and_store_data(self, file_path: str | Path):
         """
         Process all in situ UV-Vis and electrochemical data and store results.
         This method is a wrapper for processing both UV-Vis and electrochemical data.
@@ -303,126 +303,6 @@ class UVVisInsituBlock(GenericInSituBlock):
             raise RuntimeError(f"Error processing data: {str(e)}")
 
         return data
-        # min_wavelength = min(data["wavelength"])
-        # max_wavelength = max(data["wavelength"])
-
-        # self.data.update(
-        #     {
-        #         "2D_data": data["2D data"],
-        #         "wavelength": data["wavelength"],
-        #         "time_of_scan": data["time_of_scan"],
-        #         "metadata": data["metadata"],
-        #         "processing_params": {
-        #             "lambda1": min_wavelength,
-        #             "lambda2": max_wavelength,
-        #             "file_id": self.data.get("file_id"),
-        #             "start_exp": start_exp,
-        #             "exclude_exp": exclude_exp,
-        #         },
-        #     }
-        # )
-
-    def process_and_store_time_series_data(self, echem_folder_name: str | Path = None):
-        """
-        Process electrochemical data from the specified folder and store it in the data block.
-        """
-        from .uvvis_utils import process_echem_data
-
-        if echem_folder_name is None:
-            echem_folder = Path(self.data.get("echem_folder_name"))
-        if not echem_folder.exists():
-            raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
-
-        echem_data = process_echem_data(echem_folder)
-        self.data["Time_series_data"] = echem_data
-        min_time = min(echem_data["Time"])
-        max_time = max(echem_data["Time"])
-        self.data["time_series_range"] = {
-            "min_time": min_time,
-            "max_time": max_time,
-        }
-
-    def process_and_2D_store_data(self, file_path: str | Path):
-        """
-        Process in situ UV-Vis and electrochemical data and store results.
-        """
-        file_path = Path(file_path)
-        print(file_path)
-        folders = self.get_available_folders(file_path)
-        self.data["available_folders"] = folders
-
-        uvvis_folder_name = Path(self.data.get("uvvis_folder_name"))
-        echem_folder_name = Path(self.data.get("echem_folder_name"))
-        reference_folder_name = Path(self.data.get("uvvis_reference_folder_name"))
-
-        # echem_folder_name = self.echem_folder_name[0]
-        # uvvis_folder_name = self.uvvis_folder_name[0]
-        # reference_folder_name = self.reference_folder_name[0]
-
-        if not all([uvvis_folder_name, echem_folder_name]):
-            raise ValueError("Both UV-Vis and Echem folder names are required")
-
-        start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
-        exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
-
-        try:
-            result = process_local_uvvis_data(
-                folder_name=file_path,
-                uvvis_folder=uvvis_folder_name,
-                reference_folder=reference_folder_name,
-                start_at=start_exp,
-                exclude_exp=exclude_exp,
-                # Needs to be made more generic
-                sample_file_extension=".Raw8.txt",
-                reference_file_extension=".Raw8.TXT",
-                scan_time=60.15,
-            )
-
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"Folder not found: {str(e)}")
-
-        except Exception as e:
-            raise RuntimeError(f"Error processing data: {str(e)}")
-
-        min_wavelength = min(result["wavelength"])
-        max_wavelength = max(result["wavelength"])
-
-        self.data.update(
-            {
-                "2D_data": result["2D data"],
-                "wavelength": result["wavelength"],
-                "time_of_scan": result["time_of_scan"],
-                "metadata": result["metadata"],
-                "processing_params": {
-                    "lambda1": min_wavelength,
-                    "lambda2": max_wavelength,
-                    "file_id": self.data.get("file_id"),
-                    "start_exp": start_exp,
-                    "exclude_exp": exclude_exp,
-                },
-            }
-        )
-
-    def should_reprocess_data(self) -> bool:
-        """
-        Determine if data needs to be reprocessed based on parameter changes.
-        PPM changes should not trigger reprocessing.
-        """
-        if "processing_params" not in self.data or "2D_data" not in self.data:
-            return True
-
-        params = self.data["processing_params"]
-        current_params = {
-            "file_id": self.data.get("file_id"),
-            "start_exp": int(self.data.get("start_exp", self.defaults["start_exp"])),
-            "exclude_exp": self.data.get("exclude_exp", self.defaults["exclude_exp"]),
-        }
-
-        for key in current_params:
-            if params.get(key) != current_params[key]:
-                return True
-
-        return False
 
     def generate_insitu_uvvis_plot(
         self, file_path: str | Path | None = None, link_plots: bool = False
@@ -437,7 +317,10 @@ class UVVisInsituBlock(GenericInSituBlock):
                 rather than looking up in the database for attached files.
 
         """
-        from .plotting_uvvis import create_linked_insitu_plots, prepare_uvvis_plot_data
+        from datalab_app_plugin_insitu.plotting_uvvis import (
+            create_linked_insitu_plots,
+            prepare_uvvis_plot_data,
+        )
 
         if not file_path:
             if "file_id" not in self.data:
@@ -458,30 +341,13 @@ class UVVisInsituBlock(GenericInSituBlock):
             )
 
         data = self.process_and_store_data(file_path)
-        # if self.should_reprocess_data():
-        #     self.process_and_store_data(file_path)
-
-        # else:
-        #     self.data["processing_params"]["ppm1"] = float(
-        #         self.data.get("ppm1", self.defaults["ppm1"])
-        #     )
-        #     self.data["processing_params"]["ppm2"] = float(
-        #         self.data.get("ppm2", self.defaults["ppm2"])
-        #     )
 
         plot_data = prepare_uvvis_plot_data(
-            # self.data["2D_data"], self.data["wavelength"], self.data["Time_series_data"], self.data["metadata"]
             data["2D_data"],
             data["wavelength"],
             data["Time_series_data"],
             data["metadata"],
         )
-
-        # ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
-        # ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
-
-        # ppm1 = float(self.data["processing_params"]["lambda1"])
-        # ppm2 = float(self.data["processing_params"]["lambda2"])
 
         gp = create_linked_insitu_plots(
             plot_data,

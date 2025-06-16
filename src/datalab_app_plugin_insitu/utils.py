@@ -24,7 +24,7 @@ def should_skip_path(path: Union[str, Path]) -> bool:
     return "__MACOSX" in path_str or Path(path_str).name.startswith(".")
 
 
-def _find_folder_path(base_path: Path, target_folder_name: str) -> Optional[Path]:
+def _find_folder_path(base_path: Path, target_folder_name: str | Path) -> Optional[Path]:
     """
     Find a folder path inside a zip regardless of whether the zip has an extra level of nesting.
 

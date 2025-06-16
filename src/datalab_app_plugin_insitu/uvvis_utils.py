@@ -44,9 +44,9 @@ def find_absorbance(data_df, reference_df):
 
 def process_local_uvvis_data(
     folder_name: Path,
-    uvvis_folder: str,
-    reference_folder: str,
-    echem_folder: str,
+    uvvis_folder: Path,
+    reference_folder: Path,
+    echem_folder: Path,
     start_at: int = 1,
     sample_file_extension: str = ".Raw8.txt",
     reference_file_extension: str = ".Raw8.TXT",
@@ -74,30 +74,35 @@ def process_local_uvvis_data(
                 base_path = Path(folder_name)
 
             # Find the relative paths to the UV-Vis and reference folders
-            uvvis_folder = _find_folder_path(base_path, uvvis_folder)
-            reference_folder = _find_folder_path(base_path, reference_folder)
-            echem_folder = _find_folder_path(base_path, echem_folder)
+            uvvis_path = _find_folder_path(base_path, uvvis_folder)
+            reference_path = _find_folder_path(base_path, reference_folder)
+            echem_path = _find_folder_path(base_path, echem_folder)
             # Check there is one file in the reference folder with the right extension - if so parse it for the reference scan
-            if not reference_folder.exists():
+            if reference_path is None:
                 raise FileNotFoundError(f"Reference folder not found: {reference_folder}")
-            if not reference_folder.is_dir():
-                raise ValueError(f"Reference folder is not a directory: {reference_folder}")
+            if not reference_path.exists():
+                raise FileNotFoundError(f"Reference folder not found: {reference_path}")
+            if not reference_path.is_dir():
+                raise ValueError(f"Reference folder is not a directory: {reference_path}")
 
             # Grab all the files in the uvvis folder with the right extension
-            if not uvvis_folder.exists():
+            if uvvis_path is None:
                 raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_folder}")
+            if not uvvis_path.exists():
+                raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_path}")
+            if not uvvis_path.is_dir():
+                raise ValueError(f"UV-Vis folder is not a directory: {uvvis_path}")
 
-            if not uvvis_folder.is_dir():
-                raise ValueError(f"UV-Vis folder is not a directory: {uvvis_folder}")
-
-            if not echem_folder.exists():
+            if echem_path is None:
                 raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
-            if not echem_folder.is_dir():
-                raise ValueError(f"Echem folder is not a directory: {echem_folder}")
+            if not echem_path.exists():
+                raise FileNotFoundError(f"Echem folder not found: {echem_path}")
+            if not echem_path.is_dir():
+                raise ValueError(f"Echem folder is not a directory: {echem_path}")
 
             uvvis_data = process_uvvis_data(
-                uvvis_folder,
-                reference_folder,
+                uvvis_path,
+                reference_path,
                 start_at,
                 sample_file_extension,
                 reference_file_extension,
@@ -105,7 +110,7 @@ def process_local_uvvis_data(
                 scan_time,
             )
 
-            echem_data = process_echem_data(echem_folder)
+            echem_data = process_echem_data(echem_path)
             # Combine the UV-Vis and Echem data into a single dictionary
             uvvis_data["Time_series_data"] = echem_data
 
@@ -113,6 +118,7 @@ def process_local_uvvis_data(
 
     except Exception as e:
         raise RuntimeError(f"Error Unzipping and finding filepaths to data: {str(e)}")
+
 
 def process_uvvis_data(
     uvvis_folder: Path,
