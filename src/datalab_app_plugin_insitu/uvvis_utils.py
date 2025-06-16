@@ -5,8 +5,8 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from navani import echem as ec
 
+from datalab_app_plugin_insitu.echem_utils import process_echem_data
 from datalab_app_plugin_insitu.utils import _find_folder_path
 
 
@@ -114,48 +114,6 @@ def process_local_uvvis_data(
     except Exception as e:
         raise RuntimeError(f"Error Unzipping and finding filepaths to data: {str(e)}")
 
-
-def process_echem_data(echem_folder: Path) -> Dict:
-    """
-    Processes Echem data from a specified file.
-
-    Args:
-        echem_file (Path): Path to the Echem data file
-
-    Returns:
-        Dict: Dictionary containing the processed Echem data with keys "time" and "data"
-    """
-    if echem_folder.exists():
-        echem_files = list(echem_folder.glob("*.txt"))
-        if len(echem_files) > 1:
-            raise ValueError(
-                f"Echem folder should contain exactly one file: {echem_folder}. Found {len(echem_files)} files. Files found: {echem_files}"
-            )
-            # TODO handle multiple files
-        elif len(echem_files) == 0:
-            raise ValueError(f"Echem folder should contain at least one file: {echem_folder}")
-        else:
-            echem_file = echem_files[0]
-            echem_data = ec.echem_file_loader(echem_file)
-
-    else:
-        raise ValueError(f"Echem folder not found: {echem_folder}")
-
-    min_time = echem_data["Time"].min()
-    max_time = echem_data["Time"].max()
-
-    return_dict = {
-        "time": echem_data["Time"],
-        "Voltage": echem_data["Voltage"],
-        "metadata": {
-            "min_time": min_time,
-            "max_time": max_time,
-        },
-    }
-
-    return return_dict
-
-
 def process_uvvis_data(
     uvvis_folder: Path,
     reference_folder: Path,
@@ -250,7 +208,7 @@ def process_uvvis_data(
     else:
         scan_granularity = 1
     if data_length > 1000:
-        data_granularity = data_length // 500
+        data_granularity = data_length // 1000
     else:
         data_granularity = 1
     print(f"Reducing data size: {num_experiments} experiments, {data_length} wavelengths")
