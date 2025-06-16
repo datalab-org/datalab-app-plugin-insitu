@@ -3,9 +3,9 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import bokeh.embed
 import numpy as np
 import pandas as pd
+from bokeh.embed import components
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
 from bokeh.models import (
@@ -263,7 +263,8 @@ class InsituBlock(DataBlock):
             grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
             gp = gridplot(grid, merge_tools=True)
 
-            self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
+            script, div = components(gp, theme=DATALAB_BOKEH_THEME)
+            self.data["bokeh_plot_data"] = {"script": script, "div": div}
 
             return self.data.get("time_data"), ["Plot successfully generated"]
 
@@ -392,11 +393,13 @@ class InsituBlock(DataBlock):
 
         color_mapper = LinearColorMapper(palette="Turbo256", low=intensity_min, high=intensity_max)
 
+        flipped_intensity_matrix = np.fliplr(intensity_matrix)
+
         heatmap_figure.image(
-            image=[intensity_matrix],
-            x=max(ppm_values),
+            image=[flipped_intensity_matrix],
+            x=min(ppm_values),
             y=time_range["start"],
-            dw=abs(max(ppm_values) - min(ppm_values)),
+            dw=max(ppm_values) - min(ppm_values),
             dh=time_range["end"] - time_range["start"],
             color_mapper=color_mapper,
             level="image",
