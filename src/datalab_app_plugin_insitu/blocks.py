@@ -111,6 +111,3 @@ class GenericInSituBlock(DataBlock, ABC):
 
         else:
             raise ValueError("Input must be a 1D or 2D numpy array or a pandas DataFrame.")
-
-
-

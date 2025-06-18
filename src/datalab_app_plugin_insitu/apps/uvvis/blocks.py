@@ -7,9 +7,9 @@ from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 from datalab_app_plugin_insitu.apps.uvvis.uvvis_utils import process_local_uvvis_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
 from datalab_app_plugin_insitu.plotting_uvvis import (
-            create_linked_insitu_plots,
-            prepare_uvvis_plot_data,
-        )
+    create_linked_insitu_plots,
+    prepare_uvvis_plot_data,
+)
 
 
 class UVVisInsituBlock(GenericInSituBlock):
@@ -94,7 +94,6 @@ class UVVisInsituBlock(GenericInSituBlock):
                 rather than looking up in the database for attached files.
 
         """
-
 
         if not file_path:
             if "file_id" not in self.data:

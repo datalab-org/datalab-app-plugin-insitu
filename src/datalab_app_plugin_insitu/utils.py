@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 
-
 def should_skip_path(path: Union[str, Path]) -> bool:
     """
     Check if a path should be skipped (macOS system files, hidden files, etc.)
