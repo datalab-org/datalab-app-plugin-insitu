@@ -2,10 +2,11 @@ import os
 import zipfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import bokeh.embed
 import numpy as np
+import pandas as pd
 from pydatalab.blocks.base import DataBlock
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
@@ -75,6 +76,48 @@ class GenericInSituBlock(DataBlock, ABC):
     @property
     def plot_functions(self):
         return (lambda: self._plot_function(),)
+
+    @staticmethod
+    def subsample_data(
+        data: Union[pd.DataFrame, np.ndarray],
+        sample_granularity: int,
+        data_granularity: int,
+        method: str = "linear",
+    ) -> Union[pd.DataFrame, np.ndarray]:
+        """
+        Subsample data to a specified granularity in both sample and feature dimensions.
+
+        Parameters:
+            data: pd.DataFrame or np.ndarray
+                The data to be subsampled.
+            sample_granularity: int
+                Subsampling step along rows (samples).
+            data_granularity: int
+                Subsampling step along columns (features).
+            method: str
+                Subsampling method; currently supports only 'linear'.
+
+        Returns:
+            Subsampled data of the same type as input.
+        """
+        if method != "linear":
+            raise NotImplementedError(f"Method '{method}' is not implemented.")
+
+        # 1D array case
+        if isinstance(data, np.ndarray) and data.ndim == 1:
+            return data[::data_granularity]
+
+        # 2D DataFrame
+        elif isinstance(data, pd.DataFrame):
+            return data.iloc[::sample_granularity, ::data_granularity]
+
+        # 2D ndarray
+        elif isinstance(data, np.ndarray) and data.ndim == 2:
+            return data[::sample_granularity, ::data_granularity]
+
+        else:
+            raise ValueError("Input must be a 1D or 2D numpy array or a pandas DataFrame.")
+
 
 
 class InsituBlock(GenericInSituBlock):
@@ -341,6 +384,34 @@ class UVVisInsituBlock(GenericInSituBlock):
             )
 
         data = self.process_and_store_data(file_path)
+
+        num_samples, data_length = data["2D_data"].shape
+        print(f"Number of samples: {num_samples}, Data length: {data_length}")
+        if num_samples > 1000:
+            sample_granularity = num_samples // 1000
+        else:
+            sample_granularity = 1
+        if data_length > 1000:
+            data_granularity = data_length // 1000
+        else:
+            data_granularity = 1
+
+        # Subsample the 2D data and wavelength data to a maximum of 1000 samples
+        data["2D_data"] = self.subsample_data(
+            data["2D_data"],
+            sample_granularity=sample_granularity,
+            data_granularity=data_granularity,
+            method="linear",
+        )
+
+        data["wavelength"] = self.subsample_data(
+            data["wavelength"],
+            data_granularity=data_granularity,
+            sample_granularity=1,
+            method="linear",
+        )
+        print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
+        print(f"Subsampled wavelength data shape: {data['wavelength'].shape}")
 
         plot_data = prepare_uvvis_plot_data(
             data["2D_data"],

@@ -197,8 +197,6 @@ def process_uvvis_data(
         X = X[mask]
 
     # Sort out timestamps - this will make the index the time the scan finishes - maybe discuss
-    print(scan_time)
-    print(X.index)
     if scan_time is None:
         X.index = range(len(X.index))
     else:
@@ -206,22 +204,22 @@ def process_uvvis_data(
     if scan_time is not None:
         X.index = X.index.astype(float) * scan_time
 
-    # Reduce data size if too large
-    num_experiments = len(X.index)
-    data_length = len(X.columns)
-    if num_experiments > 1000:
-        scan_granularity = num_experiments // 1000
-    else:
-        scan_granularity = 1
-    if data_length > 1000:
-        data_granularity = data_length // 1000
-    else:
-        data_granularity = 1
-    print(f"Reducing data size: {num_experiments} experiments, {data_length} wavelengths")
-    print(f"Scan granularity: {scan_granularity}, Data granularity: {data_granularity}")
-
-    X = X.iloc[::scan_granularity, ::data_granularity]
-    wavelength = wavelength[::data_granularity]
+    # # Reduce data size if too large
+    # num_experiments = len(X.index)
+    # data_length = len(X.columns)
+    # if num_experiments > 1000:
+    #     scan_granularity = num_experiments // 1000
+    # else:
+    #     scan_granularity = 1
+    # if data_length > 1000:
+    #     data_granularity = data_length // 1000
+    # else:
+    #     data_granularity = 1
+    # print(f"Reducing data size: {num_experiments} experiments, {data_length} wavelengths")
+    # print(f"Scan granularity: {scan_granularity}, Data granularity: {data_granularity}")
+    # X = GenericInSituBlock.subsample_data(X, scan_granularity, data_granularity)
+    # X = X.iloc[::scan_granularity, ::data_granularity]
+    # wavelength = wavelength[::data_granularity]
 
     print(X.index)
     metadata = {
