@@ -12,6 +12,8 @@ def process_local_data(
     nmr_folder_name: str,
     echem_folder_name: str,
     start_at: int = 1,
+    end_at: Optional[int] = None,
+    step: int = 1,
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
@@ -61,6 +63,8 @@ def process_local_data(
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
+                end_at,
+                step,
                 exclude_exp,
             )
 
@@ -75,6 +79,8 @@ def process_datalab_data(
     nmr_folder_name: str,
     echem_folder_name: str,
     start_at: int = 1,
+    end_at: Optional[int] = None,
+    step: int = 1,
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
@@ -139,6 +145,8 @@ def process_datalab_data(
                 nmr_folder_path,
                 echem_folder_name,
                 start_at,
+                end_at,
+                step,
                 exclude_exp,
             )
 

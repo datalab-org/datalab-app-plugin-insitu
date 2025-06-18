@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+import bokeh.embed
 import numpy as np
 from bokeh.events import DoubleTap
 from bokeh.layouts import gridplot
@@ -14,6 +15,7 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
+from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 
 def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
@@ -38,13 +40,12 @@ def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
     grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
 
-    return gp
+    return bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
 
 
 def prepare_plot_data(nmr_data, echem_data, metadata) -> Optional[Dict[str, Any]]:
     """
     Extract and prepare data for plotting.
-
     Returns:
         Optional[Dict[str, Any]]: Dictionary containing prepared plot data,
                                   or None if data extraction fails.
@@ -89,10 +90,8 @@ def _create_shared_ranges(
 ) -> Dict[str, Range1d]:
     """
     Create shared range objects for linking multiple plots.
-
     Args:
         plot_data: Dictionary containing prepared plot data
-
     Returns:
         Dict[str, Range1d]: Dictionary of shared range objects
     """
@@ -125,11 +124,9 @@ def _create_shared_ranges(
 def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
     Create the heatmap figure component.
-
     Args:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
-
     Returns:
         figure: Configured Bokeh heatmap figure
     """
@@ -208,11 +205,9 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
     Create the NMR line plot figure component.
-
     Args:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
-
     Returns:
         figure: Configured Bokeh line figure with data source
     """
@@ -276,11 +271,9 @@ def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
 def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
     Create the electrochemical data figure component.
-
     Args:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
-
     Returns:
         figure: Configured Bokeh electrochemical figure
     """
@@ -296,6 +289,8 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
         width=250,
         tools=tools,
     )
+
+    echemplot_figure.xaxis.ticker.desired_num_ticks = 4
 
     if echem_data and "Voltage" in echem_data and "time" in echem_data:
         times = np.array(echem_data["time"])
@@ -341,7 +336,6 @@ def _link_plots(
 ) -> None:
     """
     Link the plots together with interactive tools and callbacks.
-
     Args:
         heatmap_figure: The heatmap figure component
         nmrplot_figure: The NMR line plot figure component
@@ -383,7 +377,6 @@ def _link_plots(
             ),
             code="""
                     const geometry = cb_data['geometry'];
-
                     let closestIndex = 0;
                     let minDistance = Infinity;
                     for (let i = 0; i < heatmap_source.data.y.length; i++) {
@@ -393,11 +386,8 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-
                     const exp_num = heatmap_source.data.exp_num[closestIndex];
-
                     const index = exp_num - 1;
-
                     var data = line_source.data;
                     data['intensity'] = spectra_intensities[index];
                     line_source.change.emit();
@@ -418,32 +408,25 @@ def _link_plots(
             code="""
                     const indices = cb_obj.indices;
                     if (indices.length === 0) return;
-
                     const index = indices[0];
                     const exp_num = heatmap_source.data.exp_num[index];
-
                     const existing_indices = clicked_spectra_source.data.exp_index;
                     if (existing_indices.includes(exp_num)) return;
-
                     const color_index = existing_indices.length % colors.length;
-
                     const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
                     const new_ys = [...clicked_spectra_source.data.intensity];
                     const new_indices = [...clicked_spectra_source.data.exp_index];
                     const new_colors = [...clicked_spectra_source.data.color];
-
                     new_xs.push(ppm_values);
                     new_ys.push(spectra_intensities[index]);
                     new_indices.push(exp_num);
                     new_colors.push(colors[color_index]);
-
                     clicked_spectra_source.data = {
                         'δ (ppm)': new_xs,
                         'intensity': new_ys,
                         'exp_index': new_indices,
                         'color': new_colors
                     };
-
                     clicked_spectra_source.change.emit();
                 """,
         )
@@ -463,20 +446,16 @@ def _link_plots(
             code="""
                     const start_index = ppm_array.findIndex(ppm => ppm <= cb_obj.end);
                     const end_index = ppm_array.findIndex(ppm => ppm <= cb_obj.start);
-
                     if (start_index < 0 || end_index < 0 || start_index >= ppm_array.length || end_index >= ppm_array.length) {
                         color_mapper.low = global_min;
                         color_mapper.high = global_max;
                         return;
                     }
-
                     if (Math.abs(end_index - start_index) < 5) {
                         return;
                     }
-
                     let min_intensity = Infinity;
                     let max_intensity = -Infinity;
-
                     for (let i = 0; i < intensity_matrix.length; i++) {
                         for (let j = Math.min(start_index, end_index); j <= Math.max(start_index, end_index); j++) {
                             if (j >= 0 && j < intensity_matrix[i].length) {
@@ -486,13 +465,11 @@ def _link_plots(
                             }
                         }
                     }
-
                     if (Math.abs(max_intensity - min_intensity) < 0.1 * Math.abs(global_max - global_min)) {
                         const padding = 0.1 * Math.abs(global_max - global_min);
                         min_intensity = Math.max(min_intensity - padding, global_min);
                         max_intensity = Math.min(max_intensity + padding, global_max);
                     }
-
                     color_mapper.low = min_intensity;
                     color_mapper.high = max_intensity;
                 """,
@@ -514,9 +491,7 @@ def _link_plots(
         code="""
         const indices = clicked_spectra_source.selected.indices;
         if (indices.length === 0) return;
-
         let data = clicked_spectra_source.data;
-
         for (let i = indices.length - 1; i >= 0; i--) {
             let index = indices[i];
             data['δ (ppm)'].splice(index, 1);
@@ -524,7 +499,6 @@ def _link_plots(
             data['exp_index'].splice(index, 1);
             data['color'].splice(index, 1);
         }
-
         clicked_spectra_source.change.emit();
     """,
     )
