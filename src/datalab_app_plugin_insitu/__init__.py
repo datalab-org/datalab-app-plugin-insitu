@@ -3,6 +3,7 @@
 from importlib.metadata import version
 
 from .apps.nmr import InsituBlock, process_datalab_data, process_local_data
+from .apps.uvvis import UVVisInsituBlock
 
 __version__ = version("datalab-app-plugin-insitu")
 
