@@ -1,16 +1,9 @@
-"""Datalab plugin for In Situ NMR"""
+"""datalab plugin for in situ measurements."""
 
 from importlib.metadata import version
 
-from datalab_app_plugin_insitu.blocks import InsituBlock, UVVisInsituBlock
-from datalab_app_plugin_insitu.nmr_insitu import process_datalab_data, process_local_data
+from .apps.nmr import InsituBlock, process_datalab_data, process_local_data
 
 __version__ = version("datalab-app-plugin-insitu")
 
-__all__ = (
-    "__version__",
-    "process_local_data",
-    "process_datalab_data",
-    "InsituBlock",
-    "UVVisInsituBlock",
-)
+__all__ = ("__version__", "process_local_data", "process_datalab_data", "InsituBlock", "UVVisInsituBlock")
