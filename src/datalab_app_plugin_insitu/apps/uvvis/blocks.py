@@ -34,9 +34,11 @@ class UVVisInsituBlock(GenericInSituBlock):
         "exclude_exp": None,
         "echem_data": None,
         "metadata": None,
+        "target_sample_number": 1000,
+        "target_data_number": 1000,
     }
 
-    def _plot_function(self, file_path=None, link_plots=False):
+    def _plot_function(self, file_path=None, link_plots=True):
         return self.generate_insitu_uvvis_plot(file_path=file_path, link_plots=link_plots)
 
     def process_and_store_data(self, file_path: str | Path):
@@ -84,13 +86,13 @@ class UVVisInsituBlock(GenericInSituBlock):
     def generate_insitu_uvvis_plot(
         self, file_path: str | Path | None = None, link_plots: bool = False
     ):
-        """Generate combined NMR and electrochemical plots using the operando-style layout.
+        """Generate combined UVVis and electrochemical plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
         them into a unified visualization.
 
         Parameters:
-            file_path: Path to the zip file containing NMR and electrochemical data,
+            file_path: Path to the zip file containing UVVis and electrochemical data,
                 rather than looking up in the database for attached files.
 
         """
@@ -117,12 +119,12 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         num_samples, data_length = data["2D_data"].shape
         print(f"Number of samples: {num_samples}, Data length: {data_length}")
-        if num_samples > 1000:
-            sample_granularity = num_samples // 1000
+        if num_samples > self.data.get("target_sample_number"):
+            sample_granularity = num_samples // self.data.get("target_sample_number")
         else:
             sample_granularity = 1
-        if data_length > 1000:
-            data_granularity = data_length // 1000
+        if data_length > self.data.get("target_data_number"):
+            data_granularity = data_length // self.data.get("target_data_number")
         else:
             data_granularity = 1
 
