@@ -55,6 +55,10 @@ def prepare_uvvis_plot_data(
     """
     twoD_matrix = two_d_data.values
 
+    # Grab the times and voltages for each scan from the echem data
+    times = two_d_data.index.to_numpy()
+    voltage_interp = np.interp(times, echem_data["time"], echem_data["Voltage"])
+
     spectra_intensities = two_d_data.values.tolist()
 
     first_spectrum_intensities = twoD_matrix[0, :]
@@ -78,6 +82,8 @@ def prepare_uvvis_plot_data(
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
         "echem_data": echem_data,
+        "times_by_exp": times,
+        "voltages_by_exp": voltage_interp,
     }
 
 
@@ -233,7 +239,7 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
     )
 
     clicked_spectra_source = ColumnDataSource(
-        data={"δ (ppm)": [], "intensity": [], "exp_index": [], "color": []}
+        data={"δ (ppm)": [], "intensity": [], "label": [], "color": []}
     )
 
     plot_figure = figure(
@@ -250,7 +256,7 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
         source=line_source,
         line_width=1,
         color="blue",
-        legend_label="Reference",
+        legend_label="Current Spectrum",
     )
 
     plot_figure.multi_line(
@@ -259,7 +265,7 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
         source=clicked_spectra_source,
         line_color="color",
         line_width=1,
-        legend_field="exp_index",
+        legend_field="label",
     )
 
     plot_figure.legend.click_policy = "hide"
@@ -411,6 +417,8 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=colors,
+                times_by_exp=plot_data["times_by_exp"].tolist(),
+                voltages_by_exp=plot_data["voltages_by_exp"].tolist(),
             ),
             code="""
                     const indices = cb_obj.indices;
@@ -418,26 +426,31 @@ def _link_plots(
 
                     const index = indices[0];
                     const exp_num = heatmap_source.data.exp_num[index];
+                    const exp_index = exp_num - 1;
 
-                    const existing_indices = clicked_spectra_source.data.exp_index;
-                    if (existing_indices.includes(exp_num)) return;
+                    const time = times_by_exp[exp_index].toFixed(2);
+                    const voltage = voltages_by_exp[exp_index].toFixed(3);
+                    const label = `Experiment number ${exp_num} \nt = ${time} h \nV = ${voltage} V`;
 
-                    const color_index = existing_indices.length % colors.length;
+                    const existing_labels = clicked_spectra_source.data.label;
+                    if (existing_labels.includes(label)) return;
+
+                    const color_index = existing_labels.length % colors.length;
 
                     const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
                     const new_ys = [...clicked_spectra_source.data.intensity];
-                    const new_indices = [...clicked_spectra_source.data.exp_index];
+                    const new_labels = [...clicked_spectra_source.data.label];
                     const new_colors = [...clicked_spectra_source.data.color];
 
                     new_xs.push(ppm_values);
                     new_ys.push(spectra_intensities[index]);
-                    new_indices.push(exp_num);
+                    new_labels.push(label);
                     new_colors.push(colors[color_index]);
 
                     clicked_spectra_source.data = {
                         'δ (ppm)': new_xs,
                         'intensity': new_ys,
-                        'exp_index': new_indices,
+                        'label': new_labels,
                         'color': new_colors
                     };
 
