@@ -430,7 +430,7 @@ def _link_plots(
 
                     const time = times_by_exp[exp_index].toFixed(2);
                     const voltage = voltages_by_exp[exp_index].toFixed(3);
-                    const label = `Experiment number ${exp_num} \nt = ${time} h \nV = ${voltage} V`;
+                    const label = `Exp num ${exp_num} | t = ${time} h | V = ${voltage} V`;
 
                     const existing_labels = clicked_spectra_source.data.label;
                     if (existing_labels.includes(label)) return;
