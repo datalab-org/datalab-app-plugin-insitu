@@ -10,6 +10,37 @@ from datalab_app_plugin_insitu.echem_utils import process_echem_data
 from datalab_app_plugin_insitu.utils import _find_folder_path
 
 
+def find_scan_time(filename: Path) -> float:
+    """
+    Note: Not currently used as the scan time is passed as a parameter to the block due to no way to calculate the rest time from the files.
+    Finds the scan time from the UV-Vis .Raw8.txt file. Doesn't take into account the time between scans, just the time it takes to scan the sample.
+    This is calculated as the integration time multiplied by the number of scans, divided by 1000 to convert milliseconds to seconds.
+    This is useful for plotting the UV-Vis data against time
+    Args:
+        filename (Path): Path to the .Raw8.txt file
+    Returns:
+        float: Scan time in seconds
+    """
+    # Initialize variables
+    integration_time = None
+    num_scans = None
+    with open(filename) as file:
+        lines = file.readlines()
+        while num_scans is None or integration_time is None:
+            for line in lines[:20]:
+                if "Integration time [ms]:" in line:
+                    integration_time = float(line.split(":")[1].strip())
+                if "Averaging Nr. [scans]:" in line:
+                    num_scans = int(line.split(":")[1].strip())
+            if integration_time is None or num_scans is None:
+                raise ValueError(
+                    f"Could not find integration time or number of scans in file: {filename}"
+                )
+        scan_time = integration_time * num_scans / 1000.0  # Convert ms to seconds
+
+    return scan_time
+
+
 def parse_uvvis_txt(filename: Path) -> pd.DataFrame:
     """
     Parses a UV-Vis .txt file into a pandas DataFrame
