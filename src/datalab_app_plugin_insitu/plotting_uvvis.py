@@ -327,8 +327,8 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
                 ("Time (h)", "@time{0.00}"),
                 ("Voltage (V)", "@voltage{0.000}"),
             ],
-            mode="mouse",
-            point_policy="follow_mouse",
+            mode="hline",
+            point_policy="snap_to_data",
         )
 
         echemplot_figure.add_tools(hover_tool)
