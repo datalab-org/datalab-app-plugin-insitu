@@ -18,10 +18,7 @@ class UVVisInsituBlock(GenericInSituBlock):
     description = """This datablock processes in situ UV-Vis data from an input .zip file containing two specific directories:
 
     - **UV-Vis Data Directory**: Contains multiple UV-Vis in-situ experiment datasets.
-    - **Echem Data Directory**: Contains echem data files in `.mpr` format.
-
-    If multiple echem experiments are present, their filenames must include `GCPL`.
-
+    - **Echem Data Directory**: Contains echem data files in `.txt` format.
     """
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
@@ -34,8 +31,11 @@ class UVVisInsituBlock(GenericInSituBlock):
         "exclude_exp": None,
         "echem_data": None,
         "metadata": None,
+        "scan_time": None,
         "target_sample_number": 1000,
         "target_data_number": 1000,
+        "data_granularity": None,
+        "sample_granularity": None,
     }
 
     def _plot_function(self, file_path=None, link_plots=True):
@@ -46,6 +46,11 @@ class UVVisInsituBlock(GenericInSituBlock):
         Process all in situ UV-Vis and electrochemical data and store results.
         This method is a wrapper for processing both UV-Vis and electrochemical data.
         """
+        scan_time = self.data.get("scan_time", self.defaults["scan_time"])
+        if not scan_time:
+            raise ValueError(
+                "Scan time is required for processing UV-Vis data. Should include the time between scans in seconds."
+            )
         file_path = Path(file_path)
         folders = self.get_available_folders(file_path)
         self.data["available_folders"] = folders
@@ -74,7 +79,7 @@ class UVVisInsituBlock(GenericInSituBlock):
                 # Needs to be made more generic
                 sample_file_extension=".Raw8.txt",
                 reference_file_extension=".Raw8.TXT",
-                scan_time=60.15,
+                scan_time=scan_time,
             )
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
@@ -119,15 +124,24 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         num_samples, data_length = data["2D_data"].shape
         print(f"Number of samples: {num_samples}, Data length: {data_length}")
-        if num_samples > self.data.get("target_sample_number"):
-            sample_granularity = num_samples // self.data.get("target_sample_number")
-        else:
-            sample_granularity = 1
-        if data_length > self.data.get("target_data_number"):
-            data_granularity = data_length // self.data.get("target_data_number")
-        else:
-            data_granularity = 1
 
+        sample_granularity = self.data.get(
+            "sample_granularity", self.defaults["sample_granularity"]
+        )
+        data_granularity = self.data.get("data_granularity", self.defaults["data_granularity"])
+        if not sample_granularity:
+            if num_samples > self.data.get("target_sample_number"):
+                sample_granularity = num_samples // self.data.get("target_sample_number")
+            else:
+                sample_granularity = 1
+        if not data_granularity:
+            if data_length > self.data.get("target_data_number"):
+                data_granularity = data_length // self.data.get("target_data_number")
+            else:
+                data_granularity = 1
+
+        self.data["sample_granularity"] = sample_granularity
+        self.data["data_granularity"] = data_granularity
         # Subsample the 2D data and wavelength data to a maximum of 1000 samples
         data["2D_data"] = self.subsample_data(
             data["2D_data"],
