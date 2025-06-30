@@ -85,7 +85,6 @@ def prepare_uvvis_plot_data(
         "times_by_exp": times,
         "voltages_by_exp": voltage_interp,
         "file_num_index": file_num_index,
-
     }
 
 

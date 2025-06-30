@@ -260,4 +260,10 @@ def process_uvvis_data(
         "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
         "num_experiments": len(X.index),
     }
-    return {"2D_data": X, "wavelength": wavelength, "metadata": metadata, "time_of_scan": X.index, "file_num_index": file_num_index}
+    return {
+        "2D_data": X,
+        "wavelength": wavelength,
+        "metadata": metadata,
+        "time_of_scan": X.index,
+        "file_num_index": file_num_index,
+    }
