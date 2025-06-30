@@ -32,6 +32,7 @@ def test_block(pytestconfig):
     block.data["uvvis_folder_name"] = "Reduced sample scans"
     block.data["echem_folder_name"] = "Echem"
     block.data["uvvis_reference_folder_name"] = "Reference scan"
+    block.data["scan_time"] = 1.0  # seconds
     block.generate_insitu_uvvis_plot(file_path=test_data_zip, link_plots=True)
 
     assert block.data["bokeh_plot_data"] is not None
