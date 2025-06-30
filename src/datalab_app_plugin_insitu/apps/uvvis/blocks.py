@@ -81,6 +81,50 @@ class UVVisInsituBlock(GenericInSituBlock):
                 reference_file_extension=".Raw8.TXT",
                 scan_time=scan_time,
             )
+
+            num_samples, data_length = data["2D_data"].shape
+            print(f"Number of samples: {num_samples}, Data length: {data_length}")
+
+            sample_granularity = self.data.get(
+                "sample_granularity", self.defaults["sample_granularity"]
+            )
+            data_granularity = self.data.get("data_granularity", self.defaults["data_granularity"])
+            if not sample_granularity:
+                if num_samples > self.data.get("target_sample_number"):
+                    sample_granularity = num_samples // self.data.get("target_sample_number")
+                else:
+                    sample_granularity = 1
+            if not data_granularity:
+                if data_length > self.data.get("target_data_number"):
+                    data_granularity = data_length // self.data.get("target_data_number")
+                else:
+                    data_granularity = 1
+
+            self.data["sample_granularity"] = sample_granularity
+            self.data["data_granularity"] = data_granularity
+            # Subsample the 2D data and wavelength data to a maximum of 1000 samples
+            data["2D_data"] = self.subsample_data(
+                data["2D_data"],
+                sample_granularity=sample_granularity,
+                data_granularity=data_granularity,
+                method="linear",
+            )
+
+            data["wavelength"] = self.subsample_data(
+                data["wavelength"],
+                data_granularity=data_granularity,
+                sample_granularity=1,
+                method="linear",
+            )
+
+            data["file_num_index"] = self.subsample_data(
+                data["file_num_index"],
+                sample_granularity=sample_granularity,
+                data_granularity=1,
+                method="linear",
+            )
+            print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
+            print(f"Subsampled wavelength data shape: {data['wavelength'].shape}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:
@@ -122,48 +166,12 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         data = self.process_and_store_data(file_path)
 
-        num_samples, data_length = data["2D_data"].shape
-        print(f"Number of samples: {num_samples}, Data length: {data_length}")
-
-        sample_granularity = self.data.get(
-            "sample_granularity", self.defaults["sample_granularity"]
-        )
-        data_granularity = self.data.get("data_granularity", self.defaults["data_granularity"])
-        if not sample_granularity:
-            if num_samples > self.data.get("target_sample_number"):
-                sample_granularity = num_samples // self.data.get("target_sample_number")
-            else:
-                sample_granularity = 1
-        if not data_granularity:
-            if data_length > self.data.get("target_data_number"):
-                data_granularity = data_length // self.data.get("target_data_number")
-            else:
-                data_granularity = 1
-
-        self.data["sample_granularity"] = sample_granularity
-        self.data["data_granularity"] = data_granularity
-        # Subsample the 2D data and wavelength data to a maximum of 1000 samples
-        data["2D_data"] = self.subsample_data(
-            data["2D_data"],
-            sample_granularity=sample_granularity,
-            data_granularity=data_granularity,
-            method="linear",
-        )
-
-        data["wavelength"] = self.subsample_data(
-            data["wavelength"],
-            data_granularity=data_granularity,
-            sample_granularity=1,
-            method="linear",
-        )
-        print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
-        print(f"Subsampled wavelength data shape: {data['wavelength'].shape}")
-
         plot_data = prepare_uvvis_plot_data(
             data["2D_data"],
             data["wavelength"],
             data["Time_series_data"],
             data["metadata"],
+            data["file_num_index"],
         )
 
         gp = create_linked_insitu_plots(

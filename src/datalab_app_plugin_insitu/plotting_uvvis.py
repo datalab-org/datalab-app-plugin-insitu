@@ -46,7 +46,7 @@ def create_linked_insitu_plots(
 
 
 def prepare_uvvis_plot_data(
-    two_d_data: pd.DataFrame, wavelength: pd.Series, echem_data, metadata
+    two_d_data: pd.DataFrame, wavelength: pd.Series, echem_data, metadata, file_num_index
 ) -> Optional[Dict[str, Any]]:
     """
     Need heatmap data in two forms:
@@ -84,6 +84,8 @@ def prepare_uvvis_plot_data(
         "echem_data": echem_data,
         "times_by_exp": times,
         "voltages_by_exp": voltage_interp,
+        "file_num_index": file_num_index,
+
     }
 
 
@@ -106,7 +108,6 @@ def _create_shared_ranges(
     time_range = {"min_time": overall_min_time, "max_time": overall_max_time}
     intensity_min = np.min(plot_data["intensity_matrix"])
     intensity_max = np.max(plot_data["intensity_matrix"])
-    print(f"Intensity range: {intensity_min} to {intensity_max}")
     shared_y_range = Range1d(start=time_range["min_time"], end=time_range["max_time"])
 
     shared_x_range = Range1d(
@@ -165,8 +166,8 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
     time_points = len(intensity_matrix)
     if time_points > 0:
         times = np.linspace(time_range["min_time"], time_range["max_time"], time_points)
-        experiment_numbers = np.arange(1, time_points + 1)
-
+        # experiment_numbers = np.arange(1, time_points + 1)
+        experiment_numbers = plot_data["file_num_index"].flatten().tolist()
         source = ColumnDataSource(
             data={
                 "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
@@ -310,7 +311,6 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
 
         exp_numbers = np.floor(((times - time_range["min_time"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
-
         echem_source = ColumnDataSource(
             data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
         )
@@ -386,6 +386,8 @@ def _link_plots(
             ),
             code="""
                     const geometry = cb_data['geometry'];
+                    console.log("Hover geometry:", geometry);
+                    console.log("heatmap_source data:", heatmap_source.data);
 
                     let closestIndex = 0;
                     let minDistance = Infinity;
@@ -402,7 +404,7 @@ def _link_plots(
                     const index = exp_num - 1;
 
                     var data = line_source.data;
-                    data['intensity'] = spectra_intensities[index];
+                    data['intensity'] = spectra_intensities[closestIndex];
                     line_source.change.emit();
                 """,
         )
@@ -428,8 +430,8 @@ def _link_plots(
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = exp_num - 1;
 
-                    const time = times_by_exp[exp_index].toFixed(2);
-                    const voltage = voltages_by_exp[exp_index].toFixed(3);
+                    const time = times_by_exp[index].toFixed(2);
+                    const voltage = voltages_by_exp[index].toFixed(3);
                     const label = `Exp num ${exp_num} | t = ${time} h | V = ${voltage} V`;
 
                     const existing_labels = clicked_spectra_source.data.label;

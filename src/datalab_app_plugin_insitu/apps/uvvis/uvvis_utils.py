@@ -227,6 +227,9 @@ def process_uvvis_data(
         mask = X.index >= start_at
         X = X[mask]
 
+    # Save the index for later use - reshape so it's a column vector
+    file_num_index = pd.Series(X.index.copy()).values.reshape(-1, 1)
+
     # Sort out timestamps - this will make the index the time the scan finishes - maybe discuss
     if scan_time is None:
         X.index = range(len(X.index))
@@ -257,4 +260,4 @@ def process_uvvis_data(
         "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
         "num_experiments": len(X.index),
     }
-    return {"2D_data": X, "wavelength": wavelength, "metadata": metadata, "time_of_scan": X.index}
+    return {"2D_data": X, "wavelength": wavelength, "metadata": metadata, "time_of_scan": X.index, "file_num_index": file_num_index}
