@@ -386,8 +386,6 @@ def _link_plots(
             ),
             code="""
                     const geometry = cb_data['geometry'];
-                    console.log("Hover geometry:", geometry);
-                    console.log("heatmap_source data:", heatmap_source.data);
 
                     let closestIndex = 0;
                     let minDistance = Infinity;
