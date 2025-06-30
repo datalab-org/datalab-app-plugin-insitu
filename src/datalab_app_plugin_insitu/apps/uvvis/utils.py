@@ -104,6 +104,7 @@ def process_local_uvvis_data(
 
     Returns:
         Dictionary containing the following keys, the processed UV-Vis data [2D data] and Echem data [Time_series_data], along with wavelength, metadata, time of scan, and file number index.
+
     Raises:
         ValueError: If the UV-Vis or reference folders are not specified or do not exist
         FileNotFoundError: If the UV-Vis or reference folders are not found in the provided path
@@ -187,6 +188,7 @@ def process_uvvis_data(
 
     Returns:
         Dictionary containing processed UV-Vis data, wavelength, metadata, time of scan, and file number index
+
     """
 
     reference_files = list(reference_folder.glob("*" + reference_file_extension))
