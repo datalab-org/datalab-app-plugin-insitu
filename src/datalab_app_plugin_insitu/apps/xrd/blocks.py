@@ -8,7 +8,7 @@ from datalab_app_plugin_insitu.apps.xrd.xrd_utils import process_local_xrd_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
 from datalab_app_plugin_insitu.plotting_uvvis import (
     create_linked_insitu_plots,
-    prepare_uvvis_plot_data,
+    prepare_xrd_plot_data,
 )
 
 
@@ -18,18 +18,30 @@ class XRDInsituBlock(GenericInSituBlock):
     description = """This datablock processes in situ XRD data from an input .zip file containing two specific directories:
 
     - **XRD Data Directory**: Contains multiple XRD in-situ experiment datasets.
-    - **Echem Data Directory**: Contains echem data files in `.txt` format.
+    - **Time series folder directory**: Contains echem data (.txt.) or temperature data files (.csv).
     """
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
     xrd_folder_name = None
-    echem_folder_name = None
+    time_series_folder_name = None
     folder_name = None
+    plotting_label_dict = {
+        "x_axis_label": "Two theta (degrees)",
+        "time_series_y_axis_label": "Experiment number",
+        "line_y_axis_label": "Intensity (a.u.)",
+        "time_series_x_axis_label": "Temp (C)",
+        "label_source": {
+            "label_template": "Exp. # {exp_num} | Temp = {temperature} C",
+            "label_field_map": {
+                "exp_num": "exp_num",
+                "temperature": "voltages_by_exp",
+            },
+        },
+    }
 
     defaults = {
         "start_exp": 1,
         "exclude_exp": None,
-        "echem_data": None,
         "metadata": None,
         "target_sample_number": 1000,
         "target_data_number": 1000,
@@ -53,19 +65,19 @@ class XRDInsituBlock(GenericInSituBlock):
         if not xrd_folder_name:
             raise ValueError("XRD folder name is required")
 
-        echem_folder_name = Path(self.data.get("echem_folder_name"))
-        if not echem_folder_name:
-            raise ValueError("Echem folder name is required")
+        time_series_folder_name = Path(self.data.get("time_series_folder_name"))
+        if not time_series_folder_name:
+            raise ValueError("Log or echem folder name is required")
 
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
         try:
             data = process_local_xrd_data(
-                folder_name=file_path,
-                uvvis_folder=xrd_folder_name,
-                echem_folder=echem_folder_name,
-                start_at=start_exp,
+                file_path=file_path,
+                xrd_folder_name=xrd_folder_name,
+                log_folder_name=time_series_folder_name,
+                start_exp=start_exp,
                 exclude_exp=exclude_exp,
                 # Needs to be made more generic
             )
@@ -98,8 +110,8 @@ class XRDInsituBlock(GenericInSituBlock):
                 method="linear",
             )
 
-            data["wavelength"] = self.subsample_data(
-                data["wavelength"],
+            data["Two theta"] = self.subsample_data(
+                data["Two theta"],
                 data_granularity=data_granularity,
                 sample_granularity=1,
                 method="linear",
@@ -112,7 +124,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 method="linear",
             )
             print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
-            print(f"Subsampled wavelength data shape: {data['wavelength'].shape}")
+            print(f"Subsampled Two theta data shape: {data['Two theta'].shape}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:
@@ -154,18 +166,19 @@ class XRDInsituBlock(GenericInSituBlock):
 
         data = self.process_and_store_data(file_path)
 
-        plot_data = prepare_uvvis_plot_data(
-            data["2D_data"],
-            data["wavelength"],
-            data["Time_series_data"],
-            data["metadata"],
-            data["file_num_index"],
+        plot_data = prepare_xrd_plot_data(
+            two_d_data=data["2D_data"],
+            heatmap_x_values=data["Two theta"],
+            time_series_data=data["Time_series_data"],
+            metadata=data["metadata"],
+            file_num_index=data["file_num_index"],
         )
 
         gp = create_linked_insitu_plots(
             plot_data,
-            data["Time_series_data"]["metadata"],
-            data["metadata"]["time_range"],
+            time_series_time_range=plot_data["y_range"],
+            heatmap_time_range=plot_data["heatmap_y_range"],
+            plotting_label_dict=self.plotting_label_dict,
             link_plots=link_plots,
         )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)

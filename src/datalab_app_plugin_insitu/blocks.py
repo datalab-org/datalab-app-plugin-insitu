@@ -95,20 +95,53 @@ class GenericInSituBlock(DataBlock, ABC):
         Returns:
             Subsampled data of the same type as input.
         """
-        if method != "linear":
-            raise NotImplementedError(f"Method '{method}' is not implemented.")
 
-        # 1D array case
-        if isinstance(data, np.ndarray) and data.ndim == 1:
-            return data[::data_granularity]
+        def max_pooling_reshape(arr, n):
+            h, w = arr.shape
+            assert h % n == 0 and w % n == 0
+            return arr.reshape(h // n, n, w // n, n).max(axis=(1, 3))
 
-        # 2D DataFrame
-        elif isinstance(data, pd.DataFrame):
-            return data.iloc[::sample_granularity, ::data_granularity]
+        def pad_and_max_pool(arr, n):
+            h, w = arr.shape
+            pad_h = (-h) % n
+            pad_w = (-w) % n
+            arr_padded = np.pad(arr, ((0, pad_h), (0, pad_w)), constant_values=arr.min())
+            return max_pooling_reshape(arr_padded, n)
 
-        # 2D ndarray
-        elif isinstance(data, np.ndarray) and data.ndim == 2:
-            return data[::sample_granularity, ::data_granularity]
+        accepted_methods = ["linear", "max_pooling"]
+        if method not in accepted_methods:
+            raise ValueError(f"Method '{method}' not supported. Choose from {accepted_methods}.")
 
+        if method == "linear":
+            # 1D array case
+            if isinstance(data, np.ndarray) and data.ndim == 1:
+                return data[::data_granularity]
+
+            # 2D DataFrame
+            elif isinstance(data, pd.DataFrame):
+                return data.iloc[::sample_granularity, ::data_granularity]
+
+            # 2D ndarray
+            elif isinstance(data, np.ndarray) and data.ndim == 2:
+                return data[::sample_granularity, ::data_granularity]
+
+            else:
+                raise ValueError("Input must be a 1D or 2D numpy array or a pandas DataFrame.")
+
+        elif method == "max_pooling":
+            # 2D DataFrame
+            if isinstance(data, pd.DataFrame):
+                return pd.DataFrame(
+                    pad_and_max_pool(data.values, sample_granularity),
+                    index=np.arange(0, data.shape[0], sample_granularity),
+                    columns=np.arange(0, data.shape[1], data_granularity),
+                )
+
+            # 2D ndarray
+            elif isinstance(data, np.ndarray) and data.ndim == 2:
+                return pad_and_max_pool(data, sample_granularity)
+
+            else:
+                raise ValueError("Input must be a 2D numpy array or a pandas DataFrame.")
         else:
-            raise ValueError("Input must be a 1D or 2D numpy array or a pandas DataFrame.")
+            raise ValueError(f"Method '{method}' not supported. Choose from {accepted_methods}.")
