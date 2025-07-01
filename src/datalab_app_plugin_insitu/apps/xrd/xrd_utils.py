@@ -57,55 +57,65 @@ def process_local_xrd_data(
             xrd_path = _find_folder_path(base_path, xrd_folder_name)
             log_path = _find_folder_path(base_path, log_folder_name)
 
-        # Check if the folder exists
-        if not all([xrd_path, log_path]):
-            print(f"XRD folder: {xrd_path}, Log folder: {log_path}")
-            raise ValueError("XRD folder and log folder must be specified.")
+            # Check if the folder exists
+            if not all([xrd_path, log_path]):
+                print(f"XRD folder: {xrd_path}, Log folder: {log_path}")
+                raise ValueError("XRD folder and log folder must be specified.")
 
-        # Load the XRD data
-        xrd_data = process_xrd_data(
-            xrd_folder=xrd_path,
-            start_at=start_exp,
-            exclude_exp=exclude_exp,
-            glob_str="*summed*",
-        )
-
-        # Load the 1D data
-        if log_path.exists():
-            log_files = list(log_path.glob("*.csv"))
-            if len(log_files) > 1:
-                raise ValueError(
-                    f"Log folder should contain exactly one CSV file: {log_path}. Found {len(log_files)} files. Files found: {log_files}"
-                )
-                # TODO handle multiple files
-            elif len(log_files) == 0:
-                raise ValueError(f"Log folder should contain at least one CSV file: {log_path}")
-            else:
-                log_file = log_files[0]
-
-        else:
-            raise FileNotFoundError(f"No log files found with extension .csv in {log_path}")
-
-        log_data = load_temperature_log_file(log_file)
-
-        # TODO alternate pathway for echem data
-
-        # Check that the log scans are the same as the xrd scans
-        if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"])):
-            raise ValueError(
-                "Log file scan numbers do not match XRD data scan numbers. "
-                "Ensure the log file contains all XRD scans."
+            # Load the XRD data
+            xrd_data = process_xrd_data(
+                xrd_folder=xrd_path,
+                start_at=start_exp,
+                exclude_exp=exclude_exp,
+                glob_str="*summed*",
             )
 
-        # Replace scan numbers from the xrd_data index with the temperature from the log file
-        xrd_data["2D_data"].index = xrd_data["2D_data"].index.map(
-            lambda x: log_data.loc[log_data["scan_number"] == x, "Temp"].values[0]
-        )
+            # Load the 1D data
+            if log_path.exists():
+                log_files = list(log_path.glob("*.csv"))
+                if len(log_files) > 1:
+                    raise ValueError(
+                        f"Log folder should contain exactly one CSV file: {log_path}. Found {len(log_files)} files. Files found: {log_files}"
+                    )
+                    # TODO handle multiple files
+                elif len(log_files) == 0:
+                    raise ValueError(f"Log folder should contain at least one CSV file: {log_path}")
+                else:
+                    log_file = log_files[0]
 
-        # Add the log data to the xrd_data dictionary
-        xrd_data["log_data"] = log_data
+            else:
+                raise FileNotFoundError(f"No log files found with extension .csv in {log_path}")
 
-        return xrd_data
+            log_data = load_temperature_log_file(log_file)
+
+            # TODO alternate pathway for echem data
+
+            # Check that the log scans are the same as the xrd scans
+            if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"])):
+                raise ValueError(
+                    "Log file scan numbers do not match XRD data scan numbers. "
+                    "Ensure the log file contains all XRD scans."
+                )
+
+            # # Replace scan numbers from the xrd_data index with the temperature from the log file
+            # xrd_data["2D_data"].index = xrd_data["2D_data"].index.map(
+            #     lambda x: log_data.loc[log_data["scan_number"] == x, "Temp"].values[0]
+            # )
+
+            # Add the log data to the xrd_data dictionary
+            log_data = log_data.rename(columns={"Temp": "x", "scan_number": "y"})
+
+            time_series_data_dict = {
+                "x": log_data["x"].values,
+                "y": log_data["y"].values,
+                "metadata": {
+                    "min_y": log_data["y"].min(),
+                    "max_y": log_data["y"].max(),}
+
+            }
+            xrd_data["Time_series_data"] = time_series_data_dict
+
+            return xrd_data
 
     except Exception as e:
         raise RuntimeError(f"Failed to process XRD data: {str(e)}")
@@ -155,14 +165,19 @@ def process_xrd_data(
     # TODO make this more robust to different file naming conventions
     all_patterns.index = all_patterns.index.map(lambda x: int(x.name.split("-")[0]))
     all_patterns.sort_index(inplace=True)
+
+    file_num_index = all_patterns.index.values
+
     metadata = {
         "num_experiments": len(all_patterns.index),
+        "y_range": {"max_y": max(all_patterns.index),
+                    "min_y": min(all_patterns.index),}
     }
     return {
         "2D_data": all_patterns,
         "Two theta": two_theta,
         "metadata": metadata,
-        "file_num_index": all_patterns.index.tolist(),
+        "file_num_index": file_num_index,
     }
 
 
