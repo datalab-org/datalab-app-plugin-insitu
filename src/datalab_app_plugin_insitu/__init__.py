@@ -4,6 +4,7 @@ from importlib.metadata import version
 
 from .apps.nmr import InsituBlock, process_datalab_data, process_local_data
 from .apps.uvvis import UVVisInsituBlock
+from .apps.xrd import XRDInsituBlock
 
 __version__ = version("datalab-app-plugin-insitu")
 
@@ -13,4 +14,5 @@ __all__ = (
     "process_datalab_data",
     "InsituBlock",
     "UVVisInsituBlock",
+    "XRDInsituBlock",
 )
