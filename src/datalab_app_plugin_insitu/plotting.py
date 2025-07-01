@@ -248,7 +248,7 @@ def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
         source=line_source,
         line_width=1,
         color="blue",
-        legend_label="Reference",
+        legend_label="Current Spectrum",
     )
 
     nmrplot_figure.multi_line(
