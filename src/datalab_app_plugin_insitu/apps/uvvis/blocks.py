@@ -162,6 +162,13 @@ class UVVisInsituBlock(GenericInSituBlock):
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
+        if (
+            self.data.get("uvvis_folder_name") is None
+            or self.data.get("echem_folder_name") is None
+            or self.data.get("uvvis_reference_folder_name") is None
+        ):
+            raise ValueError("UV-Vis and Echem folder names must be set in the DataBlock")
+
         data = self.process_and_store_data(file_path)
 
         if (
