@@ -78,16 +78,39 @@ def process_local_uvvis_data(
     uvvis_folder: Path,
     reference_folder: Path,
     echem_folder: Path,
-    start_at: int = 1,
+    start_at: int = 0,
     sample_file_extension: str = ".Raw8.txt",
     reference_file_extension: str = ".Raw8.TXT",
     exclude_exp: Optional[List[int]] = None,
     scan_time: Optional[float] = None,
 ) -> Dict:
+    """
+    Processes UV-Vis and Echem data from a local folder or a zip file. This function basicallly wraps the process_uvvis_data and process_echem_data functions to handle both types of data.
+    It checks if the folder is a zip file and extracts it to a temporary directory if so.
+    It then finds the relative paths to the UV-Vis and reference folders, processes the UV-Vis data, and processes the Echem data.
+    Finally, it combines the UV-Vis data and Echem data into a single dictionary and returns it.
+
+    Args:
+        folder_name (Path): Path to the folder or zip file containing the data
+        uvvis_folder (Path): Folder name containing the UV-Vis data files
+        reference_folder (Path): Folder name containing the reference data file
+        echem_folder (Path): Folder name containing the Echem data files
+        start_at (int): Index to start processing from
+        sample_file_extension (str): File extension for sample files
+        reference_file_extension (str): File extension for reference files
+        exclude_exp (Optional[List[int]]): List of indices to exclude from processing
+        scan_time (Optional[float]): Time taken for the scan in seconds
+    Returns:
+        Dict: Dictionary containing the following keys, the processed UV-Vis data [2D data] and Echem data [Time_series_data], along with wavelength, metadata, time of scan, and file number index.
+    Raises:
+        ValueError: If the UV-Vis or reference folders are not specified or do not exist
+        FileNotFoundError: If the UV-Vis or reference folders are not found in the provided path
+        RuntimeError: If there is an error extracting the zip file or finding the folder
+    """
     # Check if the folder exists
     if not all([uvvis_folder, reference_folder]):
         raise ValueError("Both UV-Vis and reference folders must be specified.")
-
+    # Wrap everything in a temporary directory if the folder is a zip file
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             if folder_name.suffix == ".zip":
@@ -104,7 +127,7 @@ def process_local_uvvis_data(
             else:
                 base_path = Path(folder_name)
 
-            # Find the relative paths to the UV-Vis and reference folders
+            # Find the relative paths to the UV-Vis and reference folders from the temporary directory
             uvvis_path = _find_folder_path(base_path, uvvis_folder)
             reference_path = _find_folder_path(base_path, reference_folder)
             echem_path = _find_folder_path(base_path, echem_folder)
@@ -131,6 +154,7 @@ def process_local_uvvis_data(
             if not echem_path.is_dir():
                 raise ValueError(f"Echem folder is not a directory: {echem_path}")
 
+            # Process the UV-Vis data
             uvvis_data = process_uvvis_data(
                 uvvis_path,
                 reference_path,
@@ -141,6 +165,7 @@ def process_local_uvvis_data(
                 scan_time,
             )
 
+            # Process the Echem data
             echem_data = process_echem_data(echem_path)
             # Combine the UV-Vis and Echem data into a single dictionary
             uvvis_data["Time_series_data"] = echem_data
@@ -154,14 +179,14 @@ def process_local_uvvis_data(
 def process_uvvis_data(
     uvvis_folder: Path,
     reference_folder: Path,
-    start_at: int = 1,
+    start_at: int = 0,
     sample_file_extension: str = ".Raw8.txt",
     reference_file_extension: str = ".Raw8.TXT",
     exclude_exp: Optional[List[int]] = None,
     scan_time: Optional[float] = None,
 ) -> Dict:
     """
-    Processes UV-Vis and Echem data from specified folders.
+    Processes UV-Vis data from specified folders.
     Args:
         uvvis_folder (Path): Path to the folder containing UV-Vis data files
         reference_folder (Path): Path to the folder containing the reference data file
@@ -170,15 +195,13 @@ def process_uvvis_data(
         sample_file_extension (str): File extension for sample files
         reference_file_extension (str): File extension for reference files
         exclude_exp (Optional[List[int]]): List of indices to exclude from processing
-        scan_time (Optional[float]): Time taken for the scan in seconds
+        scan_time (float): Time taken for the scan in seconds, including the time between scans. If None the time will be set to the index of the scan.
     Returns:
-        Dict: Dictionary containing two keys, the processed UV-Vis data [2D data] and Echem data [echem data]
+        Dict: Dictionary containing processed UV-Vis data, wavelength, metadata, time of scan, and file number index
     """
 
     reference_files = list(reference_folder.glob("*" + reference_file_extension))
     if len(reference_files) != 1:
-        print(f"Reference files found: {len(reference_files)}")
-        print(f"Reference folder: {reference_folder}")
         raise ValueError(
             f"Reference folder should contain exactly one {reference_file_extension} file: {reference_folder}"
         )
@@ -191,7 +214,7 @@ def process_uvvis_data(
     # Grab all the files in the uvvis folder with the right extension
     all_files = list(uvvis_folder.glob("*" + sample_file_extension))
 
-    # Grab file numbers for sorting - this might need to be made more flexible - currently assumes numbers are at the end of the filename
+    # Grab file numbers for sorting - this might need to be made more flexible - currently assumes numbers are at the end of the filename before the extension
     def num_finder(x):
         filename = x.name
         return int(filename.split(".")[0].split("_")[1])
@@ -199,7 +222,6 @@ def process_uvvis_data(
     file_num = [num_finder(x) for x in all_files]
     sort_df = pd.Series(index=file_num, data=list(all_files))
     sort_df.sort_index(inplace=True)
-    print(sort_df.head())
     # Populate X (2D array for the heatmap) with the patterns - normalising to the original scan
     X = pd.DataFrame(index=sort_df.index, columns=wavelength)
 
@@ -223,7 +245,7 @@ def process_uvvis_data(
         X = X.drop(index=exclude_exp)
 
     # Remove rows before the start_at index
-    if start_at > 1:
+    if start_at > 0:
         mask = X.index >= start_at
         X = X[mask]
 
@@ -238,24 +260,6 @@ def process_uvvis_data(
     if scan_time is not None:
         X.index = X.index.astype(float) * scan_time
 
-    # # Reduce data size if too large
-    # num_experiments = len(X.index)
-    # data_length = len(X.columns)
-    # if num_experiments > 1000:
-    #     scan_granularity = num_experiments // 1000
-    # else:
-    #     scan_granularity = 1
-    # if data_length > 1000:
-    #     data_granularity = data_length // 1000
-    # else:
-    #     data_granularity = 1
-    # print(f"Reducing data size: {num_experiments} experiments, {data_length} wavelengths")
-    # print(f"Scan granularity: {scan_granularity}, Data granularity: {data_granularity}")
-    # X = GenericInSituBlock.subsample_data(X, scan_granularity, data_granularity)
-    # X = X.iloc[::scan_granularity, ::data_granularity]
-    # wavelength = wavelength[::data_granularity]
-
-    print(X.index)
     metadata = {
         "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
         "num_experiments": len(X.index),

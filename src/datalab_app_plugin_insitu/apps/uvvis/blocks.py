@@ -27,7 +27,7 @@ class UVVisInsituBlock(GenericInSituBlock):
     folder_name = None
 
     defaults = {
-        "start_exp": 1,
+        "start_exp": 0,
         "exclude_exp": None,
         "echem_data": None,
         "metadata": None,
@@ -76,7 +76,7 @@ class UVVisInsituBlock(GenericInSituBlock):
                 echem_folder=echem_folder_name,
                 start_at=start_exp,
                 exclude_exp=exclude_exp,
-                # Needs to be made more generic
+                # TODO Needs to be made more generic
                 sample_file_extension=".Raw8.txt",
                 reference_file_extension=".Raw8.TXT",
                 scan_time=scan_time,
@@ -102,7 +102,7 @@ class UVVisInsituBlock(GenericInSituBlock):
 
             self.data["sample_granularity"] = sample_granularity
             self.data["data_granularity"] = data_granularity
-            # Subsample the 2D data and wavelength data to a maximum of 1000 samples
+            # Subsample the 2D data and wavelength data to a maximum of 1000 samples and data points
             data["2D_data"] = self.subsample_data(
                 data["2D_data"],
                 sample_granularity=sample_granularity,
@@ -123,8 +123,7 @@ class UVVisInsituBlock(GenericInSituBlock):
                 data_granularity=1,
                 method="linear",
             )
-            print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
-            print(f"Subsampled wavelength data shape: {data['wavelength'].shape}")
+
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:

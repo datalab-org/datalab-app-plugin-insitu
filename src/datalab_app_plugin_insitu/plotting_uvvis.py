@@ -23,23 +23,23 @@ def create_linked_insitu_plots(
 ):
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
     heatmap_figure = _create_heatmap_figure(plot_data, shared_ranges)
-    nmrplot_figure = _create_top_line_figure(plot_data, shared_ranges)
+    uvvisplot_figure = _create_top_line_figure(plot_data, shared_ranges)
     echemplot_figure = _create_echem_figure(plot_data, shared_ranges)
 
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
     )
-    nmrplot_figure.js_on_event(
-        DoubleTap, CustomJS(args=dict(p=nmrplot_figure), code="p.reset.emit()")
+    uvvisplot_figure.js_on_event(
+        DoubleTap, CustomJS(args=dict(p=uvvisplot_figure), code="p.reset.emit()")
     )
     echemplot_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=echemplot_figure), code="p.reset.emit()")
     )
 
     if link_plots:
-        _link_plots(heatmap_figure, nmrplot_figure, echemplot_figure, plot_data)
+        _link_plots(heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data)
 
-    grid = [[None, nmrplot_figure], [echemplot_figure, heatmap_figure]]
+    grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
 
     return gp
@@ -208,7 +208,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
 def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
     """
-    Create the NMR line plot figure component.
+    Create the UV-Vis line plot figure component.
 
     Args:
         plot_data: Dictionary containing prepared plot data
@@ -337,7 +337,7 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
 
 def _link_plots(
     heatmap_figure: figure,
-    nmrplot_figure: figure,
+    uvvisplot_figure: figure,
     echemplot_figure: figure,
     plot_data: Dict[str, Any],
 ) -> None:
@@ -346,7 +346,7 @@ def _link_plots(
 
     Args:
         heatmap_figure: The heatmap figure component
-        nmrplot_figure: The NMR line plot figure component
+        uvvisplot_figure: The UV-Vis line plot figure component
         echemplot_figure: The electrochemical figure component
         plot_data: Dictionary containing prepared plot data
     """
@@ -510,13 +510,13 @@ def _link_plots(
 
     heatmap_figure.x_range.tags = [ppm_values.tolist(), intensity_matrix.tolist()]
 
-    line_y_range = nmrplot_figure.y_range
+    line_y_range = uvvisplot_figure.y_range
     line_y_range.js_link("start", heatmap_figure.select_one(LinearColorMapper), "low")
     line_y_range.js_link("end", heatmap_figure.select_one(LinearColorMapper), "high")
 
     tap_tool = TapTool()
 
-    nmrplot_figure.add_tools(tap_tool)
+    uvvisplot_figure.add_tools(tap_tool)
 
     remove_line_callback = CustomJS(
         args=dict(clicked_spectra_source=clicked_spectra_source),
