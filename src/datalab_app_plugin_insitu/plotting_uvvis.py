@@ -26,12 +26,25 @@ except ImportError:
 
 
 def create_linked_insitu_plots(
-    plot_data, time_series_time_range, heatmap_time_range, link_plots: bool = False
+    plot_data,
+    time_series_time_range,
+    heatmap_time_range,
+    plotting_label_dict: dict,
+    link_plots: bool = False,
+
 ):
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
-    heatmap_figure = _create_heatmap_figure(plot_data, shared_ranges)
-    uvvisplot_figure = _create_top_line_figure(plot_data, shared_ranges)
-    echemplot_figure = _create_echem_figure(plot_data, shared_ranges)
+    heatmap_figure = _create_heatmap_figure(plot_data,
+                                            shared_ranges,
+                                            x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
+                                            time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"))
+    uvvisplot_figure = _create_top_line_figure(plot_data,
+                                               shared_ranges,
+                                               line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"))
+    echemplot_figure = _create_echem_figure(plot_data,
+                                            shared_ranges,
+                                            time_series_x_axis_label=plotting_label_dict.get("time_series_x_axis_label", "Voltage (V)"),
+                                            time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"))
 
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
@@ -44,7 +57,7 @@ def create_linked_insitu_plots(
     )
 
     if link_plots:
-        _link_plots(heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data)
+        _link_plots(heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict)
 
     grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
@@ -171,7 +184,10 @@ def _create_shared_ranges(
     }
 
 
-def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
+def _create_heatmap_figure(plot_data: Dict[str, Any], 
+                           ranges: Dict[str, Range1d],
+                           x_axis_label,
+                           time_series_y_axis_label) -> figure:
     """
     Create the heatmap figure component.
 
@@ -191,8 +207,8 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
     tools = "pan,wheel_zoom,box_zoom,reset,save"
 
     heatmap_figure = figure(
-        x_axis_label="Wavelength (nm)",
-        y_axis_label="Time (s)",
+        x_axis_label=x_axis_label,
+        y_axis_label=time_series_y_axis_label,
         x_range=ranges["shared_x_range"],
         y_range=ranges["shared_y_range"],
         height=400,
@@ -254,7 +270,9 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
     return heatmap_figure
 
 
-def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
+def _create_top_line_figure(plot_data: Dict[str, Any], 
+                            ranges: Dict[str, Range1d],
+                            line_y_axis_label) -> figure:
     """
     Create the UV-Vis line plot figure component.
 
@@ -291,7 +309,7 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
     )
 
     plot_figure = figure(
-        y_axis_label="Intensity",
+        y_axis_label=line_y_axis_label,
         aspect_ratio=2,
         x_range=ranges["shared_x_range"],
         y_range=ranges["intensity_range"],
@@ -323,7 +341,10 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
     return plot_figure
 
 
-def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
+def _create_echem_figure(plot_data: Dict[str, Any], 
+                         ranges: Dict[str, Range1d],
+                         time_series_x_axis_label,
+                         time_series_y_axis_label) -> figure:
     """
     Create the electrochemical data figure component.
 
@@ -339,8 +360,8 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
     tools = "pan,wheel_zoom,box_zoom,reset,save"
 
     echemplot_figure = figure(
-        x_axis_label="Voltage (V)",
-        y_axis_label="Time (s)",
+        x_axis_label=time_series_x_axis_label,
+        y_axis_label=time_series_y_axis_label,
         y_range=ranges["shared_y_range"],
         height=400,
         width=250,
@@ -396,14 +417,13 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
             )
 
         hover_tool = HoverTool(
-                tooltips=[
-                    ("Exp.", "@exp_num{0}"),
-                    ("Time (h)", "@time{0.00}"),
-                    ("Voltage (V)", "@voltage{0.000}"),
-                ],
-                mode="hline",
-                point_policy="snap_to_data",
-            )
+            tooltips=[
+                ("Exp.", "@exp_num{0}"),
+                ("Temperature (C)", "@voltage{0.000}"),
+            ],
+            mode="hline",
+            point_policy="snap_to_data",
+        )
         echemplot_figure.add_tools(hover_tool)
 
     return echemplot_figure
@@ -414,6 +434,7 @@ def _link_plots(
     uvvisplot_figure: figure,
     echemplot_figure: figure,
     plot_data: Dict[str, Any],
+    plotting_label_dict: dict,
 ) -> None:
     """
     Link the plots together with interactive tools and callbacks.
@@ -490,6 +511,8 @@ def _link_plots(
                 colors=COLORS,
                 times_by_exp=plot_data["times_by_exp"].tolist(),
                 voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
+                label_template=plotting_label_dict["label_source"]["label_template"],
+                label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
             code="""
                     const indices = cb_obj.indices;
@@ -499,9 +522,33 @@ def _link_plots(
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = exp_num - 1;
 
-                    const time = times_by_exp[index].toFixed(0);
-                    const voltage = voltages_by_exp[index].toFixed(3);
-                    const label = `#${exp_num} @ ${time} s, ${voltage} V`;
+                    const values = {
+                        exp_num: exp_num,
+                    };
+
+                    for (const key in label_fields) {
+                        if (key !== "exp_num") {
+                            const field = label_fields[key];
+                            const val_array = eval(field);  // E.g. `times_by_exp`
+                            const val = val_array[index];
+
+                            // Optional: format based on key
+                            if (key === "time") {
+                                values[key] = val.toFixed(2);
+                            } else if (key === "voltage") {
+                                values[key] = val.toFixed(3);
+                            } else {
+                                values[key] = val;
+                            }
+                        }
+                    }
+
+                    // Format the label string using the template
+                    let label = label_template;
+                    for (const key in values) {
+                        label = label.replace(`{${key}}`, values[key]);
+                    }
+
 
                     const existing_labels = clicked_spectra_source.data.label;
                     if (existing_labels.includes(label)) return;
