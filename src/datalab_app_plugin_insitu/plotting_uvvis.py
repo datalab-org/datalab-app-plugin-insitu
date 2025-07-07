@@ -84,18 +84,23 @@ def prepare_uvvis_plot_data(
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
-        "time_range": metadata["time_range"],
+        "y_range": metadata["time_range"],
         "first_spectrum_intensities": first_spectrum_intensities,
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
-        "echem_data": echem_data,
+        "time_series_data": echem_data,
         "times_by_exp": times,
-        "voltages_by_exp": voltage_interp,
+        "x_values_by_exp": voltage_interp,
         "file_num_index": file_num_index,
     }
 
+
 def prepare_xrd_plot_data(
-        two_d_data: pd.DataFrame, heatmap_x_values: pd.Series, time_series_data, metadata, file_num_index
+    two_d_data: pd.DataFrame,
+    heatmap_x_values: pd.Series,
+    time_series_data,
+    metadata,
+    file_num_index,
 ) -> Optional[Dict[str, Any]]:
     twoD_matrix = two_d_data.values
 
@@ -130,7 +135,6 @@ def prepare_xrd_plot_data(
         "x_values_by_exp": x_values_by_exp,
         "file_num_index": file_num_index,
     }
-
 
 
 def _create_shared_ranges(
@@ -217,8 +221,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
                 "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
                 "y": times,
                 "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
-                "height": [(time_range["max_y"] - time_range["min_y"]) / time_points]
-                * time_points,
+                "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
                 "exp_num": experiment_numbers,
             }
         )
@@ -348,11 +351,11 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
         times = np.array(echem_data["time"])
         voltages = np.array(echem_data["Voltage"])
 
-        time_range = plot_data["time_range"]
-        time_span = time_range["max_time"] - time_range["min_time"]
+        time_range = plot_data["y_range"]
+        time_span = time_range["max_y"] - time_range["min_y"]
         exp_count = plot_data["num_experiments"]
 
-        exp_numbers = np.floor(((times - time_range["min_time"]) / time_span) * exp_count) + 1
+        exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
         echem_source = ColumnDataSource(
             data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
@@ -373,36 +376,35 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
         echemplot_figure.add_tools(hover_tool)
 
     elif echem_data and "x" in echem_data and "y" in echem_data:
-            # Handle alternate pathway for echem data
-            times = np.array(echem_data["y"])
-            voltages = np.array(echem_data["x"])
+        # Handle alternate pathway for echem data
+        times = np.array(echem_data["y"])
+        voltages = np.array(echem_data["x"])
 
-            time_range = plot_data["y_range"]
-            time_span = time_range["max_y"] - time_range["min_y"]
-            exp_count = plot_data["num_experiments"]
-            exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
-            exp_numbers = np.clip(exp_numbers, 1, exp_count)
-            echem_source = ColumnDataSource(
-                data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
-            )
+        time_range = plot_data["y_range"]
+        time_span = time_range["max_y"] - time_range["min_y"]
+        exp_count = plot_data["num_experiments"]
+        exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
+        exp_numbers = np.clip(exp_numbers, 1, exp_count)
+        echem_source = ColumnDataSource(
+            data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
+        )
 
-            echemplot_figure.line(
+        echemplot_figure.line(
                 x="voltage",
                 y="time",
                 source=echem_source,
-                color=COLORS[1],
             )
 
-            hover_tool = HoverTool(
+        hover_tool = HoverTool(
                 tooltips=[
                     ("Exp.", "@exp_num{0}"),
-                    ("Time (s)", "@time{0.00}"),
+                    ("Time (h)", "@time{0.00}"),
                     ("Voltage (V)", "@voltage{0.000}"),
                 ],
                 mode="hline",
                 point_policy="snap_to_data",
             )
-            echemplot_figure.add_tools(hover_tool)
+        echemplot_figure.add_tools(hover_tool)
 
     return echemplot_figure
 

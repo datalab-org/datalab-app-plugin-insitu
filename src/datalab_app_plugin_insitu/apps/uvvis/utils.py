@@ -249,7 +249,7 @@ def process_uvvis_data(
         X.index = X.index.astype(float) * scan_time
 
     metadata = {
-        "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
+        "time_range": {"min_y": min(X.index), "max_y": max(X.index)},
         "num_experiments": len(X.index),
     }
     return {
