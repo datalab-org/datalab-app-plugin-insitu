@@ -1,7 +1,7 @@
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import pandas as pd
 from pydatalab.apps.xrd.blocks import XRDBlock
@@ -14,7 +14,7 @@ def process_local_xrd_data(
     xrd_folder_name: str,
     log_folder_name: str,
     start_exp: int = 1,
-    exclude_exp: list = None,
+    exclude_exp: Union[list, None] = None,
 ):
     """
     Process local XRD data from a zip file.
@@ -59,7 +59,6 @@ def process_local_xrd_data(
 
             # Check if the folder exists
             if not all([xrd_path, log_path]):
-                print(f"XRD folder: {xrd_path}, Log folder: {log_path}")
                 raise ValueError("XRD folder and log folder must be specified.")
 
             # Load the XRD data
@@ -110,8 +109,8 @@ def process_local_xrd_data(
                 "y": log_data["y"].values,
                 "metadata": {
                     "min_y": log_data["y"].min(),
-                    "max_y": log_data["y"].max(),}
-
+                    "max_y": log_data["y"].max(),
+                },
             }
             xrd_data["Time_series_data"] = time_series_data_dict
 
@@ -170,8 +169,10 @@ def process_xrd_data(
 
     metadata = {
         "num_experiments": len(all_patterns.index),
-        "y_range": {"max_y": max(all_patterns.index),
-                    "min_y": min(all_patterns.index),}
+        "y_range": {
+            "max_y": max(all_patterns.index),
+            "min_y": min(all_patterns.index),
+        },
     }
     return {
         "2D_data": all_patterns,

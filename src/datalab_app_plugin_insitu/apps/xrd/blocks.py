@@ -154,17 +154,17 @@ class XRDInsituBlock(GenericInSituBlock):
         data = self.process_and_store_data(file_path)
 
         plot_data = prepare_xrd_plot_data(
-            data["2D_data"],
-            data["Two theta"],
-            data["Time_series_data"],
-            data["metadata"],
-            data["file_num_index"],
+            two_d_data=data["2D_data"],
+            heatmap_x_values=data["Two theta"],
+            time_series_data=data["Time_series_data"],
+            metadata=data["metadata"],
+            file_num_index=data["file_num_index"],
         )
 
         gp = create_linked_insitu_plots(
             plot_data,
-            data["Time_series_data"]["metadata"],
-            data["metadata"]["y_range"],
+            time_series_time_range=data["Time_series_data"]["metadata"],
+            heatmap_time_range=data["metadata"]["y_range"],
             link_plots=link_plots,
         )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
