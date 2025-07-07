@@ -26,6 +26,20 @@ class UVVisInsituBlock(GenericInSituBlock):
     uvvis_folder_name = None
     echem_folder_name = None
     folder_name = None
+    plotting_label_dict = {
+        "x_axis_label" : "Wavelength (nm)",
+        "time_series_y_axis_label" : "Time (h)",
+        "line_y_axis_label" : "Intensity (a.u.)",
+        "time_series_x_axis_label" : "Voltage (V)",
+        "label_source": {
+            "label_template" : "Exp num {exp_num} | t = {time} h | V = {voltage} V",
+            "label_field_map" : {
+                "exp_num": "exp_num",
+                "time": "times_by_exp",
+                "voltage": "voltages_by_exp",
+            }
+        },
+    }
 
     defaults = {
         "start_exp": 0,
@@ -190,6 +204,7 @@ class UVVisInsituBlock(GenericInSituBlock):
             plot_data,
             data["Time_series_data"]["metadata"],
             data["metadata"]["time_range"],
+            plotting_label_dict=self.plotting_label_dict,
             link_plots=link_plots,
         )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
