@@ -362,6 +362,8 @@ def _create_echem_figure(plot_data: Dict[str, Any],
         tools=tools,
     )
 
+    echemplot_figure.xaxis.ticker.desired_num_ticks = 4
+
     if echem_data and "Voltage" in echem_data and "time" in echem_data:
         times = np.array(echem_data["time"])
         voltages = np.array(echem_data["Voltage"])
