@@ -31,7 +31,7 @@ class XRDInsituBlock(GenericInSituBlock):
         "line_y_axis_label" : "Intensity (a.u.)",
         "time_series_x_axis_label" : "Temp (C)",
         "label_source": {
-            "label_template" : "Exp num {exp_num} | Temp = {temperature} K",
+            "label_template" : "Exp num {exp_num} | Temp = {temperature} C",
             "label_field_map" : {
                 "exp_num": "exp_num",
                 "temperature": "voltages_by_exp",
