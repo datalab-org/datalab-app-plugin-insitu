@@ -37,7 +37,7 @@ class GenericInSituBlock(DataBlock, ABC):
             file_path: Path to the zip file.
 
         Returns:
-            List[str]: Sorted list of subfolder names, or empty list if file not found or on error.
+            Sorted list of subfolder names, or empty list if file not found or on error.
         """
 
         try:
@@ -82,14 +82,10 @@ class GenericInSituBlock(DataBlock, ABC):
         Subsample data to a specified granularity in both sample and feature dimensions.
 
         Parameters:
-            data: pd.DataFrame or np.ndarray
-                The data to be subsampled.
-            sample_granularity: int
-                Subsampling step along rows (samples).
-            data_granularity: int
-                Subsampling step along columns (features).
-            method: str
-                Subsampling method; currently supports only 'linear'.
+            data: The data to be subsampled.
+            sample_granularity: Subsampling step along rows (samples).
+            data_granularity: Subsampling step along columns (features).
+            method: Subsampling method; currently supports only 'linear'.
 
         Returns:
             Subsampled data of the same type as input.

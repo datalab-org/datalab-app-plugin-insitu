@@ -9,10 +9,10 @@ def process_echem_data(echem_folder: Path) -> Dict:
     Processes Echem data from a specified file.
 
     Args:
-        echem_file (Path): Path to the Echem data file
+        echem_file: Path to the Echem data file
 
     Returns:
-        Dict: Dictionary containing the processed Echem data with keys "time" and "data"
+        Dictionary containing the processed Echem data with keys "time" and "data"
     """
 
     if echem_folder.exists():

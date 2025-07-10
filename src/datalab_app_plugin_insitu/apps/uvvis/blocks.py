@@ -17,8 +17,9 @@ class UVVisInsituBlock(GenericInSituBlock):
     name = "UV-Vis insitu"
     description = """This datablock processes in situ UV-Vis data from an input .zip file containing two specific directories:
 
-    - **UV-Vis Data Directory**: Contains multiple UV-Vis in-situ experiment datasets.
-    - **Echem Data Directory**: Contains echem data files in `.txt` format.
+    - UV-Vis Data Directory: Contains multiple UV-Vis in-situ experiment datasets.
+    - Echem Data Directory: Contains echem data files in `.txt` format.
+
     """
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
@@ -29,8 +30,6 @@ class UVVisInsituBlock(GenericInSituBlock):
     defaults = {
         "start_exp": 0,
         "exclude_exp": None,
-        "echem_data": None,
-        "metadata": None,
         "scan_time": None,
         "target_sample_number": 1000,
         "target_data_number": 1000,
