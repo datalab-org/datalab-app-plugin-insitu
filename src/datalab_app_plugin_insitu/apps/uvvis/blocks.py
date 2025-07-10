@@ -55,15 +55,16 @@ class UVVisInsituBlock(GenericInSituBlock):
         folders = self.get_available_folders(file_path)
         self.data["available_folders"] = folders
 
+        if not self.data.get("uvvis_folder_name"):
+            raise ValueError("UV-Vis folder name is required")
         uvvis_folder_name = Path(self.data.get("uvvis_folder_name"))
-        if not uvvis_folder_name:
-            raise ValueError("UV-Vis folder name is required")
+        if not self.data.get("uvvis_reference_folder_name"):
+            raise ValueError("Reference folder name is required")
         reference_folder_name = Path(self.data.get("uvvis_reference_folder_name"))
-        if not reference_folder_name:
-            raise ValueError("UV-Vis folder name is required")
-        echem_folder_name = Path(self.data.get("echem_folder_name"))
-        if not echem_folder_name:
+        if not self.data.get("echem_folder_name"):
             raise ValueError("Echem folder name is required")
+        echem_folder_name = Path(self.data.get("echem_folder_name"))
+
 
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
@@ -163,14 +164,14 @@ class UVVisInsituBlock(GenericInSituBlock):
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
+        data = self.process_and_store_data(file_path)
+
         if (
             self.data.get("uvvis_folder_name") is None
             or self.data.get("echem_folder_name") is None
             or self.data.get("uvvis_reference_folder_name") is None
         ):
             raise ValueError("UV-Vis and Echem folder names must be set in the DataBlock")
-
-        data = self.process_and_store_data(file_path)
 
         plot_data = prepare_uvvis_plot_data(
             data["2D_data"],
