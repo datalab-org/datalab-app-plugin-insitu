@@ -64,7 +64,6 @@ class UVVisInsituBlock(GenericInSituBlock):
             raise ValueError("Echem folder name is required")
         echem_folder_name = Path(self.data.get("echem_folder_name"))
 
-
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
