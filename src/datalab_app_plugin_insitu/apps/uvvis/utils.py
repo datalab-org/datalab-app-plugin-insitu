@@ -1,5 +1,6 @@
 import tempfile
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -52,7 +53,7 @@ def parse_uvvis_txt(filename: Path) -> pd.DataFrame:
     # Read the file, skipping the first 7 rows and using the first row as header
     data = pd.read_csv(filename, sep=r";", skiprows=7, header=None)
 
-    # I need to look into what dark counts and reference counts are - I never used them just the sample counts from two differernt runs
+    # @be-smith: I need to look into what dark counts and reference counts are - I never used them just the sample counts from two different runs
     data.columns = ["Wavelength", "Sample counts", "Dark counts", "Reference counts"]
     return data
 
@@ -91,17 +92,18 @@ def process_local_uvvis_data(
     Finally, it combines the UV-Vis data and Echem data into a single dictionary and returns it.
 
     Args:
-        folder_name (Path): Path to the folder or zip file containing the data
-        uvvis_folder (Path): Folder name containing the UV-Vis data files
-        reference_folder (Path): Folder name containing the reference data file
-        echem_folder (Path): Folder name containing the Echem data files
-        start_at (int): Index to start processing from
-        sample_file_extension (str): File extension for sample files
-        reference_file_extension (str): File extension for reference files
-        exclude_exp (Optional[List[int]]): List of indices to exclude from processing
-        scan_time (Optional[float]): Time taken for the scan in seconds
+        folder_name: Path to the folder or zip file containing the data
+        uvvis_folder: Folder name containing the UV-Vis data files
+        reference_folder: Folder name containing the reference data file
+        echem_folder: Folder name containing the Echem data files
+        start_at: Index to start processing from
+        sample_file_extension: File extension for sample files
+        reference_file_extension: File extension for reference files
+        exclude_exp: List of indices to exclude from processing
+        scan_time: Time taken for the scan in seconds
+
     Returns:
-        Dict: Dictionary containing the following keys, the processed UV-Vis data [2D data] and Echem data [Time_series_data], along with wavelength, metadata, time of scan, and file number index.
+        Dictionary containing the following keys, the processed UV-Vis data [2D data] and Echem data [Time_series_data], along with wavelength, metadata, time of scan, and file number index.
     Raises:
         ValueError: If the UV-Vis or reference folders are not specified or do not exist
         FileNotFoundError: If the UV-Vis or reference folders are not found in the provided path
@@ -132,27 +134,12 @@ def process_local_uvvis_data(
             reference_path = _find_folder_path(base_path, reference_folder)
             echem_path = _find_folder_path(base_path, echem_folder)
             # Check there is one file in the reference folder with the right extension - if so parse it for the reference scan
-            if reference_path is None:
+            if reference_path is None or not reference_path.is_dir():
                 raise FileNotFoundError(f"Reference folder not found: {reference_folder}")
-            if not reference_path.exists():
-                raise FileNotFoundError(f"Reference folder not found: {reference_path}")
-            if not reference_path.is_dir():
-                raise ValueError(f"Reference folder is not a directory: {reference_path}")
-
-            # Grab all the files in the uvvis folder with the right extension
-            if uvvis_path is None:
+            if uvvis_path is None or not uvvis_path.is_dir():
                 raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_folder}")
-            if not uvvis_path.exists():
-                raise FileNotFoundError(f"UV-Vis folder not found: {uvvis_path}")
-            if not uvvis_path.is_dir():
-                raise ValueError(f"UV-Vis folder is not a directory: {uvvis_path}")
-
-            if echem_path is None:
+            if echem_path is None or not echem_path.is_dir():
                 raise FileNotFoundError(f"Echem folder not found: {echem_folder}")
-            if not echem_path.exists():
-                raise FileNotFoundError(f"Echem folder not found: {echem_path}")
-            if not echem_path.is_dir():
-                raise ValueError(f"Echem folder is not a directory: {echem_path}")
 
             # Process the UV-Vis data
             uvvis_data = process_uvvis_data(
@@ -187,17 +174,19 @@ def process_uvvis_data(
 ) -> Dict:
     """
     Processes UV-Vis data from specified folders.
+
     Args:
-        uvvis_folder (Path): Path to the folder containing UV-Vis data files
-        reference_folder (Path): Path to the folder containing the reference data file
-        echem_folder (Path): Path to the folder containing Echem data files
-        start_at (int): Index to start processing from
-        sample_file_extension (str): File extension for sample files
-        reference_file_extension (str): File extension for reference files
-        exclude_exp (Optional[List[int]]): List of indices to exclude from processing
-        scan_time (float): Time taken for the scan in seconds, including the time between scans. If None the time will be set to the index of the scan.
+        uvvis_folder: Path to the folder containing UV-Vis data files
+        reference_folder: Path to the folder containing the reference data file
+        echem_folder: Path to the folder containing Echem data files
+        start_at: Index to start processing from
+        sample_file_extension: File extension for sample files
+        reference_file_extension: File extension for reference files
+        exclude_exp: List of indices to exclude from processing
+        scan_time: Time taken for the scan in seconds, including the time between scans. If None the time will be set to the index of the scan.
+
     Returns:
-        Dict: Dictionary containing processed UV-Vis data, wavelength, metadata, time of scan, and file number index
+        Dictionary containing processed UV-Vis data, wavelength, metadata, time of scan, and file number index
     """
 
     reference_files = list(reference_folder.glob("*" + reference_file_extension))
@@ -235,9 +224,6 @@ def process_uvvis_data(
             print(
                 f"Warning: Negative absorbance values found in file {idx}. This may indicate an issue with the data."
             )
-
-    # Remove index if it is in the exclude list
-    from collections.abc import Iterable
 
     if exclude_exp is not None:
         if not isinstance(exclude_exp, Iterable):

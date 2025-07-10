@@ -18,12 +18,6 @@ def bokeh_from_json(block_data, show=True):
     return curdoc()
 
 
-def test_version():
-    from datalab_app_plugin_insitu import __version__
-
-    assert __version__.startswith("0")
-
-
 def test_block(pytestconfig):
     from datalab_app_plugin_insitu.apps.uvvis.blocks import UVVisInsituBlock
 
