@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import List
 
 import bokeh.embed
-from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 from datalab_app_plugin_insitu.apps.uvvis.utils import process_local_uvvis_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
@@ -82,7 +81,12 @@ class UVVisInsituBlock(GenericInSituBlock):
             )
 
             num_samples, data_length = data["2D_data"].shape
-            print(f"Number of samples: {num_samples}, Data length: {data_length}")
+            try:
+                from pydatalab.logger import LOGGER
+
+                LOGGER.info(f"Loading in situ UVVis with {num_samples=} and {data_length=}")
+            except ImportError:
+                pass
 
             sample_granularity = self.data.get(
                 "sample_granularity", self.defaults["sample_granularity"]
@@ -148,7 +152,9 @@ class UVVisInsituBlock(GenericInSituBlock):
             if "file_id" not in self.data:
                 raise ValueError("No file set in the DataBlock")
             try:
+                from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
                 from pydatalab.file_utils import get_file_info_by_id
+
             except ImportError:
                 raise RuntimeError(
                     "The `datalab-server[server]` extra must be installed to use this block with a database."
