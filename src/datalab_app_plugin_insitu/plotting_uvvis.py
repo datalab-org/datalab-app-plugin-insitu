@@ -17,6 +17,13 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 
+try:
+    from pydatalab.bokeh_plotting import COLORS
+except ImportError:
+    from bokeh.palettes import Dark2
+
+    COLORS = Dark2[8]
+
 
 def create_linked_insitu_plots(
     plot_data, time_series_time_range, heatmap_time_range, link_plots: bool = False
@@ -143,7 +150,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
     heatmap_figure = figure(
         x_axis_label="Wavelength (nm)",
-        y_axis_label="t (h)",
+        y_axis_label="Time (h)",
         x_range=ranges["shared_x_range"],
         y_range=ranges["shared_y_range"],
         height=400,
@@ -165,7 +172,6 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
     time_points = len(intensity_matrix)
     if time_points > 0:
         times = np.linspace(time_range["min_time"], time_range["max_time"], time_points)
-        # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
         source = ColumnDataSource(
             data={
@@ -190,7 +196,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
         hover_tool = HoverTool(
             renderers=[rects],
-            tooltips=[("Exp.", "@exp_num")],
+            tooltips=[("Exp. #", "@exp_num")],
             mode="mouse",
             point_policy="follow_mouse",
         )
@@ -233,17 +239,17 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
 
     line_source = ColumnDataSource(
         data={
-            "δ (ppm)": heatmap_x_value_list,
+            "x": heatmap_x_value_list,
             "intensity": intensity_list,
         }
     )
 
     clicked_spectra_source = ColumnDataSource(
-        data={"δ (ppm)": [], "intensity": [], "label": [], "color": []}
+        data={"x": [], "intensity": [], "label": [], "color": []}
     )
 
     plot_figure = figure(
-        y_axis_label="intensity",
+        y_axis_label="Intensity",
         aspect_ratio=2,
         x_range=ranges["shared_x_range"],
         y_range=ranges["intensity_range"],
@@ -251,16 +257,15 @@ def _create_top_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
     )
 
     plot_figure.line(
-        x="δ (ppm)",
+        x="x",
         y="intensity",
         source=line_source,
         line_width=1,
-        color="blue",
-        legend_label="Current Spectrum",
+        color="grey",
     )
 
     plot_figure.multi_line(
-        xs="δ (ppm)",
+        xs="x",
         ys="intensity",
         source=clicked_spectra_source,
         line_color="color",
@@ -292,8 +297,8 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
     tools = "pan,wheel_zoom,box_zoom,reset,save"
 
     echemplot_figure = figure(
-        x_axis_label="voltage (V)",
-        y_axis_label="t (h)",
+        x_axis_label="Voltage (V)",
+        y_axis_label="Time (h)",
         y_range=ranges["shared_y_range"],
         height=400,
         width=250,
@@ -314,15 +319,11 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
             data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
         )
 
-        echemplot_figure.line(
-            x="voltage",
-            y="time",
-            source=echem_source,
-        )
+        echemplot_figure.line(x="voltage", y="time", source=echem_source, color=COLORS[1])
 
         hover_tool = HoverTool(
             tooltips=[
-                ("Exp.", "@exp_num{0}"),
+                ("Exp. #", "@exp_num{0}"),
                 ("Time (h)", "@time{0.00}"),
                 ("Voltage (V)", "@voltage{0.000}"),
             ],
@@ -356,19 +357,6 @@ def _link_plots(
     ppm_values = plot_data["heatmap x_values"]
     intensity_matrix = plot_data["intensity_matrix"]
     heatmap_source = plot_data.get("heatmap_source")
-
-    colors = [
-        "red",
-        "green",
-        "orange",
-        "purple",
-        "brown",
-        "darkblue",
-        "teal",
-        "magenta",
-        "olive",
-        "navy",
-    ]
 
     crosshair = CrosshairTool(dimensions="width", line_color="grey")
     heatmap_figure.add_tools(crosshair)
@@ -406,6 +394,17 @@ def _link_plots(
                 """,
         )
 
+        leave_callback = CustomJS(
+            args=dict(line_source=line_source),
+            code="""
+                var data = line_source.data;
+                data['intensity'] = [];  // Clear the intensity data
+                line_source.change.emit();
+            """,
+        )
+
+        heatmap_figure.js_on_event("mouseleave", leave_callback)
+
     if heatmap_source:
         tap_tool = TapTool()
         heatmap_figure.add_tools(tap_tool)
@@ -415,7 +414,7 @@ def _link_plots(
                 clicked_spectra_source=clicked_spectra_source,
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
-                colors=colors,
+                colors=COLORS,
                 times_by_exp=plot_data["times_by_exp"].tolist(),
                 voltages_by_exp=plot_data["voltages_by_exp"].tolist(),
             ),
@@ -427,16 +426,16 @@ def _link_plots(
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = exp_num - 1;
 
-                    const time = times_by_exp[index].toFixed(2);
+                    const time = times_by_exp[index].toFixed(0);
                     const voltage = voltages_by_exp[index].toFixed(3);
-                    const label = `Exp num ${exp_num} | t = ${time} h | V = ${voltage} V`;
+                    const label = `#${exp_num} @ ${time} h, ${voltage} V`;
 
                     const existing_labels = clicked_spectra_source.data.label;
                     if (existing_labels.includes(label)) return;
 
                     const color_index = existing_labels.length % colors.length;
 
-                    const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
+                    const new_xs = [...clicked_spectra_source.data['x']];
                     const new_ys = [...clicked_spectra_source.data.intensity];
                     const new_labels = [...clicked_spectra_source.data.label];
                     const new_colors = [...clicked_spectra_source.data.color];
@@ -447,7 +446,7 @@ def _link_plots(
                     new_colors.push(colors[color_index]);
 
                     clicked_spectra_source.data = {
-                        'δ (ppm)': new_xs,
+                        'x': new_xs,
                         'intensity': new_ys,
                         'label': new_labels,
                         'color': new_colors
@@ -528,7 +527,7 @@ def _link_plots(
 
         for (let i = indices.length - 1; i >= 0; i--) {
             let index = indices[i];
-            data['δ (ppm)'].splice(index, 1);
+            data['x'].splice(index, 1);
             data['intensity'].splice(index, 1);
             data['exp_index'].splice(index, 1);
             data['color'].splice(index, 1);
