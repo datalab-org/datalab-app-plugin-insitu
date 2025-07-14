@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from pydatalab.blocks.base import DataBlock
 
+from datalab_app_plugin_insitu._version import __version__
+
 
 class GenericInSituBlock(DataBlock, ABC):
     """
@@ -20,6 +22,7 @@ class GenericInSituBlock(DataBlock, ABC):
     description: str = "A base class for in-situ data processing blocks."
     accepted_file_extensions: Tuple[str, ...] = (".zip",)
     defaults: Dict[str, Any] = {}
+    version: str = __version__
 
     @abstractmethod
     def _plot_function(self, file_path: str | Path | None = None, link_plots: bool = False):
