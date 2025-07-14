@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import List
 
@@ -152,7 +153,6 @@ class UVVisInsituBlock(GenericInSituBlock):
             if "file_id" not in self.data:
                 raise ValueError("No file set in the DataBlock")
             try:
-                from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
                 from pydatalab.file_utils import get_file_info_by_id
 
             except ImportError:
@@ -191,4 +191,11 @@ class UVVisInsituBlock(GenericInSituBlock):
             data["metadata"]["time_range"],
             link_plots=link_plots,
         )
+
+        try:
+            from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
+        except ImportError:
+            warnings.warn("datalab-server not installed, using default bokeh theme")
+            DATALAB_BOKEH_THEME = None
+
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
