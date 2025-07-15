@@ -39,7 +39,7 @@ dependencies = [
     "datalab-server >= 0.5.3",
 ]
 [project.optional-dependencies]
-local = ["datalab-api >= 0.2.10"]
+local = ["datalab-api ~= 0.3"]
 
 [project.urls]
 homepage = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
@@ -90,6 +90,7 @@ dev-dependencies = [
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
     "datalab-server > 0.5.3",
+    "datalab-api ~= 0.3",
 ]
 
 [tool.pytest.ini_options]

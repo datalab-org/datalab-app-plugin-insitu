@@ -1,21 +1,6 @@
 from pathlib import Path
 
-
-def bokeh_from_json(block_data, show=True):
-    """Renders bokeh plot data from JSON representation.
-
-    Vendored from datalab_api.utils (>=0.2.14).
-
-    """
-    from bokeh.io import curdoc
-    from bokeh.plotting import show as bokeh_show
-
-    bokeh_plot_data = block_data.get("bokeh_plot_data", block_data)
-    curdoc().replace_with_json(bokeh_plot_data["doc"])
-    if show:
-        bokeh_show(curdoc().roots[0])
-
-    return curdoc()
+from datalab_api.utils import bokeh_from_json
 
 
 def test_block(pytestconfig):
