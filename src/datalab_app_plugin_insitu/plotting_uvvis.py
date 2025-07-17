@@ -150,7 +150,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
     heatmap_figure = figure(
         x_axis_label="Wavelength (nm)",
-        y_axis_label="Time (h)",
+        y_axis_label="Time (s)",
         x_range=ranges["shared_x_range"],
         y_range=ranges["shared_y_range"],
         height=400,
@@ -298,7 +298,7 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
 
     echemplot_figure = figure(
         x_axis_label="Voltage (V)",
-        y_axis_label="Time (h)",
+        y_axis_label="Time (s)",
         y_range=ranges["shared_y_range"],
         height=400,
         width=250,
@@ -428,7 +428,7 @@ def _link_plots(
 
                     const time = times_by_exp[index].toFixed(0);
                     const voltage = voltages_by_exp[index].toFixed(3);
-                    const label = `#${exp_num} @ ${time} h, ${voltage} V`;
+                    const label = `#${exp_num} @ ${time} s, ${voltage} V`;
 
                     const existing_labels = clicked_spectra_source.data.label;
                     if (existing_labels.includes(label)) return;
