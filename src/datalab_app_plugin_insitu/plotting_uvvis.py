@@ -438,7 +438,7 @@ def _create_echem_figure(
 
         hover_tool = HoverTool(
             tooltips=[
-                ("Exp.", "@exp_num{0}"),
+                ("Exp. #", "@exp_num{0}"),
                 ("Temperature (C)", "@voltage{0.000}"),
             ],
             mode="hline",

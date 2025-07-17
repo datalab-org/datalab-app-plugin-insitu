@@ -28,11 +28,11 @@ class UVVisInsituBlock(GenericInSituBlock):
     folder_name = None
     plotting_label_dict = {
         "x_axis_label": "Wavelength (nm)",
-        "time_series_y_axis_label": "Time (h)",
+        "time_series_y_axis_label": "Time (s)",
         "line_y_axis_label": "Intensity (a.u.)",
         "time_series_x_axis_label": "Voltage (V)",
         "label_source": {
-            "label_template": "Exp num {exp_num} | t = {time} h | V = {voltage} V",
+            "label_template": "Exp. # {exp_num} | t = {time} s | V = {voltage} V",
             "label_field_map": {
                 "exp_num": "exp_num",
                 "time": "times_by_exp",
