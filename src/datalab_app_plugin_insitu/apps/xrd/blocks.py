@@ -26,16 +26,16 @@ class XRDInsituBlock(GenericInSituBlock):
     time_series_folder_name = None
     folder_name = None
     plotting_label_dict = {
-        "x_axis_label" : "Two theta (degrees)",
-        "time_series_y_axis_label" : "Experiment number",
-        "line_y_axis_label" : "Intensity (a.u.)",
-        "time_series_x_axis_label" : "Temp (C)",
+        "x_axis_label": "Two theta (degrees)",
+        "time_series_y_axis_label": "Experiment number",
+        "line_y_axis_label": "Intensity (a.u.)",
+        "time_series_x_axis_label": "Temp (C)",
         "label_source": {
-            "label_template" : "Exp num {exp_num} | Temp = {temperature} C",
-            "label_field_map" : {
+            "label_template": "Exp num {exp_num} | Temp = {temperature} C",
+            "label_field_map": {
                 "exp_num": "exp_num",
                 "temperature": "voltages_by_exp",
-            }
+            },
         },
     }
 
@@ -176,8 +176,8 @@ class XRDInsituBlock(GenericInSituBlock):
 
         gp = create_linked_insitu_plots(
             plot_data,
-            time_series_time_range=data["Time_series_data"]["metadata"],
-            heatmap_time_range=data["metadata"]["y_range"],
+            time_series_time_range=plot_data["y_range"],
+            heatmap_time_range=plot_data["heatmap_y_range"],
             plotting_label_dict=self.plotting_label_dict,
             link_plots=link_plots,
         )

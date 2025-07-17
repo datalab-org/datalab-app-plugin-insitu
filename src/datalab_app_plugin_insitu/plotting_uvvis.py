@@ -31,20 +31,25 @@ def create_linked_insitu_plots(
     heatmap_time_range,
     plotting_label_dict: dict,
     link_plots: bool = False,
-
 ):
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
-    heatmap_figure = _create_heatmap_figure(plot_data,
-                                            shared_ranges,
-                                            x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
-                                            time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"))
-    uvvisplot_figure = _create_top_line_figure(plot_data,
-                                               shared_ranges,
-                                               line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"))
-    echemplot_figure = _create_echem_figure(plot_data,
-                                            shared_ranges,
-                                            time_series_x_axis_label=plotting_label_dict.get("time_series_x_axis_label", "Voltage (V)"),
-                                            time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"))
+    heatmap_figure = _create_heatmap_figure(
+        plot_data,
+        shared_ranges,
+        x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
+        time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
+    )
+    uvvisplot_figure = _create_top_line_figure(
+        plot_data,
+        shared_ranges,
+        line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"),
+    )
+    echemplot_figure = _create_echem_figure(
+        plot_data,
+        shared_ranges,
+        time_series_x_axis_label=plotting_label_dict.get("time_series_x_axis_label", "Voltage (V)"),
+        time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
+    )
 
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
@@ -57,7 +62,9 @@ def create_linked_insitu_plots(
     )
 
     if link_plots:
-        _link_plots(heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict)
+        _link_plots(
+            heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict
+        )
 
     grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
@@ -130,8 +137,15 @@ def prepare_xrd_plot_data(
 
     time_series_data = {
         "x": time_series_data["x"],
-        "y": time_series_data["y"],
+        "y": np.arange(1, len(time_series_data["x"]) + 1),
     }
+
+    heatmap_y_range = {
+        "min_y": 1,
+        "max_y": np.arange(1, len(two_d_data) + 1).max(),
+    }
+
+    y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
@@ -139,7 +153,8 @@ def prepare_xrd_plot_data(
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
-        "y_range": metadata["y_range"],
+        "y_range": y_range,
+        "heatmap_y_range": heatmap_y_range,
         "first_spectrum_intensities": first_spectrum_intensities,
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
@@ -164,6 +179,8 @@ def _create_shared_ranges(
     Returns:
         Dict[str, Range1d]: Dictionary of shared range objects
     """
+    # Different range behaviour for if we are plotting by time or by experiment number (xrd is by exp number, uv-vis and nmr are by time)
+
     overall_min_time = min(time_series_time_range["min_y"], heatmap_time_range["min_y"])
     overall_max_time = max(time_series_time_range["max_y"], heatmap_time_range["max_y"])
     y_range = {"min_y": overall_min_time, "max_y": overall_max_time}
@@ -184,10 +201,9 @@ def _create_shared_ranges(
     }
 
 
-def _create_heatmap_figure(plot_data: Dict[str, Any], 
-                           ranges: Dict[str, Range1d],
-                           x_axis_label,
-                           time_series_y_axis_label) -> figure:
+def _create_heatmap_figure(
+    plot_data: Dict[str, Any], ranges: Dict[str, Range1d], x_axis_label, time_series_y_axis_label
+) -> figure:
     """
     Create the heatmap figure component.
 
@@ -270,9 +286,9 @@ def _create_heatmap_figure(plot_data: Dict[str, Any],
     return heatmap_figure
 
 
-def _create_top_line_figure(plot_data: Dict[str, Any], 
-                            ranges: Dict[str, Range1d],
-                            line_y_axis_label) -> figure:
+def _create_top_line_figure(
+    plot_data: Dict[str, Any], ranges: Dict[str, Range1d], line_y_axis_label
+) -> figure:
     """
     Create the UV-Vis line plot figure component.
 
@@ -341,10 +357,12 @@ def _create_top_line_figure(plot_data: Dict[str, Any],
     return plot_figure
 
 
-def _create_echem_figure(plot_data: Dict[str, Any], 
-                         ranges: Dict[str, Range1d],
-                         time_series_x_axis_label,
-                         time_series_y_axis_label) -> figure:
+def _create_echem_figure(
+    plot_data: Dict[str, Any],
+    ranges: Dict[str, Range1d],
+    time_series_x_axis_label,
+    time_series_y_axis_label,
+) -> figure:
     """
     Create the electrochemical data figure component.
 
@@ -413,10 +431,10 @@ def _create_echem_figure(plot_data: Dict[str, Any],
         )
 
         echemplot_figure.line(
-                x="voltage",
-                y="time",
-                source=echem_source,
-            )
+            x="voltage",
+            y="exp_num",
+            source=echem_source,
+        )
 
         hover_tool = HoverTool(
             tooltips=[
