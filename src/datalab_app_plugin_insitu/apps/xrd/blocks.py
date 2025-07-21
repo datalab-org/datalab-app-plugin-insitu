@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import List
 
 import bokeh.embed
-import numpy as np
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 from datalab_app_plugin_insitu.apps.xrd.xrd_utils import process_local_xrd_data
@@ -175,7 +174,9 @@ class XRDInsituBlock(GenericInSituBlock):
             time_series_data=data["Time_series_data"],
             metadata=data["metadata"],
             file_num_index=data["file_num_index"],
-            sample_granularity=self.data.get("sample_granularity", self.defaults["sample_granularity"]),
+            sample_granularity=self.data.get(
+                "sample_granularity", self.defaults["sample_granularity"]
+            ),
         )
 
         gp = create_linked_insitu_plots(

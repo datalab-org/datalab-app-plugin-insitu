@@ -99,17 +99,19 @@ def prepare_uvvis_plot_data(
     }
 
     echem_map_df = pd.DataFrame.from_dict(
-    {
-        "file_num_index": file_num_index[:, 0],
-        "times_by_exp": times,
-    }
-)   
+        {
+            "file_num_index": file_num_index[:, 0],
+            "times_by_exp": times,
+        }
+    )
+
     def find_nearest_time_index(echem_map_df, time_point):
         index = (echem_map_df["times_by_exp"] - time_point).abs().idxmin()
         return index
-    
-    index_map = {i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])}
 
+    index_map = {
+        i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])
+    }
 
     return {
         "heatmap x_values": wavelength,  # ppm_values
@@ -135,7 +137,7 @@ def prepare_xrd_plot_data(
     time_series_data,
     metadata,
     file_num_index,
-    sample_granularity
+    sample_granularity,
 ) -> Optional[Dict[str, Any]]:
     twoD_matrix = two_d_data.values
 
@@ -154,7 +156,7 @@ def prepare_xrd_plot_data(
         "x": time_series_data["x"],
         "y": np.arange(1, len(time_series_data["x"]) + 1),
         # We aren't actually plotting by filenum for xrd data
-        "filenum": time_series_data["y"]
+        "filenum": time_series_data["y"],
     }
 
     heatmap_y_range = {
@@ -287,8 +289,6 @@ def _create_heatmap_figure(
                 "exp_num": experiment_numbers,
             }
         )
-        for rect in source.data:
-            print(len(source.data[rect]), rect)
 
         rects = heatmap_figure.rect(
             x="x",
@@ -430,8 +430,14 @@ def _create_echem_figure(
 
         exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
+
         echem_source = ColumnDataSource(
-            data={"y": times, "x": voltages, "exp_num": exp_numbers}
+            data={
+                "y": times,
+                "x": voltages,
+                "exp_num": exp_numbers,
+                "spectra_index": [i for i in plot_data["Index map"].values()],
+            }
         )
 
         echemplot_figure.line(x="x", y="y", source=echem_source, color=COLORS[1])
@@ -459,7 +465,13 @@ def _create_echem_figure(
         exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
         echem_source = ColumnDataSource(
-            data={"y": times, "x": voltages, "exp_num": exp_numbers, "filenum": echem_data["filenum"]}
+            data={
+                "y": times,
+                "x": voltages,
+                "exp_num": exp_numbers,
+                "filenum": echem_data["filenum"],
+                "spectra_index": [i for i in plot_data["Index map"].values()],
+            }
         )
         for rect in echem_source.data:
             print(len(echem_source.data[rect]), rect)
@@ -586,7 +598,7 @@ def _link_plots(
 
                             // Optional: format based on key
                             if (key === "time") {
-                                values[key] = val.toFixed(2);
+                                values[key] = val.toFixed(0);
                             } else if (key === "voltage") {
                                 values[key] = val.toFixed(3);
                             } else {
@@ -712,14 +724,11 @@ def _link_plots(
     clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
 
     # Adding logic for the echem plot to link with the heatmap
-    echem_hover = next((tool for tool in echemplot_figure.tools if isinstance(tool, HoverTool)), None)
+    echem_hover = next(
+        (tool for tool in echemplot_figure.tools if isinstance(tool, HoverTool)), None
+    )
     echem_source = plot_data.get("echem_source")
 
-    echem_source = plot_data.get("echem_source")
-
-    # Check column lengths
-    lengths = {col: len(data) for col, data in echem_source.data.items()}
-    print("Column lengths:", lengths)
     if echem_hover:
         print("Linking echem plot with heatmap hover tool.")
         echem_hover.callback = CustomJS(
@@ -743,11 +752,9 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-                    console.log("Closest index in echem data:", closestIndex);
 
                     const mappedIndex = index_map[closestIndex];
 
-                    console.log("Mapped index:", mappedIndex);
                     if (mappedIndex !== undefined && mappedIndex < spectra_intensities.length) {
                         const data = line_source.data;
                         data['intensity'] = spectra_intensities[mappedIndex];
@@ -769,4 +776,98 @@ def _link_plots(
 
         echemplot_figure.js_on_event("mouseleave", leave_callback_echem)
     else:
-        print("No HoverTool found in heatmap_figure to link with echem plot.")
+        print("No HoverTool found in echemplot_figure to link with line plot.")
+
+    if echem_source:
+        clickcallback_echem = CustomJS(
+            args=dict(
+                echem_source=echem_source,
+                clicked_spectra_source=clicked_spectra_source,
+                spectra_intensities=spectra_intensities,
+                ppm_values=ppm_values.tolist(),
+                colors=COLORS,
+                times_by_exp=plot_data["times_by_exp"].tolist(),
+                voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
+                label_template=plotting_label_dict["label_source"]["label_template"],
+                label_fields=plotting_label_dict["label_source"]["label_field_map"],
+            ),
+            code="""
+        console.log("Click detected at:", cb_obj.x, cb_obj.y);
+
+        // Get the y-coordinate of the click
+        const click_y = cb_obj.y;
+
+        // Find the closest data point to this y-value
+        const y_data = echem_source.data.y;
+        let closest_index = 0;
+        let min_distance = Math.abs(y_data[0] - click_y);
+
+        for (let i = 1; i < y_data.length; i++) {
+            const distance = Math.abs(y_data[i] - click_y);
+            if (distance < min_distance) {
+                min_distance = distance;
+                closest_index = i;
+            }
+        }
+
+        console.log("Closest index:", closest_index, "at y:", y_data[closest_index]);
+
+        // Use the closest index for your existing logic
+        const index = closest_index;
+        const spectra_index = echem_source.data.spectra_index[index];
+        const exp_num = echem_source.data.exp_num[index];
+        const values = {
+            exp_num: exp_num,
+        };
+        console.log("Spectra index:", spectra_index);
+        console.log("Experiment number:", exp_num);
+
+        console.log("Selected index:", index);
+        for (const key in label_fields) {
+            if (key !== "exp_num") {
+                const field = label_fields[key];
+                const val_array = eval(field);
+                const val = val_array[spectra_index];
+                if (key === "time") {
+                    values[key] = val.toFixed(0);
+                    console.log("Formatted time:", values[key]);
+                } else if (key === "voltage") {
+                    values[key] = val.toFixed(3);
+                } else {
+                    values[key] = val;
+                }
+            }
+        }
+
+        // Format the label string using the template
+        let label = label_template;
+        for (const key in values) {
+            label = label.replace(`{${key}}`, values[key]);
+        }
+
+        const existing_labels = clicked_spectra_source.data.label;
+        if (existing_labels.includes(label)) return;
+
+        const color_index = existing_labels.length % colors.length;
+        const new_xs = [...clicked_spectra_source.data['x']];
+        const new_ys = [...clicked_spectra_source.data.intensity];
+        const new_labels = [...clicked_spectra_source.data.label];
+        const new_colors = [...clicked_spectra_source.data.color];
+
+        new_xs.push(ppm_values);
+        new_ys.push(spectra_intensities[spectra_index]);
+        new_labels.push(label);
+        new_colors.push(colors[color_index]);
+
+        clicked_spectra_source.data = {
+            'x': new_xs,
+            'intensity': new_ys,
+            'label': new_labels,
+            'color': new_colors
+        };
+        clicked_spectra_source.change.emit();
+        """,
+        )
+
+        # Attach the callback to tap events on the plot
+        echemplot_figure.js_on_event("tap", clickcallback_echem)
