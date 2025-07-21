@@ -98,6 +98,19 @@ def prepare_uvvis_plot_data(
         "time": echem_data["time"].values,
     }
 
+    echem_map_df = pd.DataFrame.from_dict(
+    {
+        "file_num_index": file_num_index[:, 0],
+        "times_by_exp": times,
+    }
+)   
+    def find_nearest_time_index(echem_map_df, time_point):
+        index = (echem_map_df["times_by_exp"] - time_point).abs().idxmin()
+        return index
+    
+    index_map = {i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])}
+
+
     return {
         "heatmap x_values": wavelength,  # ppm_values
         "heatmap y_values": two_d_data.index,  # not in ben Cs code
@@ -112,6 +125,7 @@ def prepare_uvvis_plot_data(
         "times_by_exp": times,
         "x_values_by_exp": voltage_interp,
         "file_num_index": file_num_index,
+        "Index map": index_map,
     }
 
 
@@ -121,6 +135,7 @@ def prepare_xrd_plot_data(
     time_series_data,
     metadata,
     file_num_index,
+    sample_granularity
 ) -> Optional[Dict[str, Any]]:
     twoD_matrix = two_d_data.values
 
@@ -138,6 +153,8 @@ def prepare_xrd_plot_data(
     time_series_data = {
         "x": time_series_data["x"],
         "y": np.arange(1, len(time_series_data["x"]) + 1),
+        # We aren't actually plotting by filenum for xrd data
+        "filenum": time_series_data["y"]
     }
 
     heatmap_y_range = {
@@ -147,6 +164,17 @@ def prepare_xrd_plot_data(
 
     y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
 
+    print(len(spectra_intensities))
+    print(sample_granularity)
+    print(len(time_series_data["y"]) // sample_granularity)
+    if len(time_series_data["y"]) // sample_granularity < len(spectra_intensities):
+        index_map = {i: i // sample_granularity for i in range(len(time_series_data["y"]))}
+    else:
+        raise ValueError(
+            "Sample granularity does not match the number of spectra. "
+            "Ensure that sample_granularity is set correctly."
+        )
+    print(index_map)
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
         "heatmap y_values": two_d_data.index,  # not in ben Cs code
@@ -162,6 +190,7 @@ def prepare_xrd_plot_data(
         "times_by_exp": times,
         "x_values_by_exp": x_values_by_exp,
         "file_num_index": file_num_index,
+        "Index map": index_map,
     }
 
 
@@ -246,6 +275,7 @@ def _create_heatmap_figure(
     time_points = len(intensity_matrix)
     if time_points > 0:
         times = np.linspace(time_range["min_y"], time_range["max_y"], time_points)
+        print(time_range)
         # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
         source = ColumnDataSource(
@@ -257,6 +287,8 @@ def _create_heatmap_figure(
                 "exp_num": experiment_numbers,
             }
         )
+        for rect in source.data:
+            print(len(source.data[rect]), rect)
 
         rects = heatmap_figure.rect(
             x="x",
@@ -399,16 +431,16 @@ def _create_echem_figure(
         exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
         echem_source = ColumnDataSource(
-            data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
+            data={"y": times, "x": voltages, "exp_num": exp_numbers}
         )
 
-        echemplot_figure.line(x="voltage", y="time", source=echem_source, color=COLORS[1])
+        echemplot_figure.line(x="x", y="y", source=echem_source, color=COLORS[1])
 
         hover_tool = HoverTool(
             tooltips=[
                 ("Exp. #", "@exp_num{0}"),
-                ("Time (s)", "@time{0.00}"),
-                ("Voltage (V)", "@voltage{0.000}"),
+                ("Time (s)", "@y{0.00}"),
+                ("Voltage (V)", "@x{0.000}"),
             ],
             mode="hline",
             point_policy="snap_to_data",
@@ -427,25 +459,30 @@ def _create_echem_figure(
         exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
         exp_numbers = np.clip(exp_numbers, 1, exp_count)
         echem_source = ColumnDataSource(
-            data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
+            data={"y": times, "x": voltages, "exp_num": exp_numbers, "filenum": echem_data["filenum"]}
         )
-
+        for rect in echem_source.data:
+            print(len(echem_source.data[rect]), rect)
         echemplot_figure.line(
-            x="voltage",
+            x="x",
             y="exp_num",
             source=echem_source,
         )
 
         hover_tool = HoverTool(
             tooltips=[
-                ("Exp. #", "@exp_num{0}"),
-                ("Temperature (C)", "@voltage{0.000}"),
+                ("Exp. #", "@y{0}"),
+                ("File #", "@filenum{0}"),
+                ("Temperature (C)", "@x{0.000}"),
             ],
             mode="hline",
             point_policy="snap_to_data",
         )
         echemplot_figure.add_tools(hover_tool)
+    else:
+        raise ValueError("Echem data must contain 'Voltage' and 'time' or 'x' and 'y' keys.")
 
+    plot_data["echem_source"] = echem_source
     return echemplot_figure
 
 
@@ -498,10 +535,6 @@ def _link_plots(
                         }
                     }
 
-                    const exp_num = heatmap_source.data.exp_num[closestIndex];
-
-                    const index = exp_num - 1;
-
                     var data = line_source.data;
                     data['intensity'] = spectra_intensities[closestIndex];
                     line_source.change.emit();
@@ -541,7 +574,6 @@ def _link_plots(
                     const index = indices[0];
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = exp_num - 1;
-
                     const values = {
                         exp_num: exp_num,
                     };
@@ -678,3 +710,63 @@ def _link_plots(
     )
 
     clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
+
+    # Adding logic for the echem plot to link with the heatmap
+    echem_hover = next((tool for tool in echemplot_figure.tools if isinstance(tool, HoverTool)), None)
+    echem_source = plot_data.get("echem_source")
+
+    echem_source = plot_data.get("echem_source")
+
+    # Check column lengths
+    lengths = {col: len(data) for col, data in echem_source.data.items()}
+    print("Column lengths:", lengths)
+    if echem_hover:
+        print("Linking echem plot with heatmap hover tool.")
+        echem_hover.callback = CustomJS(
+            args=dict(
+                line_source=line_source,
+                spectra_intensities=spectra_intensities,
+                echem_source=echem_source,
+                heatmap_source=heatmap_source,
+                ppm_values=ppm_values.tolist(),
+                index_map=plot_data.get("Index map", {}),
+            ),
+            code="""
+                const geometry = cb_data['geometry'];
+
+                    let closestIndex = 0;
+                    let minDistance = Infinity;
+                    for (let i = 0; i < echem_source.data.y.length; i++) {
+                        const distance = Math.abs(echem_source.data.y[i] - geometry.y);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestIndex = i;
+                        }
+                    }
+                    console.log("Closest index in echem data:", closestIndex);
+
+                    const mappedIndex = index_map[closestIndex];
+
+                    console.log("Mapped index:", mappedIndex);
+                    if (mappedIndex !== undefined && mappedIndex < spectra_intensities.length) {
+                        const data = line_source.data;
+                        data['intensity'] = spectra_intensities[mappedIndex];
+                        line_source.change.emit();
+                    } else {
+                        console.warn("Mapped index out of range or undefined:", mappedIndex);
+                    }
+                """,
+        )
+
+        leave_callback_echem = CustomJS(
+            args=dict(line_source=line_source),
+            code="""
+                var data = line_source.data;
+                data['intensity'] = [];  // Clear the intensity data
+                line_source.change.emit();
+            """,
+        )
+
+        echemplot_figure.js_on_event("mouseleave", leave_callback_echem)
+    else:
+        print("No HoverTool found in heatmap_figure to link with echem plot.")

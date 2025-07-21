@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 
 import bokeh.embed
+import numpy as np
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 from datalab_app_plugin_insitu.apps.xrd.xrd_utils import process_local_xrd_data
@@ -28,7 +29,7 @@ class XRDInsituBlock(GenericInSituBlock):
     plotting_label_dict = {
         "x_axis_label": "Two theta (degrees)",
         "time_series_y_axis_label": "Experiment number",
-        "line_y_axis_label": "Intensity (a.u.)",
+        "line_y_axis_label": "Intensity",
         "time_series_x_axis_label": "Temp (C)",
         "label_source": {
             "label_template": "Exp. # {exp_num} | Temp = {temperature} C",
@@ -123,8 +124,10 @@ class XRDInsituBlock(GenericInSituBlock):
                 data_granularity=1,
                 method="linear",
             )
+
             print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
             print(f"Subsampled Two theta data shape: {data['Two theta'].shape}")
+            print(f"Subsampled file_num_index shape: {data['file_num_index'].shape}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:
@@ -172,6 +175,7 @@ class XRDInsituBlock(GenericInSituBlock):
             time_series_data=data["Time_series_data"],
             metadata=data["metadata"],
             file_num_index=data["file_num_index"],
+            sample_granularity=self.data.get("sample_granularity", self.defaults["sample_granularity"]),
         )
 
         gp = create_linked_insitu_plots(

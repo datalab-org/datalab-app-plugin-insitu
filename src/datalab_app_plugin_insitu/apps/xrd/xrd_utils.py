@@ -3,6 +3,7 @@ import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+import numpy as np
 import pandas as pd
 from pydatalab.apps.xrd.blocks import XRDBlock
 
@@ -88,9 +89,9 @@ def process_local_xrd_data(
             log_data = load_temperature_log_file(log_file)
 
             # TODO alternate pathway for echem data
-
+            print(np.shape(xrd_data["file_num_index"]))
             # Check that the log scans are the same as the xrd scans
-            if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"])):
+            if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"][:, 0])):
                 raise ValueError(
                     "Log file scan numbers do not match XRD data scan numbers. "
                     "Ensure the log file contains all XRD scans."
@@ -165,7 +166,7 @@ def process_xrd_data(
     all_patterns.index = all_patterns.index.map(lambda x: int(x.name.split("-")[0]))
     all_patterns.sort_index(inplace=True)
 
-    file_num_index = all_patterns.index.values
+    file_num_index = all_patterns.index.values.reshape(-1, 1)
 
     metadata = {
         "num_experiments": len(all_patterns.index),
