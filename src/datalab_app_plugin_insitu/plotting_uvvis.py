@@ -98,6 +98,19 @@ def prepare_uvvis_plot_data(
         "time": echem_data["time"].values,
     }
 
+    echem_map_df = pd.DataFrame.from_dict(
+    {
+        "file_num_index": file_num_index[:, 0],
+        "times_by_exp": times,
+    }
+)   
+    def find_nearest_time_index(echem_map_df, time_point):
+        index = (echem_map_df["times_by_exp"] - time_point).abs().idxmin()
+        return index
+    
+    index_map = {i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])}
+
+
     return {
         "heatmap x_values": wavelength,  # ppm_values
         "heatmap y_values": two_d_data.index,  # not in ben Cs code
@@ -112,6 +125,7 @@ def prepare_uvvis_plot_data(
         "times_by_exp": times,
         "x_values_by_exp": voltage_interp,
         "file_num_index": file_num_index,
+        "Index map": index_map,
     }
 
 
