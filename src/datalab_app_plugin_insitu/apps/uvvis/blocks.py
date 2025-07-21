@@ -31,7 +31,7 @@ class UVVisInsituBlock(GenericInSituBlock):
     plotting_label_dict = {
         "x_axis_label": "Wavelength (nm)",
         "time_series_y_axis_label": "Time (s)",
-        "line_y_axis_label": "Intensity (a.u.)",
+        "line_y_axis_label": "Absorbance",
         "time_series_x_axis_label": "Voltage (V)",
         "label_source": {
             "label_template": "Exp. # {exp_num} | t = {time} s | V = {voltage} V",
