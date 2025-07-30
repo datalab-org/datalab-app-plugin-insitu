@@ -31,10 +31,11 @@ class XRDInsituBlock(GenericInSituBlock):
         "line_y_axis_label": "Intensity",
         "time_series_x_axis_label": "Temp (C)",
         "label_source": {
-            "label_template": "Exp. # {exp_num} | Temp = {temperature} C",
+            "label_template": "File # {file_num} | Exp. # {exp_num} | Temp = {temperature} C",
             "label_field_map": {
                 "exp_num": "exp_num",
-                "temperature": "voltages_by_exp",
+                "temperature": "Temperature",
+                "file_num": "file_num",
             },
         },
     }
@@ -103,13 +104,25 @@ class XRDInsituBlock(GenericInSituBlock):
             self.data["sample_granularity"] = sample_granularity
             self.data["data_granularity"] = data_granularity
             # Subsample the 2D data and wavelength data to a maximum of 1000 samples
-            data["2D_data"] = self.subsample_data(
+
+            # Heatmap is subsampled in both axis
+            data["intensity_matrix"] = self.subsample_data(
                 data["2D_data"],
                 sample_granularity=sample_granularity,
                 data_granularity=data_granularity,
                 method="linear",
             )
 
+            # Spectrai intensities is what the line plot uses - therefore keep every sample but reduce data length
+            # TODO (ben smith) discuss is this best approach?
+            data["spectra_intensities"] = self.subsample_data(
+                data["2D_data"],
+                sample_granularity=1,
+                data_granularity=data_granularity,
+                method="linear",
+            )
+
+            # X values for the heatmap and the line plot
             data["Two theta"] = self.subsample_data(
                 data["Two theta"],
                 data_granularity=data_granularity,
@@ -124,9 +137,6 @@ class XRDInsituBlock(GenericInSituBlock):
                 method="linear",
             )
 
-            print(f"Subsampled 2D data shape: {data['2D_data'].shape}")
-            print(f"Subsampled Two theta data shape: {data['Two theta'].shape}")
-            print(f"Subsampled file_num_index shape: {data['file_num_index'].shape}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
         except Exception as e:
@@ -169,7 +179,8 @@ class XRDInsituBlock(GenericInSituBlock):
         data = self.process_and_store_data(file_path)
 
         plot_data = prepare_xrd_plot_data(
-            two_d_data=data["2D_data"],
+            intensity_matrix=data["intensity_matrix"],
+            spectra_intensities=data["spectra_intensities"],
             heatmap_x_values=data["Two theta"],
             time_series_data=data["Time_series_data"],
             metadata=data["metadata"],
@@ -177,6 +188,7 @@ class XRDInsituBlock(GenericInSituBlock):
             sample_granularity=self.data.get(
                 "sample_granularity", self.defaults["sample_granularity"]
             ),
+            index_df=data["index_df"],
         )
 
         gp = create_linked_insitu_plots(
@@ -187,3 +199,4 @@ class XRDInsituBlock(GenericInSituBlock):
             link_plots=link_plots,
         )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
+        self.plot_data = plot_data

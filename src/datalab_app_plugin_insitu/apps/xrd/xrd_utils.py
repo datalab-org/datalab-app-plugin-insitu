@@ -1,3 +1,4 @@
+import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -23,7 +24,7 @@ def process_local_xrd_data(
     Parameters:
         file_path (str | Path): Path to the zip file containing XRD data.
         xrd_folder_name (str): Name of the folder containing XRD data.
-        echem_folder_name (str): Name of the folder containing electrochemical data.
+        log_folder_name (str): Name of the folder containing log data.
         start_exp (int): Starting experiment number.
         exclude_exp (list): List of experiments to exclude.
 
@@ -86,10 +87,13 @@ def process_local_xrd_data(
             else:
                 raise FileNotFoundError(f"No log files found with extension .csv in {log_path}")
 
-            log_data = load_temperature_log_file(log_file)
+            try:
+                log_data = load_temperature_log_file(log_file)
+
+            except Exception as e:
+                raise RuntimeError(f"Failed to load log file: {str(e)}")
 
             # TODO alternate pathway for echem data
-            print(np.shape(xrd_data["file_num_index"]))
             # Check that the log scans are the same as the xrd scans
             if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"][:, 0])):
                 raise ValueError(
@@ -114,6 +118,18 @@ def process_local_xrd_data(
                 },
             }
             xrd_data["Time_series_data"] = time_series_data_dict
+
+            # Create explicit link between file num, temperature and experiment number
+            index_df = pd.DataFrame.from_dict(
+                {
+                    "file_num": xrd_data["Time_series_data"]["y"],
+                    "exp_num": np.arange(1, xrd_data["metadata"]["num_experiments"] + 1),
+                    "Temperature": xrd_data["Time_series_data"]["x"],
+                }
+            )
+            index_df.index.name = "index"
+
+            xrd_data["index_df"] = index_df
 
             return xrd_data
 
@@ -163,7 +179,13 @@ def process_xrd_data(
 
     # Sort the dataframe based on the scan_number extracted from the filename of the format: 1058063-mythen_summed.dat
     # TODO make this more robust to different file naming conventions
-    all_patterns.index = all_patterns.index.map(lambda x: int(x.name.split("-")[0]))
+    def extract_number(filename):
+        match = re.search(r"(?<!\d)(\d{6,8})(?!\d)", filename)
+        if match:
+            return int(match.group(1))
+        return None
+
+    all_patterns.index = all_patterns.index.map(lambda x: extract_number(x.name))
     all_patterns.sort_index(inplace=True)
 
     file_num_index = all_patterns.index.values.reshape(-1, 1)
