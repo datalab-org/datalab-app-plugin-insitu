@@ -27,34 +27,29 @@ except ImportError:
 
 def create_linked_insitu_plots(
     plot_data,
-    time_series_time_range,
-    heatmap_time_range,
+    time_series_time_range: Dict[str, float],
+    heatmap_time_range: Dict[str, float],
     plotting_label_dict: dict,
     link_plots: bool = False,
 ):
-    print("Creating linked insitu plots...")
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
-    print("Shared ranges created.")
     heatmap_figure = _create_heatmap_figure(
         plot_data,
         shared_ranges,
         x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
-    print("Heatmap figure created.")
     uvvisplot_figure = _create_top_line_figure(
         plot_data,
         shared_ranges,
         line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"),
     )
-    print("UV-Vis line plot figure created.")
     echemplot_figure = _create_echem_figure(
         plot_data,
         shared_ranges,
         time_series_x_axis_label=plotting_label_dict.get("time_series_x_axis_label", "Voltage (V)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
-    print("Electrochemical figure created.")
 
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
@@ -70,7 +65,6 @@ def create_linked_insitu_plots(
         _link_plots(
             heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict
         )
-        print("Plots linked.")
 
     grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
@@ -79,22 +73,28 @@ def create_linked_insitu_plots(
 
 
 def prepare_uvvis_plot_data(
-    two_d_data: pd.DataFrame, wavelength: pd.Series, echem_data, metadata, file_num_index
+    intensity_matrix: pd.DataFrame,
+    spectra_intensities: pd.DataFrame,
+    wavelength: pd.Series,
+    echem_data,
+    metadata,
+    file_num_index,
+    index_df: pd.DataFrame,
 ) -> Optional[Dict[str, Any]]:
     """
     Need heatmap data in two forms:
     1. Two-dimensional array for numpy.
     2. List of lists for JSON.
     """
-    twoD_matrix = two_d_data.values
+    twoD_matrix = intensity_matrix.values
 
     # Grab the times and voltages for each scan from the echem data
-    times = two_d_data.index.to_numpy()
+    times = spectra_intensities.index.to_numpy()
     voltage_interp = np.interp(times, echem_data["time"], echem_data["Voltage"])
-
-    spectra_intensities = two_d_data.values.tolist()
-
+    index_df["voltage"] = voltage_interp
     first_spectrum_intensities = twoD_matrix[0, :]
+
+    spectra_intensities = spectra_intensities.values.tolist()
 
     intensity_min = np.min(twoD_matrix)
     intensity_max = np.max(twoD_matrix)
@@ -104,24 +104,9 @@ def prepare_uvvis_plot_data(
         "time": echem_data["time"].values,
     }
 
-    echem_map_df = pd.DataFrame.from_dict(
-        {
-            "file_num_index": file_num_index[:, 0],
-            "times_by_exp": times,
-        }
-    )
-
-    def find_nearest_time_index(echem_map_df, time_point):
-        index = (echem_map_df["times_by_exp"] - time_point).abs().idxmin()
-        return index
-
-    index_map = {
-        i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])
-    }
-
     return {
         "heatmap x_values": wavelength,  # ppm_values
-        "heatmap y_values": two_d_data.index,  # not in ben Cs code
+        "heatmap y_values": intensity_matrix.index,  # not in ben Cs code
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
@@ -130,10 +115,8 @@ def prepare_uvvis_plot_data(
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
         "time_series_data": echem_data,
-        "times_by_exp": times,
-        "x_values_by_exp": voltage_interp,
         "file_num_index": file_num_index,
-        "Index map": index_map,
+        "index_df": index_df,  # DataFrame with index and exp_num columns
     }
 
 
@@ -146,13 +129,8 @@ def prepare_xrd_plot_data(
     file_num_index,
     sample_granularity,
     index_df: pd.DataFrame,
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     intensity_matrix = intensity_matrix.values
-
-    # Grab the times and voltages for each scan from the echem data
-    times = spectra_intensities.index.to_numpy()
-    x_values_by_exp = np.interp(times, time_series_data["y"], time_series_data["x"])
-
     first_spectrum_intensities = spectra_intensities.values[0, :]
 
     intensity_min = np.min(intensity_matrix)
@@ -170,11 +148,8 @@ def prepare_xrd_plot_data(
         "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
     }
 
-    y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
+    y_range = {"min_y": 1, "max_y": int(max(np.arange(1, len(time_series_data["x"]) + 1)))}
 
-    index_map = {i: i // sample_granularity for i in range(len(time_series_data["y"]))}
-
-    print(index_map)
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
         "heatmap y_values": spectra_intensities.index,  # not in ben Cs code
@@ -187,10 +162,7 @@ def prepare_xrd_plot_data(
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
         "time_series_data": time_series_data,
-        "times_by_exp": times,
-        "x_values_by_exp": x_values_by_exp,
         "file_num_index": file_num_index,
-        "Index map": index_map,
         "index_df": index_df,
     }
 
@@ -276,23 +248,22 @@ def _create_heatmap_figure(
     time_points = len(intensity_matrix)
     if time_points > 0:
         times = np.linspace(time_range["min_y"], time_range["max_y"], time_points)
-        print(time_range)
         # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
-        heatmap_index_df = plot_data["index_df"].reset_index().set_index("file_num").loc[experiment_numbers]
-        data={
-                "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
-                "y": times,
-                "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
-                "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
-                "file_num": experiment_numbers,
-            }
+        heatmap_index_df = (
+            plot_data["index_df"].reset_index().set_index("file_num").loc[experiment_numbers]
+        )
+        data = {
+            "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
+            "y": times,
+            "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
+            "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
+            "file_num": experiment_numbers,
+        }
 
         for col in heatmap_index_df.columns:
             data[col] = heatmap_index_df[col].values
-        source = ColumnDataSource(
-            data=data
-        )
+        source = ColumnDataSource(data=data)
 
         rects = heatmap_figure.rect(
             x="x",
@@ -440,8 +411,8 @@ def _create_echem_figure(
                 "y": times,
                 "x": voltages,
                 "exp_num": exp_numbers,
-                "spectra_index": [i for i in plot_data["Index map"].values()],
-
+                "time": times,
+                "voltage": voltages,
             }
         )
 
@@ -475,7 +446,6 @@ def _create_echem_figure(
                 "exp_num": exp_numbers,
                 "file_num": echem_data["filenum"],
                 "Temperature": voltages,
-                "spectra_index": [i for i in plot_data["Index map"].values()],
             }
         )
 
@@ -537,7 +507,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 heatmap_source=heatmap_source,
-                file_num_index=plot_data["file_num_index"],
                 index_df_source=index_df_source,
             ),
             code="""
@@ -554,7 +523,6 @@ def _link_plots(
                     }
 
                     const fileNum = heatmap_source.data.file_num[closestIndex];
-                    console.log("Closest fileNum:", fileNum);
 
                     const df_data = index_df_source.data;
 
@@ -594,8 +562,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=COLORS,
-                # times_by_exp=plot_data["times_by_exp"].tolist(),
-                # voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
                 label_template=plotting_label_dict["label_source"]["label_template"],
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
@@ -608,7 +574,7 @@ def _link_plots(
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = heatmap_source.data.index[index];
                     const values = { exp_num: exp_num };
-
+                    console.log("Exp num:", exp_num, "Exp index:", exp_index);
                     for (const key in label_fields) {
                         if (key !== "exp_num") {
                             const field = label_fields[key];
@@ -720,21 +686,28 @@ def _link_plots(
     remove_line_callback = CustomJS(
         args=dict(clicked_spectra_source=clicked_spectra_source),
         code="""
+       console.log("Remove line callback triggered");
         const indices = clicked_spectra_source.selected.indices;
         if (indices.length === 0) return;
 
         let data = clicked_spectra_source.data;
 
-        for (let i = indices.length - 1; i >= 0; i--) {
-            let index = indices[i];
+        // Sort indices in descending order to avoid index shifting issues
+        const sortedIndices = indices.sort((a, b) => b - a);
+
+        for (let i = 0; i < sortedIndices.length; i++) {
+            let index = sortedIndices[i];
             data['x'].splice(index, 1);
             data['intensity'].splice(index, 1);
             data['label'].splice(index, 1);
             data['color'].splice(index, 1);
         }
 
+        // Clear selection and emit change
+        clicked_spectra_source.selected.indices = [];
         clicked_spectra_source.change.emit();
-    """,
+        console.log("Lines removed, remaining count:", data['x'].length);
+        """,
     )
 
     clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
@@ -754,7 +727,6 @@ def _link_plots(
                 ppm_values=ppm_values.tolist(),
             ),
             code="""
-                console.log("Echem hover callback triggered");
                 const geometry = cb_data['geometry'];
 
                     let closestIndex = 0;
@@ -766,14 +738,15 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-                    console.log("Closest index", closestIndex)
+                    const exp_num = echem_source.data.exp_num[closestIndex];
+                    const exp_index = exp_num - 1;
 
-                    if (closestIndex !== undefined && closestIndex < spectra_intensities.length) {
+                    if (exp_index !== undefined && exp_index < spectra_intensities.length) {
                         const data = line_source.data;
-                        data['intensity'] = spectra_intensities[closestIndex];
+                        data['intensity'] = spectra_intensities[exp_index];
                         line_source.change.emit();
                     } else {
-                        console.warn("Index out of range or undefined:", closestIndex);
+                        console.warn("Index out of range or undefined:", exp_index);
                     }
                 """,
         )
@@ -789,8 +762,7 @@ def _link_plots(
 
         echemplot_figure.js_on_event("mouseleave", leave_callback_echem)
     else:
-        print("No HoverTool found in echemplot_figure to link with line plot.")
-
+        print("No HoverTool found in echemplot_figure. Cannot link hover callback.")
     if echem_source:
         clickcallback_echem = CustomJS(
             args=dict(
@@ -799,8 +771,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=COLORS,
-                times_by_exp=plot_data["times_by_exp"].tolist(),
-                voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
                 label_template=plotting_label_dict["label_source"]["label_template"],
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
@@ -822,7 +792,6 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-                    console.log("Closest index:", closestIndex);
                     const exp_num = echem_source.data.exp_num[closestIndex];
                     const exp_index = exp_num - 1;
                     console.log("Experiment number:", exp_num, "Index:", exp_index);

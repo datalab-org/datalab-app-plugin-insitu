@@ -250,12 +250,24 @@ def process_uvvis_data(
 
     metadata = {
         "time_range": {"min_y": min(X.index), "max_y": max(X.index)},
-        "num_experiments": len(X.index),
+        "num_experiments": X.shape[0],
     }
+    time_of_scan = X.index
+
+    index_df = pd.DataFrame.from_dict(
+        {
+            "time": time_of_scan,
+            "exp_num": np.arange(1, metadata["num_experiments"] + 1),
+            "file_num": file_num_index.flatten(),
+        }
+    )
+    index_df.index.name = "index"
+
     return {
         "2D_data": X,
         "wavelength": wavelength,
         "metadata": metadata,
-        "time_of_scan": X.index,
+        "time_of_scan": time_of_scan,
         "file_num_index": file_num_index,
+        "index_df": index_df,
     }
