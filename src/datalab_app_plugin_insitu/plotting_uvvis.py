@@ -279,20 +279,20 @@ def _create_heatmap_figure(
         print(time_range)
         # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
-        heatmap_index_df = plot_data["index_df"].reset_index().set_index("file_num").loc[experiment_numbers]
-        data={
-                "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
-                "y": times,
-                "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
-                "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
-                "file_num": experiment_numbers,
-            }
+        heatmap_index_df = (
+            plot_data["index_df"].reset_index().set_index("file_num").loc[experiment_numbers]
+        )
+        data = {
+            "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
+            "y": times,
+            "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
+            "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
+            "file_num": experiment_numbers,
+        }
 
         for col in heatmap_index_df.columns:
             data[col] = heatmap_index_df[col].values
-        source = ColumnDataSource(
-            data=data
-        )
+        source = ColumnDataSource(data=data)
 
         rects = heatmap_figure.rect(
             x="x",
@@ -441,7 +441,6 @@ def _create_echem_figure(
                 "x": voltages,
                 "exp_num": exp_numbers,
                 "spectra_index": [i for i in plot_data["Index map"].values()],
-
             }
         )
 
