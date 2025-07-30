@@ -91,7 +91,7 @@ def prepare_uvvis_plot_data(
     # Grab the times and voltages for each scan from the echem data
     times = spectra_intensities.index.to_numpy()
     voltage_interp = np.interp(times, echem_data["time"], echem_data["Voltage"])
-    index_df["voltages_by_exp"] = voltage_interp
+    index_df["voltage"] = voltage_interp
     first_spectrum_intensities = twoD_matrix[0, :]
 
     spectra_intensities = spectra_intensities.values.tolist()
