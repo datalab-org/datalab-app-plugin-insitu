@@ -32,24 +32,29 @@ def create_linked_insitu_plots(
     plotting_label_dict: dict,
     link_plots: bool = False,
 ):
+    print("Creating linked insitu plots...")
     shared_ranges = _create_shared_ranges(plot_data, time_series_time_range, heatmap_time_range)
+    print("Shared ranges created.")
     heatmap_figure = _create_heatmap_figure(
         plot_data,
         shared_ranges,
         x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
+    print("Heatmap figure created.")
     uvvisplot_figure = _create_top_line_figure(
         plot_data,
         shared_ranges,
         line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"),
     )
+    print("UV-Vis line plot figure created.")
     echemplot_figure = _create_echem_figure(
         plot_data,
         shared_ranges,
         time_series_x_axis_label=plotting_label_dict.get("time_series_x_axis_label", "Voltage (V)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
+    print("Electrochemical figure created.")
 
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
@@ -65,6 +70,7 @@ def create_linked_insitu_plots(
         _link_plots(
             heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict
         )
+        print("Plots linked.")
 
     grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
@@ -132,25 +138,25 @@ def prepare_uvvis_plot_data(
 
 
 def prepare_xrd_plot_data(
-    two_d_data: pd.DataFrame,
+    intensity_matrix: pd.DataFrame,
+    spectra_intensities: pd.DataFrame,
     heatmap_x_values: pd.Series,
     time_series_data,
     metadata,
     file_num_index,
     sample_granularity,
+    index_df: pd.DataFrame,
 ) -> Optional[Dict[str, Any]]:
-    twoD_matrix = two_d_data.values
+    intensity_matrix = intensity_matrix.values
 
     # Grab the times and voltages for each scan from the echem data
-    times = two_d_data.index.to_numpy()
+    times = spectra_intensities.index.to_numpy()
     x_values_by_exp = np.interp(times, time_series_data["y"], time_series_data["x"])
 
-    spectra_intensities = two_d_data.values.tolist()
+    first_spectrum_intensities = spectra_intensities.values[0, :]
 
-    first_spectrum_intensities = twoD_matrix[0, :]
-
-    intensity_min = np.min(twoD_matrix)
-    intensity_max = np.max(twoD_matrix)
+    intensity_min = np.min(intensity_matrix)
+    intensity_max = np.max(intensity_matrix)
 
     time_series_data = {
         "x": time_series_data["x"],
@@ -161,28 +167,20 @@ def prepare_xrd_plot_data(
 
     heatmap_y_range = {
         "min_y": 1,
-        "max_y": np.arange(1, len(two_d_data) + 1).max(),
+        "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
     }
 
     y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
 
-    print(len(spectra_intensities))
-    print(sample_granularity)
-    print(len(time_series_data["y"]) // sample_granularity)
-    if len(time_series_data["y"]) // sample_granularity < len(spectra_intensities):
-        index_map = {i: i // sample_granularity for i in range(len(time_series_data["y"]))}
-    else:
-        raise ValueError(
-            "Sample granularity does not match the number of spectra. "
-            "Ensure that sample_granularity is set correctly."
-        )
+    index_map = {i: i // sample_granularity for i in range(len(time_series_data["y"]))}
+
     print(index_map)
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
-        "heatmap y_values": two_d_data.index,  # not in ben Cs code
+        "heatmap y_values": spectra_intensities.index,  # not in ben Cs code
         "num_experiments": metadata["num_experiments"],
-        "spectra_intensities": spectra_intensities,
-        "intensity_matrix": twoD_matrix,
+        "spectra_intensities": spectra_intensities.values.tolist(),
+        "intensity_matrix": intensity_matrix,
         "y_range": y_range,
         "heatmap_y_range": heatmap_y_range,
         "first_spectrum_intensities": first_spectrum_intensities,
@@ -193,6 +191,7 @@ def prepare_xrd_plot_data(
         "x_values_by_exp": x_values_by_exp,
         "file_num_index": file_num_index,
         "Index map": index_map,
+        "index_df": index_df,
     }
 
 
@@ -280,14 +279,19 @@ def _create_heatmap_figure(
         print(time_range)
         # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
-        source = ColumnDataSource(
-            data={
+        heatmap_index_df = plot_data["index_df"].reset_index().set_index("file_num").loc[experiment_numbers]
+        data={
                 "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
                 "y": times,
                 "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
                 "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
-                "exp_num": experiment_numbers,
+                "file_num": experiment_numbers,
             }
+
+        for col in heatmap_index_df.columns:
+            data[col] = heatmap_index_df[col].values
+        source = ColumnDataSource(
+            data=data
         )
 
         rects = heatmap_figure.rect(
@@ -437,6 +441,7 @@ def _create_echem_figure(
                 "x": voltages,
                 "exp_num": exp_numbers,
                 "spectra_index": [i for i in plot_data["Index map"].values()],
+
             }
         )
 
@@ -467,16 +472,15 @@ def _create_echem_figure(
         echem_source = ColumnDataSource(
             data={
                 "y": times,
-                "x": voltages,
                 "exp_num": exp_numbers,
-                "filenum": echem_data["filenum"],
+                "file_num": echem_data["filenum"],
+                "Temperature": voltages,
                 "spectra_index": [i for i in plot_data["Index map"].values()],
             }
         )
-        for rect in echem_source.data:
-            print(len(echem_source.data[rect]), rect)
+
         echemplot_figure.line(
-            x="x",
+            x="Temperature",
             y="exp_num",
             source=echem_source,
         )
@@ -484,8 +488,8 @@ def _create_echem_figure(
         hover_tool = HoverTool(
             tooltips=[
                 ("Exp. #", "@y{0}"),
-                ("File #", "@filenum{0}"),
-                ("Temperature (C)", "@x{0.000}"),
+                ("File #", "@file_num{0}"),
+                ("Temperature (C)", "@Temperature{0.000}"),
             ],
             mode="hline",
             point_policy="snap_to_data",
@@ -524,15 +528,17 @@ def _link_plots(
     crosshair = CrosshairTool(dimensions="width", line_color="grey")
     heatmap_figure.add_tools(crosshair)
     echemplot_figure.add_tools(crosshair)
-
     hover = next((tool for tool in heatmap_figure.tools if isinstance(tool, HoverTool)), None)
     if hover:
+        index_df_source = ColumnDataSource(plot_data["index_df"].reset_index())
         hover.callback = CustomJS(
             args=dict(
                 line_source=line_source,
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 heatmap_source=heatmap_source,
+                file_num_index=plot_data["file_num_index"],
+                index_df_source=index_df_source,
             ),
             code="""
                     const geometry = cb_data['geometry'];
@@ -547,8 +553,22 @@ def _link_plots(
                         }
                     }
 
-                    var data = line_source.data;
-                    data['intensity'] = spectra_intensities[closestIndex];
+                    const fileNum = heatmap_source.data.file_num[closestIndex];
+                    console.log("Closest fileNum:", fileNum);
+
+                    const df_data = index_df_source.data;
+
+                    // Find index in index_df_source where file_num matches
+                    let dfIndex = -1;
+                    for (let i = 0; i < df_data.file_num.length; i++) {
+                        if (df_data.file_num[i] === fileNum) {
+                            dfIndex = i;
+                            break;
+                        }
+                    }
+
+                    const data = line_source.data;
+                    data['intensity'] = spectra_intensities[dfIndex];
                     line_source.change.emit();
                 """,
         )
@@ -574,32 +594,29 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=COLORS,
-                times_by_exp=plot_data["times_by_exp"].tolist(),
-                voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
+                # times_by_exp=plot_data["times_by_exp"].tolist(),
+                # voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
                 label_template=plotting_label_dict["label_source"]["label_template"],
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
             code="""
+                    console.log("Tap callback heatmap triggered");
                     const indices = cb_obj.indices;
                     if (indices.length === 0) return;
 
                     const index = indices[0];
                     const exp_num = heatmap_source.data.exp_num[index];
-                    const exp_index = exp_num - 1;
-                    const values = {
-                        exp_num: exp_num,
-                    };
+                    const exp_index = heatmap_source.data.index[index];
+                    const values = { exp_num: exp_num };
 
                     for (const key in label_fields) {
                         if (key !== "exp_num") {
                             const field = label_fields[key];
-                            const val_array = eval(field);  // E.g. `times_by_exp`
-                            const val = val_array[index];
-
-                            // Optional: format based on key
+                            const val = heatmap_source.data[field][index];
+                            // Optional formatting
                             if (key === "time") {
                                 values[key] = val.toFixed(0);
-                            } else if (key === "voltage") {
+                            } else if (key === "voltage" || key === "temperature") {
                                 values[key] = val.toFixed(3);
                             } else {
                                 values[key] = val;
@@ -613,7 +630,6 @@ def _link_plots(
                         label = label.replace(`{${key}}`, values[key]);
                     }
 
-
                     const existing_labels = clicked_spectra_source.data.label;
                     if (existing_labels.includes(label)) return;
 
@@ -625,7 +641,7 @@ def _link_plots(
                     const new_colors = [...clicked_spectra_source.data.color];
 
                     new_xs.push(ppm_values);
-                    new_ys.push(spectra_intensities[index]);
+                    new_ys.push(spectra_intensities[exp_index]);
                     new_labels.push(label);
                     new_colors.push(colors[color_index]);
 
@@ -730,17 +746,15 @@ def _link_plots(
     echem_source = plot_data.get("echem_source")
 
     if echem_hover:
-        print("Linking echem plot with heatmap hover tool.")
         echem_hover.callback = CustomJS(
             args=dict(
                 line_source=line_source,
                 spectra_intensities=spectra_intensities,
                 echem_source=echem_source,
-                heatmap_source=heatmap_source,
                 ppm_values=ppm_values.tolist(),
-                index_map=plot_data.get("Index map", {}),
             ),
             code="""
+                console.log("Echem hover callback triggered");
                 const geometry = cb_data['geometry'];
 
                     let closestIndex = 0;
@@ -752,15 +766,14 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
+                    console.log("Closest index", closestIndex)
 
-                    const mappedIndex = index_map[closestIndex];
-
-                    if (mappedIndex !== undefined && mappedIndex < spectra_intensities.length) {
+                    if (closestIndex !== undefined && closestIndex < spectra_intensities.length) {
                         const data = line_source.data;
-                        data['intensity'] = spectra_intensities[mappedIndex];
+                        data['intensity'] = spectra_intensities[closestIndex];
                         line_source.change.emit();
                     } else {
-                        console.warn("Mapped index out of range or undefined:", mappedIndex);
+                        console.warn("Index out of range or undefined:", closestIndex);
                     }
                 """,
         )
@@ -792,80 +805,74 @@ def _link_plots(
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
             code="""
-        console.log("Click detected at:", cb_obj.x, cb_obj.y);
+                    console.log("Tap callback echem triggered");
+                    const x = cb_obj.x;
+                    const y = cb_obj.y;
+                    if (x === undefined || y === undefined) {
+                        console.warn("No x/y data available in tap event");
+                        return;
+                    }
 
-        // Get the y-coordinate of the click
-        const click_y = cb_obj.y;
+                    let closestIndex = 0;
+                    let minDistance = Infinity;
+                    for (let i = 0; i < echem_source.data.y.length; i++) {
+                        const distance = Math.abs(echem_source.data.y[i] - y);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestIndex = i;
+                        }
+                    }
+                    console.log("Closest index:", closestIndex);
+                    const exp_num = echem_source.data.exp_num[closestIndex];
+                    const exp_index = exp_num - 1;
+                    console.log("Experiment number:", exp_num, "Index:", exp_index);
+                    const values = { exp_num: exp_num };
 
-        // Find the closest data point to this y-value
-        const y_data = echem_source.data.y;
-        let closest_index = 0;
-        let min_distance = Math.abs(y_data[0] - click_y);
+                    for (const key in label_fields) {
+                        if (key !== "exp_num") {
+                            const field = label_fields[key];
+                            const val = echem_source.data[field][closestIndex];
+                            // Optional formatting
+                            if (key === "time") {
+                                values[key] = val.toFixed(0);
+                            } else if (key === "voltage" || key === "temperature") {
+                                values[key] = val.toFixed(3);
+                            } else {
+                                values[key] = val;
+                            }
+                        }
+                    }
 
-        for (let i = 1; i < y_data.length; i++) {
-            const distance = Math.abs(y_data[i] - click_y);
-            if (distance < min_distance) {
-                min_distance = distance;
-                closest_index = i;
-            }
-        }
+                    // Format the label string using the template
+                    let label = label_template;
+                    for (const key in values) {
+                        label = label.replace(`{${key}}`, values[key]);
+                    }
 
-        console.log("Closest index:", closest_index, "at y:", y_data[closest_index]);
+                    const existing_labels = clicked_spectra_source.data.label;
+                    if (existing_labels.includes(label)) return;
 
-        // Use the closest index for your existing logic
-        const index = closest_index;
-        const spectra_index = echem_source.data.spectra_index[index];
-        const exp_num = echem_source.data.exp_num[index];
-        const values = {
-            exp_num: exp_num,
-        };
-        console.log("Spectra index:", spectra_index);
-        console.log("Experiment number:", exp_num);
+                    const color_index = existing_labels.length % colors.length;
 
-        console.log("Selected index:", index);
-        for (const key in label_fields) {
-            if (key !== "exp_num") {
-                const field = label_fields[key];
-                const val_array = eval(field);
-                const val = val_array[spectra_index];
-                if (key === "time") {
-                    values[key] = val.toFixed(0);
-                    console.log("Formatted time:", values[key]);
-                } else if (key === "voltage") {
-                    values[key] = val.toFixed(3);
-                } else {
-                    values[key] = val;
-                }
-            }
-        }
+                    const new_xs = [...clicked_spectra_source.data['x']];
+                    const new_ys = [...clicked_spectra_source.data.intensity];
+                    const new_labels = [...clicked_spectra_source.data.label];
+                    const new_colors = [...clicked_spectra_source.data.color];
 
-        // Format the label string using the template
-        let label = label_template;
-        for (const key in values) {
-            label = label.replace(`{${key}}`, values[key]);
-        }
+                    new_xs.push(ppm_values);
+                    new_ys.push(spectra_intensities[exp_index]);
+                    new_labels.push(label);
+                    new_colors.push(colors[color_index]);
 
-        const existing_labels = clicked_spectra_source.data.label;
-        if (existing_labels.includes(label)) return;
+                    clicked_spectra_source.data = {
+                        'x': new_xs,
+                        'intensity': new_ys,
+                        'label': new_labels,
+                        'color': new_colors
+                    };
 
-        const color_index = existing_labels.length % colors.length;
-        const new_xs = [...clicked_spectra_source.data['x']];
-        const new_ys = [...clicked_spectra_source.data.intensity];
-        const new_labels = [...clicked_spectra_source.data.label];
-        const new_colors = [...clicked_spectra_source.data.color];
-
-        new_xs.push(ppm_values);
-        new_ys.push(spectra_intensities[spectra_index]);
-        new_labels.push(label);
-        new_colors.push(colors[color_index]);
-
-        clicked_spectra_source.data = {
-            'x': new_xs,
-            'intensity': new_ys,
-            'label': new_labels,
-            'color': new_colors
-        };
-        clicked_spectra_source.change.emit();
+                    clicked_spectra_source.change.emit();
+                    console.log("Clicked spectra source updated:", clicked_spectra_source.data);
         """,
         )
 
