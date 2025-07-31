@@ -124,13 +124,13 @@ class InsituBlock(DataBlock):
         nmr_data = result["nmr_spectra"]
         ppm_values = np.array(nmr_data.get("ppm", []))
 
+        echem_data = result.get("echem", {})
+
         ppm1 = self.data["ppm1"] = min(ppm_values)
         ppm2 = self.data["ppm2"] = max(ppm_values)
 
         self.data.update(
             {
-                "nmr_data": result["nmr_spectra"],
-                "echem_data": result.get("echem", {}),
                 "metadata": result["metadata"],
                 "processing_params": {
                     "ppm1": ppm1,
@@ -144,31 +144,7 @@ class InsituBlock(DataBlock):
             }
         )
 
-    def should_reprocess_data(self) -> bool:
-        """
-        Determine if data needs to be reprocessed based on parameter changes.
-        PPM changes should not trigger reprocessing.
-        """
-        if "processing_params" not in self.data or "nmr_data" not in self.data:
-            return True
-
-        params = self.data["processing_params"]
-        current_params = {
-            "file_id": self.data.get("file_id"),
-            "start_exp": int(self.data.get("start_exp", self.defaults["start_exp"])),
-            "end_exp": self.data.get("end_exp", self.defaults["end_exp"]),
-            "step_exp": int(self.data.get("step_exp", self.defaults["step_exp"])),
-            "exclude_exp": self.data.get("exclude_exp", self.defaults["exclude_exp"]),
-        }
-
-        if current_params["end_exp"] is not None:
-            current_params["end_exp"] = int(current_params["end_exp"])
-
-        for key in current_params:
-            if params.get(key) != current_params[key]:
-                return True
-
-        return False
+        return nmr_data, echem_data
 
     def generate_insitu_nmr_plot(
         self, file_path: str | Path | None = None, link_plots: bool = True
@@ -215,23 +191,15 @@ class InsituBlock(DataBlock):
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
 
-        needs_reprocessing = self.should_reprocess_data()
-        if needs_reprocessing:
-            self.process_and_store_data(file_path)
-        else:
-            self.data["processing_params"]["ppm1"] = float(
-                self.data.get("ppm1", self.defaults["ppm1"])
-            )
-            self.data["processing_params"]["ppm2"] = float(
-                self.data.get("ppm2", self.defaults["ppm2"])
-            )
+        nmr_data, echem_data = self.process_and_store_data(file_path)
+
+        self.data["processing_params"]["ppm1"] = float(self.data.get("ppm1", self.defaults["ppm1"]))
+        self.data["processing_params"]["ppm2"] = float(self.data.get("ppm2", self.defaults["ppm2"]))
 
         if "nmr_data" not in self.data:
             raise ValueError("No NMR data available after processing")
 
-        plot_data = prepare_plot_data(
-            self.data["nmr_data"], self.data["echem_data"], self.data["metadata"]
-        )
+        plot_data = prepare_plot_data(nmr_data, echem_data, self.data["metadata"])
 
         ppm1 = float(self.data.get("ppm1", self.defaults["ppm1"]))
         ppm2 = float(self.data.get("ppm2", self.defaults["ppm2"]))
