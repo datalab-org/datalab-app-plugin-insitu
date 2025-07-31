@@ -721,21 +721,28 @@ def _link_plots(
     remove_line_callback = CustomJS(
         args=dict(clicked_spectra_source=clicked_spectra_source),
         code="""
+       console.log("Remove line callback triggered");
         const indices = clicked_spectra_source.selected.indices;
         if (indices.length === 0) return;
 
         let data = clicked_spectra_source.data;
 
-        for (let i = indices.length - 1; i >= 0; i--) {
-            let index = indices[i];
+        // Sort indices in descending order to avoid index shifting issues
+        const sortedIndices = indices.sort((a, b) => b - a);
+
+        for (let i = 0; i < sortedIndices.length; i++) {
+            let index = sortedIndices[i];
             data['x'].splice(index, 1);
             data['intensity'].splice(index, 1);
             data['label'].splice(index, 1);
             data['color'].splice(index, 1);
         }
 
+        // Clear selection and emit change
+        clicked_spectra_source.selected.indices = [];
         clicked_spectra_source.change.emit();
-    """,
+        console.log("Lines removed, remaining count:", data['x'].length);
+        """,
     )
 
     clicked_spectra_source.selected.js_on_change("indices", remove_line_callback)
