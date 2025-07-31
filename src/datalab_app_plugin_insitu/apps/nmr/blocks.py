@@ -36,7 +36,7 @@ class InsituBlock(DataBlock):
         "ppm2": 0.0,
         "start_exp": 1,
         "end_exp": None,
-        "step_exp": 1,
+        "step_exp": None,
         "exclude_exp": None,
     }
 
@@ -99,7 +99,7 @@ class InsituBlock(DataBlock):
         end_exp = self.data.get("end_exp", self.defaults["end_exp"])
         if end_exp is not None:
             end_exp = int(end_exp)
-        step_exp = int(self.data.get("step_exp", self.defaults["step_exp"]))
+        step_exp = self.data.get("step_exp", self.defaults["step_exp"])
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
 
         try:

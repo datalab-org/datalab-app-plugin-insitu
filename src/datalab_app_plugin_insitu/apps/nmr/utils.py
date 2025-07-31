@@ -112,7 +112,7 @@ def setup_bruker_paths(
     nmr_folder_path: Path,
     start_at: int,
     end_at: Optional[int] = None,
-    step: int = 1,
+    step: Optional[int] = None,
     exclude_exp: Optional[List[int]] = None,
 ) -> Tuple[List[str], List[str]]:
     """Setup experiment paths within the Bruker project and create output directory."""
@@ -127,6 +127,10 @@ def setup_bruker_paths(
 
     end_at = end_at if end_at is not None else max_exp
     end_at = min(end_at, max_exp)
+
+    if step is None:
+        # aim for a default of ~50 experiments
+        step = max(1, (end_at - start_at + 1) // 50)
 
     if step < 1:
         raise ValueError(f"step_exp must be >= 1, got {step}")
@@ -355,7 +359,7 @@ def _process_data(
     echem_folder_name: str,
     start_at: int,
     end_at: Optional[int] = None,
-    step: int = 1,
+    step: Optional[int] = None,
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
@@ -366,6 +370,8 @@ def _process_data(
         nmr_folder_path: Path to the NMR data folder
         echem_folder_name: Name of the electrochemistry folder
         start_at: Starting experiment number
+        step: Desired step size for experiments, will default to keeping
+            ~50 experiments
         exclude_exp: List of experiment numbers to exclude
 
     Returns:
