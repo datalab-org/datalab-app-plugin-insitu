@@ -108,14 +108,14 @@ def extract_date_from_acqus(path: str) -> Optional[datetime]:
     return None
 
 
-def setup_paths(
+def setup_bruker_paths(
     nmr_folder_path: Path,
     start_at: int,
     end_at: Optional[int] = None,
     step: int = 1,
     exclude_exp: Optional[List[int]] = None,
 ) -> Tuple[List[str], List[str]]:
-    """Setup experiment paths and create output directory."""
+    """Setup experiment paths within the Bruker project and create output directory."""
     exp_folders = [d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
     max_exp = len(exp_folders)
@@ -130,6 +130,9 @@ def setup_paths(
 
     if step < 1:
         raise ValueError(f"step_exp must be >= 1, got {step}")
+
+    if step > (end_at - start_at + 1):
+        step = end_at - start_at + 1
 
     if end_at < start_at:
         raise ValueError(f"end_exp ({end_at}) must be >= start_exp ({start_at})")
@@ -372,7 +375,7 @@ def _process_data(
         nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
         if nmr_dimension == "1D":
-            spec_paths, acqu_paths = setup_paths(
+            spec_paths, acqu_paths = setup_bruker_paths(
                 nmr_folder_path, start_at, end_at, step, exclude_exp
             )
             time_points = process_time_data(acqu_paths)
