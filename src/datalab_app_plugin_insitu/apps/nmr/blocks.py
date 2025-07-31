@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 from pydatalab.blocks.base import DataBlock
 
+from datalab_app_plugin_insitu._version import __version__
 from datalab_app_plugin_insitu.plotting import create_linked_insitu_plots, prepare_plot_data
 
 from .nmr_insitu import process_local_data
@@ -26,12 +27,9 @@ class InsituBlock(DataBlock):
     blocktype = "insitu-nmr"
     name = "NMR insitu"
     description = __doc__
+    version: str = __version__
 
     accepted_file_extensions = (".zip",)
-    available_folders: List[str] = []
-    nmr_folder_name = ""
-    echem_folder_name = ""
-    folder_name = ""
 
     defaults = {
         "ppm1": 0.0,
@@ -196,7 +194,7 @@ class InsituBlock(DataBlock):
         self.data["processing_params"]["ppm1"] = float(self.data.get("ppm1", self.defaults["ppm1"]))
         self.data["processing_params"]["ppm2"] = float(self.data.get("ppm2", self.defaults["ppm2"]))
 
-        if "nmr_data" not in self.data:
+        if not nmr_data:
             raise ValueError("No NMR data available after processing")
 
         plot_data = prepare_plot_data(nmr_data, echem_data, self.data["metadata"])

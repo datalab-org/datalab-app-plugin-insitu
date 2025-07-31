@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Optional
 
 import bokeh.embed
@@ -15,10 +16,15 @@ from bokeh.models import (
     TapTool,
 )
 from bokeh.plotting import figure
-from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
 
 def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
+    try:
+        from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
+    except ImportError:
+        warnings.warn("datalab-server not installed, using default Bokeh theme")
+        DATALAB_BOKEH_THEME = None
+
     shared_ranges = _create_shared_ranges(plot_data, ppm_range=ppm_range)
     heatmap_figure = _create_heatmap_figure(plot_data, shared_ranges)
     nmrplot_figure = _create_nmr_line_figure(plot_data, shared_ranges)
@@ -186,7 +192,7 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
         hover_tool = HoverTool(
             renderers=[rects],
-            tooltips=[("Exp.", "@exp_num")],
+            tooltips=[("Exp. #", "@exp_num")],
             mode="mouse",
             point_policy="follow_mouse",
         )
@@ -315,7 +321,7 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
 
         hover_tool = HoverTool(
             tooltips=[
-                ("Exp.", "@exp_num{0}"),
+                ("Exp. #", "@exp_num{0}"),
                 ("Time (h)", "@time{0.00}"),
                 ("Voltage (V)", "@voltage{0.000}"),
             ],
@@ -342,25 +348,20 @@ def _link_plots(
         echemplot_figure: The electrochemical figure component
         plot_data: Dictionary containing prepared plot data
     """
+
+    try:
+        from pydatalab.bokeh_plots import COLORS
+    except ImportError:
+        from bokeh.palettes import Dark2
+
+        COLORS = Dark2[8]  # Default to a Bokeh palette if not available
+
     line_source = plot_data["line_source"]
     clicked_spectra_source = plot_data["clicked_spectra_source"]
     spectra_intensities = plot_data["spectra_intensities"]
     ppm_values = plot_data["ppm_values"]
     intensity_matrix = plot_data["intensity_matrix"]
     heatmap_source = plot_data.get("heatmap_source")
-
-    colors = [
-        "red",
-        "green",
-        "orange",
-        "purple",
-        "brown",
-        "darkblue",
-        "teal",
-        "magenta",
-        "olive",
-        "navy",
-    ]
 
     crosshair = CrosshairTool(dimensions="width", line_color="grey")
     heatmap_figure.add_tools(crosshair)
@@ -403,7 +404,7 @@ def _link_plots(
                 clicked_spectra_source=clicked_spectra_source,
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
-                colors=colors,
+                colors=COLORS,
             ),
             code="""
                     const indices = cb_obj.indices;
