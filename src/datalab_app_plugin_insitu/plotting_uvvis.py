@@ -27,8 +27,8 @@ except ImportError:
 
 def create_linked_insitu_plots(
     plot_data,
-    time_series_time_range,
-    heatmap_time_range,
+    time_series_time_range: Dict[str, float],
+    heatmap_time_range: Dict[str, float],
     plotting_label_dict: dict,
     link_plots: bool = False,
 ):
@@ -129,7 +129,7 @@ def prepare_xrd_plot_data(
     file_num_index,
     sample_granularity,
     index_df: pd.DataFrame,
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     intensity_matrix = intensity_matrix.values
     first_spectrum_intensities = spectra_intensities.values[0, :]
 
@@ -148,7 +148,7 @@ def prepare_xrd_plot_data(
         "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
     }
 
-    y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
+    y_range = {"min_y": 1, "max_y": int(max(np.arange(1, len(time_series_data["x"]) + 1)))}
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
