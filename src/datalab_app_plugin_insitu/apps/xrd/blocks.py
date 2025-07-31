@@ -84,7 +84,6 @@ class XRDInsituBlock(GenericInSituBlock):
             )
 
             num_samples, data_length = data["2D_data"].shape
-            print(f"Number of samples: {num_samples}, Data length: {data_length}")
 
             sample_granularity = self.data.get(
                 "sample_granularity", self.defaults["sample_granularity"]

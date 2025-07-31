@@ -104,21 +104,6 @@ def prepare_uvvis_plot_data(
         "time": echem_data["time"].values,
     }
 
-    # echem_map_df = pd.DataFrame.from_dict(
-    #     {
-    #         "file_num_index": file_num_index[:, 0],
-    #         "times_by_exp": times,
-    #     }
-    # )
-
-    # def find_nearest_time_index(echem_map_df, time_point):
-    #     index = (echem_map_df["times_by_exp"] - time_point).abs().idxmin()
-    #     return index
-
-    # index_map = {
-    #     i: find_nearest_time_index(echem_map_df, x) for i, x in enumerate(echem_data["time"])
-    # }
-
     return {
         "heatmap x_values": wavelength,  # ppm_values
         "heatmap y_values": intensity_matrix.index,  # not in ben Cs code
@@ -130,10 +115,7 @@ def prepare_uvvis_plot_data(
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
         "time_series_data": echem_data,
-        "times_by_exp": times,
-        "x_values_by_exp": voltage_interp,
         "file_num_index": file_num_index,
-        # "Index map": index_map,
         "index_df": index_df,  # DataFrame with index and exp_num columns
     }
 
@@ -149,11 +131,6 @@ def prepare_xrd_plot_data(
     index_df: pd.DataFrame,
 ) -> Optional[Dict[str, Any]]:
     intensity_matrix = intensity_matrix.values
-
-    # Grab the times and voltages for each scan from the echem data
-    times = spectra_intensities.index.to_numpy()
-    x_values_by_exp = np.interp(times, time_series_data["y"], time_series_data["x"])
-
     first_spectrum_intensities = spectra_intensities.values[0, :]
 
     intensity_min = np.min(intensity_matrix)
@@ -173,8 +150,6 @@ def prepare_xrd_plot_data(
 
     y_range = {"min_y": 1, "max_y": np.arange(1, len(time_series_data["x"]) + 1).max()}
 
-    index_map = {i: i // sample_granularity for i in range(len(time_series_data["y"]))}
-
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
         "heatmap y_values": spectra_intensities.index,  # not in ben Cs code
@@ -187,10 +162,7 @@ def prepare_xrd_plot_data(
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
         "time_series_data": time_series_data,
-        "times_by_exp": times,
-        "x_values_by_exp": x_values_by_exp,
         "file_num_index": file_num_index,
-        "Index map": index_map,
         "index_df": index_df,
     }
 
@@ -441,7 +413,6 @@ def _create_echem_figure(
                 "exp_num": exp_numbers,
                 "time": times,
                 "voltage": voltages,
-                # "spectra_index": [i for i in plot_data["Index map"].values()],
             }
         )
 
@@ -475,7 +446,6 @@ def _create_echem_figure(
                 "exp_num": exp_numbers,
                 "file_num": echem_data["filenum"],
                 "Temperature": voltages,
-                "spectra_index": [i for i in plot_data["Index map"].values()],
             }
         )
 
@@ -537,7 +507,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 heatmap_source=heatmap_source,
-                file_num_index=plot_data["file_num_index"],
                 index_df_source=index_df_source,
             ),
             code="""
@@ -554,7 +523,6 @@ def _link_plots(
                     }
 
                     const fileNum = heatmap_source.data.file_num[closestIndex];
-                    console.log("Closest fileNum:", fileNum);
 
                     const df_data = index_df_source.data;
 
@@ -594,8 +562,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=COLORS,
-                # times_by_exp=plot_data["times_by_exp"].tolist(),
-                # voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
                 label_template=plotting_label_dict["label_source"]["label_template"],
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
@@ -610,7 +576,6 @@ def _link_plots(
                     const values = { exp_num: exp_num };
                     console.log("Exp num:", exp_num, "Exp index:", exp_index);
                     for (const key in label_fields) {
-                        console.log("Processing key:", key);
                         if (key !== "exp_num") {
                             const field = label_fields[key];
                             const val = heatmap_source.data[field][index];
@@ -762,7 +727,6 @@ def _link_plots(
                 ppm_values=ppm_values.tolist(),
             ),
             code="""
-                console.log("Echem hover callback triggered");
                 const geometry = cb_data['geometry'];
 
                     let closestIndex = 0;
@@ -774,10 +738,8 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-                    console.log("Closest index", closestIndex)
                     const exp_num = echem_source.data.exp_num[closestIndex];
                     const exp_index = exp_num - 1;
-                    console.log("Experiment number:", exp_num, "Index:", exp_index);
 
                     if (exp_index !== undefined && exp_index < spectra_intensities.length) {
                         const data = line_source.data;
@@ -809,8 +771,6 @@ def _link_plots(
                 spectra_intensities=spectra_intensities,
                 ppm_values=ppm_values.tolist(),
                 colors=COLORS,
-                times_by_exp=plot_data["times_by_exp"].tolist(),
-                voltages_by_exp=plot_data["x_values_by_exp"].tolist(),
                 label_template=plotting_label_dict["label_source"]["label_template"],
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
@@ -832,7 +792,6 @@ def _link_plots(
                             closestIndex = i;
                         }
                     }
-                    console.log("Closest index:", closestIndex);
                     const exp_num = echem_source.data.exp_num[closestIndex];
                     const exp_index = exp_num - 1;
                     console.log("Experiment number:", exp_num, "Index:", exp_index);
@@ -840,10 +799,8 @@ def _link_plots(
 
                     for (const key in label_fields) {
                         if (key !== "exp_num") {
-                            console.log("Processing key:", key);
                             const field = label_fields[key];
                             const val = echem_source.data[field][closestIndex];
-                            console.log(`Field ${field} value:`, val);
                             // Optional formatting
                             if (key === "time") {
                                 values[key] = val.toFixed(0);
