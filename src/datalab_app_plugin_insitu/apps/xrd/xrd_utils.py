@@ -6,7 +6,6 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pydatalab.apps.xrd.blocks import XRDBlock
 
 from datalab_app_plugin_insitu.utils import _find_folder_path
 
@@ -158,6 +157,8 @@ def process_xrd_data(
     Returns:
         Dict: Processed XRD data and metadata.
     """
+    from pydatalab.apps.xrd.blocks import XRDBlock
+
     if not xrd_folder.exists():
         raise FileNotFoundError(f"XRD folder does not exist: {xrd_folder}")
 
