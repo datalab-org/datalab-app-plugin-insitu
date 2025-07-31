@@ -13,8 +13,8 @@ from datalab_app_plugin_insitu.utils import _find_folder_path
 
 def process_local_xrd_data(
     file_path: str | Path,
-    xrd_folder_name: str,
-    log_folder_name: str,
+    xrd_folder_name: Path,
+    log_folder_name: Path,
     start_exp: int = 1,
     exclude_exp: Union[list, None] = None,
 ):
@@ -62,6 +62,9 @@ def process_local_xrd_data(
             # Check if the folder exists
             if not all([xrd_path, log_path]):
                 raise ValueError("XRD folder and log folder must be specified.")
+
+            assert isinstance(xrd_path, Path), "xrd_path must be a Path object"
+            assert isinstance(log_path, Path), "xrd_path must be a Path object"
 
             # Load the XRD data
             xrd_data = process_xrd_data(
@@ -141,7 +144,7 @@ def process_xrd_data(
     xrd_folder: Path,
     start_at: int = 1,
     exclude_exp: Optional[List[int]] = None,
-    glob_str: Optional[str] = "*summed*",
+    glob_str: str = "*summed*",
 ) -> Dict:
     """
     Process XRD data from a specified folder.
