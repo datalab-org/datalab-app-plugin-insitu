@@ -17,6 +17,13 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 
+try:
+    from pydatalab.bokeh_plotting import COLORS
+except ImportError:
+    from bokeh.palettes import Dark2
+
+    COLORS = Dark2[8]
+
 
 def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
     try:
@@ -253,7 +260,7 @@ def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
         y="intensity",
         source=line_source,
         line_width=1,
-        color="blue",
+        color="grey",
         legend_label="Current Spectrum",
     )
 
@@ -317,6 +324,7 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
             x="voltage",
             y="time",
             source=echem_source,
+            color=COLORS[1],
         )
 
         hover_tool = HoverTool(
@@ -348,13 +356,6 @@ def _link_plots(
         echemplot_figure: The electrochemical figure component
         plot_data: Dictionary containing prepared plot data
     """
-
-    try:
-        from pydatalab.bokeh_plots import COLORS
-    except ImportError:
-        from bokeh.palettes import Dark2
-
-        COLORS = Dark2[8]  # Default to a Bokeh palette if not available
 
     line_source = plot_data["line_source"]
     clicked_spectra_source = plot_data["clicked_spectra_source"]
@@ -394,6 +395,17 @@ def _link_plots(
                     line_source.change.emit();
                 """,
         )
+
+        leave_callback = CustomJS(
+            args=dict(line_source=line_source),
+            code="""
+                var data = line_source.data;
+                data['intensity'] = [];  // Clear the intensity data
+                line_source.change.emit();
+            """,
+        )
+
+        heatmap_figure.js_on_event("mouseleave", leave_callback)
 
     if heatmap_source:
         tap_tool = TapTool()
