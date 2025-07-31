@@ -13,7 +13,7 @@ def process_local_data(
     echem_folder_name: str,
     start_at: int = 1,
     end_at: Optional[int] = None,
-    step: int = 1,
+    step: Optional[int] = None,
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
@@ -80,7 +80,7 @@ def process_datalab_data(
     echem_folder_name: str,
     start_at: int = 1,
     end_at: Optional[int] = None,
-    step: int = 1,
+    step: Optional[int] = None,
     exclude_exp: Optional[List[int]] = None,
 ) -> Dict:
     """
