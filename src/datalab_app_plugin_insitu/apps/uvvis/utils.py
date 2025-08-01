@@ -104,6 +104,7 @@ def process_local_uvvis_data(
 
     Returns:
         Dictionary containing the following keys, the processed UV-Vis data [2D data] and Echem data [Time_series_data], along with wavelength, metadata, time of scan, and file number index.
+
     Raises:
         ValueError: If the UV-Vis or reference folders are not specified or do not exist
         FileNotFoundError: If the UV-Vis or reference folders are not found in the provided path
@@ -187,6 +188,7 @@ def process_uvvis_data(
 
     Returns:
         Dictionary containing processed UV-Vis data, wavelength, metadata, time of scan, and file number index
+
     """
 
     reference_files = list(reference_folder.glob("*" + reference_file_extension))
@@ -247,13 +249,25 @@ def process_uvvis_data(
         X.index = X.index.astype(float) * scan_time
 
     metadata = {
-        "time_range": {"min_time": min(X.index), "max_time": max(X.index)},
-        "num_experiments": len(X.index),
+        "time_range": {"min_y": min(X.index), "max_y": max(X.index)},
+        "num_experiments": X.shape[0],
     }
+    time_of_scan = X.index
+
+    index_df = pd.DataFrame.from_dict(
+        {
+            "time": time_of_scan,
+            "exp_num": np.arange(1, metadata["num_experiments"] + 1),
+            "file_num": file_num_index.flatten(),
+        }
+    )
+    index_df.index.name = "index"
+
     return {
         "2D_data": X,
         "wavelength": wavelength,
         "metadata": metadata,
-        "time_of_scan": X.index,
+        "time_of_scan": time_of_scan,
         "file_num_index": file_num_index,
+        "index_df": index_df,
     }

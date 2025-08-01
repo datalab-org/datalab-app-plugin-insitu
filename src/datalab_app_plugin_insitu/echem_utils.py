@@ -38,8 +38,8 @@ def process_echem_data(echem_folder: Path) -> Dict:
         "time": echem_data["Time"],
         "Voltage": echem_data["Voltage"],
         "metadata": {
-            "min_time": min_time,
-            "max_time": max_time,
+            "min_y": min_time,
+            "max_y": max_time,
         },
     }
 
