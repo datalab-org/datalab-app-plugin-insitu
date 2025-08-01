@@ -529,7 +529,7 @@ def _link_plots(
             let index = indices[i];
             data['x'].splice(index, 1);
             data['intensity'].splice(index, 1);
-            data['exp_index'].splice(index, 1);
+            data['label'].splice(index, 1);
             data['color'].splice(index, 1);
         }
 
