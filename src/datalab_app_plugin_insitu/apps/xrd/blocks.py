@@ -31,7 +31,7 @@ class XRDInsituBlock(GenericInSituBlock):
         "line_y_axis_label": "Intensity",
         "time_series_x_axis_label": "Temperature (°C)",
         "label_source": {
-            "label_template": "File # {file_num}, Exp. # {exp_num}, @ {temperature} C",
+            "label_template": "File # {file_num}, Exp. # {exp_num}, @ {temperature} °C",
             "label_field_map": {
                 "exp_num": "exp_num",
                 "temperature": "Temperature",

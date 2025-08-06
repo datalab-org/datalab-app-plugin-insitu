@@ -459,7 +459,7 @@ def _create_echem_figure(
             tooltips=[
                 ("Exp. #", "@y{0}"),
                 ("File #", "@file_num{0}"),
-                ("Temperature (C)", "@Temperature{0.000}"),
+                ("Temperature (°C)", "@Temperature{0.000}"),
             ],
             mode="hline",
             point_policy="snap_to_data",
@@ -568,7 +568,6 @@ def _link_plots(
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
             code="""
-                    console.log("Tap callback heatmap triggered");
                     const indices = cb_obj.indices;
                     if (indices.length === 0) return;
 
@@ -576,7 +575,6 @@ def _link_plots(
                     const exp_num = heatmap_source.data.exp_num[index];
                     const exp_index = heatmap_source.data.index[index];
                     const values = { exp_num: exp_num };
-                    console.log("Exp num:", exp_num, "Exp index:", exp_index);
                     for (const key in label_fields) {
                         if (key !== "exp_num") {
                             const field = label_fields[key];
@@ -688,7 +686,6 @@ def _link_plots(
     remove_line_callback = CustomJS(
         args=dict(clicked_spectra_source=clicked_spectra_source),
         code="""
-       console.log("Remove line callback triggered");
         const indices = clicked_spectra_source.selected.indices;
         if (indices.length === 0) return;
 
@@ -708,7 +705,6 @@ def _link_plots(
         // Clear selection and emit change
         clicked_spectra_source.selected.indices = [];
         clicked_spectra_source.change.emit();
-        console.log("Lines removed, remaining count:", data['x'].length);
         """,
     )
 
@@ -777,7 +773,6 @@ def _link_plots(
                 label_fields=plotting_label_dict["label_source"]["label_field_map"],
             ),
             code="""
-                    console.log("Tap callback echem triggered");
                     const x = cb_obj.x;
                     const y = cb_obj.y;
                     if (x === undefined || y === undefined) {
@@ -796,7 +791,6 @@ def _link_plots(
                     }
                     const exp_num = echem_source.data.exp_num[closestIndex];
                     const exp_index = exp_num - 1;
-                    console.log("Experiment number:", exp_num, "Index:", exp_index);
                     const values = { exp_num: exp_num };
 
                     for (const key in label_fields) {
@@ -843,7 +837,6 @@ def _link_plots(
                     };
 
                     clicked_spectra_source.change.emit();
-                    console.log("Clicked spectra source updated:", clicked_spectra_source.data);
         """,
         )
 
