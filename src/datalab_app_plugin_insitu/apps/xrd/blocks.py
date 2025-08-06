@@ -4,9 +4,9 @@ from typing import List
 import bokeh.embed
 from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
 
-from datalab_app_plugin_insitu.apps.xrd.xrd_utils import process_local_xrd_data
+from datalab_app_plugin_insitu.apps.xrd.utils import process_local_xrd_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
-from datalab_app_plugin_insitu.plotting_uvvis import (
+from datalab_app_plugin_insitu.plotting_xrd_uvvis import (
     create_linked_insitu_plots,
     prepare_xrd_plot_data,
 )
@@ -17,8 +17,8 @@ class XRDInsituBlock(GenericInSituBlock):
     name = "XRD insitu"
     description = """This datablock processes in situ XRD data from an input .zip file containing two specific directories:
 
-    - **XRD Data Directory**: Contains multiple XRD in-situ experiment datasets.
-    - **Time series folder directory**: Contains echem data (.txt.) or temperature data files (.csv).
+    - XRD data directory: Contains multiple XRD patterns (.xy, or otherwise) measured at different times,
+    - Time series directory: Contains echem data (.txt) or temperature data files (.csv).
     """
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
@@ -26,12 +26,12 @@ class XRDInsituBlock(GenericInSituBlock):
     time_series_folder_name = None
     folder_name = None
     plotting_label_dict = {
-        "x_axis_label": "Two theta (degrees)",
+        "x_axis_label": "2Θ (°)",
         "time_series_y_axis_label": "Experiment number",
         "line_y_axis_label": "Intensity",
-        "time_series_x_axis_label": "Temp (C)",
+        "time_series_x_axis_label": "Temperature (°C)",
         "label_source": {
-            "label_template": "File # {file_num} | Exp. # {exp_num} | Temp = {temperature} C",
+            "label_template": "File # {file_num}, Exp. # {exp_num}, @ {temperature} C",
             "label_field_map": {
                 "exp_num": "exp_num",
                 "temperature": "Temperature",
@@ -198,4 +198,3 @@ class XRDInsituBlock(GenericInSituBlock):
             link_plots=link_plots,
         )
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
-        self.plot_data = plot_data

@@ -466,7 +466,7 @@ def _create_echem_figure(
         )
         echemplot_figure.add_tools(hover_tool)
     else:
-        raise ValueError("Echem data must contain 'Voltage' and 'time' or 'x' and 'y' keys.")
+        raise ValueError("Time series data must contain either ('Voltage' and 'time') or ('x' and 'y') keys.")
 
     plot_data["echem_source"] = echem_source
     return echemplot_figure
