@@ -8,7 +8,7 @@ import pandas as pd
 from pydatalab.blocks.base import DataBlock
 
 from datalab_app_plugin_insitu._version import __version__
-from datalab_app_plugin_insitu.plotting import create_linked_insitu_plots, prepare_plot_data
+from datalab_app_plugin_insitu.legacy_plotting import create_linked_insitu_plots, prepare_plot_data
 
 from .nmr_insitu import process_local_data
 

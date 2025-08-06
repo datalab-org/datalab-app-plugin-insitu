@@ -6,7 +6,7 @@ import bokeh.embed
 
 from datalab_app_plugin_insitu.apps.uvvis.utils import process_local_uvvis_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
-from datalab_app_plugin_insitu.plotting_uvvis import (
+from datalab_app_plugin_insitu.plotting import (
     create_linked_insitu_plots,
     prepare_uvvis_plot_data,
 )
@@ -34,7 +34,7 @@ class UVVisInsituBlock(GenericInSituBlock):
         "line_y_axis_label": "Absorbance",
         "time_series_x_axis_label": "Voltage (V)",
         "label_source": {
-            "label_template": "Exp. # {exp_num} | t = {time} s | V = {voltage} V",
+            "label_template": "Exp. # {exp_num}, t = {time} s, V = {voltage} V",
             "label_field_map": {
                 "exp_num": "exp_num",
                 "time": "time",
@@ -225,4 +225,3 @@ class UVVisInsituBlock(GenericInSituBlock):
             DATALAB_BOKEH_THEME = None
 
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
-        self.plotting_data = plot_data
