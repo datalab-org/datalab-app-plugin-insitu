@@ -32,7 +32,7 @@ class UVVisInsituBlock(GenericInSituBlock):
         "line_y_axis_label": "Absorbance",
         "time_series_x_axis_label": "Voltage (V)",
         "label_source": {
-            "label_template": "Exp. # {exp_num} | t = {time} s | V = {voltage} V",
+            "label_template": "Exp. # {exp_num}, t = {time} s, V = {voltage} V",
             "label_field_map": {
                 "exp_num": "exp_num",
                 "time": "time",
