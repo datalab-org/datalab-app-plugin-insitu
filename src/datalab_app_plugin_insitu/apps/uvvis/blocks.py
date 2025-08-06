@@ -6,7 +6,7 @@ import bokeh.embed
 
 from datalab_app_plugin_insitu.apps.uvvis.utils import process_local_uvvis_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
-from datalab_app_plugin_insitu.plotting_uvvis import (
+from datalab_app_plugin_insitu.plotting_xrd_uvvis import (
     create_linked_insitu_plots,
     prepare_uvvis_plot_data,
 )
@@ -223,4 +223,3 @@ class UVVisInsituBlock(GenericInSituBlock):
             DATALAB_BOKEH_THEME = None
 
         self.data["bokeh_plot_data"] = bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
-        self.plotting_data = plot_data

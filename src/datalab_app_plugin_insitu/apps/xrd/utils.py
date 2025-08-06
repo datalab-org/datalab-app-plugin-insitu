@@ -21,11 +21,11 @@ def process_local_xrd_data(
     Process local XRD data from a zip file.
 
     Parameters:
-        file_path (str | Path): Path to the zip file containing XRD data.
-        xrd_folder_name (str): Name of the folder containing XRD data.
-        log_folder_name (str): Name of the folder containing log data.
-        start_exp (int): Starting experiment number.
-        exclude_exp (list): List of experiments to exclude.
+        file_path: Path to the zip file containing XRD data.
+        xrd_folder_name: Path to the folder containing XRD data.
+        log_folder_name: Path to the folder containing log data.
+        start_exp: Starting experiment number.
+        exclude_exp: List of experiments to exclude.
 
     Returns:
         dict: Processed XRD data and metadata.
@@ -97,7 +97,9 @@ def process_local_xrd_data(
 
             # TODO alternate pathway for echem data
             # Check that the log scans are the same as the xrd scans
-            if not set(log_data["scan_number"]).issubset(set(xrd_data["file_num_index"][:, 0])):
+            log_scan_numbers = set(log_data["scan_number"].astype(int))
+            xrd_scan_numbers = set(xrd_data["file_num_index"][:, 0].astype(int))
+            if not log_scan_numbers.issubset(xrd_scan_numbers):
                 raise ValueError(
                     "Log file scan numbers do not match XRD data scan numbers. "
                     "Ensure the log file contains all XRD scans."
@@ -149,10 +151,10 @@ def process_xrd_data(
     Process XRD data from a specified folder.
 
     Args:
-        xrd_folder (Path): Path to the folder containing XRD data.
-        log_file (Path): Path to the log file for storing processing results.
-        start_at (int): Starting experiment number.
-        exclude_exp (Optional[List[int]]): List of experiments to exclude.
+        xrd_folder: Path to the folder containing XRD data.
+        log_file: Path to the log file for storing processing results.
+        start_at: Starting experiment number.
+        exclude_exp: List of experiments to exclude.
 
     Returns:
         Dict: Processed XRD data and metadata.
@@ -183,13 +185,14 @@ def process_xrd_data(
 
     # Sort the dataframe based on the scan_number extracted from the filename of the format: 1058063-mythen_summed.dat
     # TODO make this more robust to different file naming conventions
-    def extract_number(filename):
-        match = re.search(r"(?<!\d)(\d{6,8})(?!\d)", filename)
+    def extract_number(filename, pattern=r"(?<!\d)(\d{6,8})(?!\d)"):
+        match = re.search(pattern, filename)
         if match:
             return int(match.group(1))
         return None
 
-    all_patterns.index = all_patterns.index.map(lambda x: extract_number(x.name))
+    filename_pattern = r"(?<!\d)(\d{6,8})(?!\d)"
+    all_patterns.index = all_patterns.index.map(lambda x: extract_number(x.name, filename_pattern))
     all_patterns.sort_index(inplace=True)
 
     file_num_index = all_patterns.index.values.reshape(-1, 1)
@@ -211,7 +214,7 @@ def process_xrd_data(
 
 def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     """
-    Load temperature log file and return as a DataFrame.
+    Load temperature log file and return as a DataFrame. This currently assumes the Temperature is recorded in Celsius.
 
     Args:
         log_file (Path): Path to the temperature log file.
