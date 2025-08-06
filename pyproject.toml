@@ -90,7 +90,7 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
-    "datalab-server > 0.5.3",
+    "datalab-server[server] > 0.5.3",
     "datalab-api ~= 0.3",
 ]
 
