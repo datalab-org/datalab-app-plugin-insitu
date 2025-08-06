@@ -15,16 +15,13 @@
 </div>
 
 
-A Python plugin for processing and visualizing *in situ* (NMR, UV-Vis etc) data within [_datalab_](https://github.com/datalab-org/datalab) instances.
+A Python plugin for processing and visualizing *in situ* (NMR, UV-Vis, XRD) data within [_datalab_](https://github.com/datalab-org/datalab) instances.
 
 The project was originally developed in the [Grey Group](https://www.ch.cam.ac.uk/group/grey/) in the Department of Chemistry at the University of Cambridge, with support and ongoing maintenance from [*datalab industries ltd.*](https://datalab.industries).
 
-> [!WARNING]  
-> This plugin is still under development and may struggle to process larger datasets within a single *datalab* request, in which case you may wish to run the plugin locally.
-
 ## Features
 
-- Process both 1D and pseudo-2D NMR data from Bruker instruments, and UV-Vis .txt exports with reference spectra
+- Support for NMR, XRD and UV-Vis data, recorded alongside electrochemical experiments, temperature ramps or other time series data (support varies across data types)
 - Integration with electrochemical data formats for combined analysis using [navani](https://github.com/be-smith/navani)
 - Interactive visualization using Bokeh, with heatmaps and spectra selection
 - Support for both local files, as well as running as a plugin directly on a *datalab* instance
@@ -32,6 +29,15 @@ The project was originally developed in the [Grey Group](https://www.ch.cam.ac.u
 <div align="center">
    <img src="./static/datalab_plugin_bokeh_plot.png" width=600rem>
 </div>
+
+## Roadmap
+
+There are still several planned features and improvements for this plugin,
+including:
+
+- Supporting all formats for electrochemistry, NMR, XRD and UV-Vis that are supported by the corresponding non-*in situ* blocks available in *datalab*.
+- More flexible specification of other time series data across all data types, e.g., temperature or pressure ramps.
+- Improved performance and caching of data, especially for large datasets.
 
 # Installation
 
@@ -87,7 +93,7 @@ with the `<nmr_folder>` and `<echem_folder>` names specified at runtime (or via 
 
 #### UV-Vis
 
-```shell
+```
 data_folder.zip/
 ├── <uv-vis folder>/
 │   ├── scan_0000.txt
@@ -105,6 +111,33 @@ data_folder.zip/
 ```
 
 where the `<uv-vis folder>` contains the UV-Vis scans (named as `*_<n>.txt`, which will be used for sorting), the `<uv-vis reference folder>` contains the reference spectrum, and the `<echem_folder>` contains a electrochemical data file that is loadable by `navani`.
+
+#### XRD
+
+```
+data_folder.zip/
+├── <xrd folder>/
+│   ├── 0000-scan.dat
+│   ├── 0001-scan.dat
+│   ├── 0002-scan.dat
+│   ├── 0003-scan.dat
+│   ├── 0004-scan.dat
+│   ├── 0005-scan.dat
+│   ├── ...
+│   └── <N>-scan.dat
+└── <log folder>/
+    └── time_series_log.csv
+```
+
+where the `<xrd folder>` contains the XRD scans (named as `0000-scan.dat`, `0001-scan.dat`, etc.), and the `<log folder>` contains a time series log file in CSV format, mapping scan number to the time series data, e.g.,
+
+```csv
+scan_number,temperature
+0000, 25.0
+0001, 30.0
+0002, 35.0
+0003, 40.0
+```
 
 ## License
 

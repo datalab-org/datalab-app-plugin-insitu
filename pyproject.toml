@@ -93,7 +93,7 @@ dev-dependencies = [
     "griffe-inherited-docstrings ~= 1.1",
     "mkdocs-awesome-pages-plugin ~= 2.9",
     "markdown-callouts ~= 0.4",
-    "datalab-server > 0.5.3",
+    "datalab-server[server] > 0.5.3",
     "datalab-api ~= 0.3",
 ]
 

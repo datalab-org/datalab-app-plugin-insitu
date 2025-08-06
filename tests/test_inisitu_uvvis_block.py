@@ -6,7 +6,9 @@ from datalab_api.utils import bokeh_from_json
 def test_block(pytestconfig):
     from datalab_app_plugin_insitu.apps.uvvis.blocks import UVVisInsituBlock
 
-    test_data_zip = Path(__file__).parent.parent / "example_data" / "Example_in_situ_folder 2.zip"
+    test_data_zip = (
+        Path(__file__).parent.parent / "example_data" / "uvvis" / "Example_in_situ_uvvis.zip"
+    )
     block = UVVisInsituBlock(item_id="test-uvvis-insitu")
     block.data["uvvis_folder_name"] = "Reduced sample scans"
     block.data["echem_folder_name"] = "Echem"
