@@ -29,6 +29,13 @@ def test_block(test_data_zip, pytestconfig):
     from datalab_app_plugin_insitu.apps.nmr.blocks import InsituBlock
 
     block = InsituBlock(item_id="test-nmr-insitu")
+    assert (
+        block.count_experiments_in_nmr_folder(
+            test_data_zip, "2023-08-11_jana_insituLiLiTEGDME-02_galv"
+        )
+        == 600
+    )
+
     block.data["nmr_folder_name"] = "2023-08-11_jana_insituLiLiTEGDME-02_galv"
     block.data["echem_folder_name"] = "LiLiTEGDMEinsitu_02"
     block.generate_insitu_nmr_plot(file_path=test_data_zip, link_plots=True)

@@ -131,9 +131,6 @@ class InsituBlock(DataBlock):
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
 
-        except Exception as e:
-            raise RuntimeError(f"Error processing data: {str(e)}")
-
         nmr_data = result["nmr_spectra"]
         ppm_values = np.array(nmr_data.get("ppm", []))
 
@@ -224,24 +221,31 @@ class InsituBlock(DataBlock):
         """Count the number of experiments in the selected NMR folder."""
 
         max_experiments = 0
-        try:
-            with zipfile.ZipFile(file_path, "r") as zip_folder:
-                all_files = zip_folder.namelist()
-                main_folder = all_files[0].split("/")[0]
+        main_folder: str | None = None
+        with zipfile.ZipFile(file_path, "r") as zip_folder:
+            # First, check if this a zip file with a top-level "main" folder
+            for entry in zip_folder.namelist():
+                if entry.endswith(nmr_folder_name + "/"):
+                    main_folder = entry.split("/")[0]
+                    if main_folder == nmr_folder_name:
+                        main_folder = None
+                    break
 
-                exp_pattern = f"{main_folder}/{nmr_folder_name}/"
+            else:
+                raise RuntimeError(f"NMR folder '{nmr_folder_name}' not found in the zip file.")
 
-                exp_numbers = set()
-                for inner_file in all_files:
-                    if inner_file.startswith(exp_pattern):
-                        parts = inner_file[len(exp_pattern) :].split("/")
+            exp_pattern = (
+                f"{main_folder}/{nmr_folder_name}/" if main_folder else f"{nmr_folder_name}/"
+            )
 
-                        if parts and parts[0].isdigit():
-                            exp_numbers.add(int(parts[0]))
+            exp_numbers = set()
+            for inner_file in zip_folder.namelist():
+                if inner_file.startswith(exp_pattern):
+                    parts = inner_file[len(exp_pattern) :].split("/")
 
-                max_experiments = len(exp_numbers)
+                    if parts and parts[0].isdigit():
+                        exp_numbers.add(int(parts[0]))
 
-            return max_experiments
+            max_experiments = len(exp_numbers)
 
-        except Exception:
-            return 0
+        return max_experiments
