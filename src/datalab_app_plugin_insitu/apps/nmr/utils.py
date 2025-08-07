@@ -389,67 +389,61 @@ def _process_data(
     Returns:
         Dictionary containing processed NMR and electrochemical data
     """
-    try:
-        nmr_dimension = check_nmr_dimension(nmr_folder_path)
+    nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
-        if nmr_dimension == "1D":
-            spec_paths, acqu_paths, exp_numbers = setup_bruker_paths(
-                nmr_folder_path, start_at, end_at, step, exclude_exp
-            )
+    if nmr_dimension == "1D":
+        spec_paths, acqu_paths, exp_numbers = setup_bruker_paths(
+            nmr_folder_path, start_at, end_at, step, exclude_exp
+        )
 
-            all_acqu_paths = [
-                str(Path(nmr_folder_path) / str(i) / "acqus")
-                for i in range(1, len(list(nmr_folder_path.iterdir())) + 1)
-            ]
-            all_timestamps = []
-            for path in all_acqu_paths:
-                if Path(path).exists():
-                    date_time = extract_date_from_acqus(path)
+        all_acqu_paths = [
+            str(Path(nmr_folder_path) / str(i) / "acqus")
+            for i in range(1, len(list(nmr_folder_path.iterdir())) + 1)
+        ]
+        all_timestamps = []
+        for path in all_acqu_paths:
+            if Path(path).exists():
+                date_time = extract_date_from_acqus(path)
+                if date_time:
+                    all_timestamps.append(date_time.timestamp() / 3600)
+
+        if all_timestamps:
+            base_time = min(all_timestamps)
+            selected_timestamps = []
+            for i, exp_num in enumerate(exp_numbers):
+                if exp_num - 1 < len(all_timestamps):
+                    selected_timestamps.append(all_timestamps[exp_num - 1])
+                else:
+                    date_time = extract_date_from_acqus(acqu_paths[i])
                     if date_time:
-                        all_timestamps.append(date_time.timestamp() / 3600)
+                        selected_timestamps.append(date_time.timestamp() / 3600)
 
-            if all_timestamps:
-                base_time = min(all_timestamps)
-                selected_timestamps = []
-                for i, exp_num in enumerate(exp_numbers):
-                    if exp_num - 1 < len(all_timestamps):
-                        selected_timestamps.append(all_timestamps[exp_num - 1])
-                    else:
-                        date_time = extract_date_from_acqus(acqu_paths[i])
-                        if date_time:
-                            selected_timestamps.append(date_time.timestamp() / 3600)
-
-                time_points = [t - base_time for t in selected_timestamps]
-
-            else:
-                time_points = process_time_data(acqu_paths, keep_absolute_time=False)
-
-            nmr_data, df, num_experiments = process_spectral_data(
-                spec_paths, time_points, exp_numbers
-            )
-
-        elif nmr_dimension == "pseudo2D":
-            exp_folders = [
-                d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()
-            ]
-            if not exp_folders:
-                raise FileNotFoundError("No experiment folders found in NMR data")
-
-            exp_folder = str(Path(nmr_folder_path) / exp_folders[0])
-            nmr_data, df, num_experiments = process_pseudo2d_spectral_data(exp_folder)
+            time_points = [t - base_time for t in selected_timestamps]
 
         else:
-            raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
+            time_points = process_time_data(acqu_paths, keep_absolute_time=False)
 
-        echem_folder_path = None
-        if echem_folder_name:
-            echem_folder_path = _find_folder_path(base_folder, echem_folder_name)
-            if not echem_folder_path:
-                raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
+        nmr_data, df, num_experiments = process_spectral_data(spec_paths, time_points, exp_numbers)
 
-        merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
+    elif nmr_dimension == "pseudo2D":
+        exp_folders = [
+            d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()
+        ]
+        if not exp_folders:
+            raise FileNotFoundError("No experiment folders found in NMR data")
 
-        return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
+        exp_folder = str(Path(nmr_folder_path) / exp_folders[0])
+        nmr_data, df, num_experiments = process_pseudo2d_spectral_data(exp_folder)
 
-    except Exception as e:
-        raise RuntimeError(f"Error in common processing: {str(e)}")
+    else:
+        raise ValueError(f"Unknown NMR dimension type: {nmr_dimension}")
+
+    echem_folder_path = None
+    if echem_folder_name:
+        echem_folder_path = _find_folder_path(base_folder, echem_folder_name)
+        if not echem_folder_path:
+            raise FileNotFoundError(f"Echem folder not found: {echem_folder_name}")
+
+    merged_df = process_echem_data(base_folder, echem_folder_path or echem_folder_name)
+
+    return prepare_for_bokeh(nmr_data, df, merged_df, num_experiments)
