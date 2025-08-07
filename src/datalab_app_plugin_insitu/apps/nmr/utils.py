@@ -114,7 +114,7 @@ def setup_bruker_paths(
     end_at: Optional[int] = None,
     step: Optional[int] = None,
     exclude_exp: Optional[List[int]] = None,
-) -> Tuple[List[str], List[str]]:
+) -> Tuple[List[str], List[str], List[int]]:
     """Setup experiment paths within the Bruker project and create output directory."""
     exp_folders = [d for d in Path(nmr_folder_path).iterdir() if d.is_dir() and d.name.isdigit()]
 
@@ -141,25 +141,25 @@ def setup_bruker_paths(
     if end_at < start_at:
         raise ValueError(f"end_exp ({end_at}) must be >= start_exp ({start_at})")
 
-    exp_folder = [
+    exp_numbers = [
         exp for exp in range(start_at, end_at + 1, step) if exp not in (exclude_exp or [])
     ]
 
-    if not exp_folder:
+    if not exp_numbers:
         raise ValueError(
             f"No experiments selected (start: {start_at}, end: {end_at}, step: {step}, exclude: {exclude_exp})"
         )
 
     spec_paths = [
         str(Path(nmr_folder_path) / str(exp) / "pdata" / "1" / "ascii-spec.txt")
-        for exp in exp_folder
+        for exp in exp_numbers
     ]
-    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus") for exp in exp_folder]
+    acqu_paths = [str(Path(nmr_folder_path) / str(exp) / "acqus") for exp in exp_numbers]
 
-    return spec_paths, acqu_paths
+    return spec_paths, acqu_paths, exp_numbers
 
 
-def process_time_data(acqu_paths: List[str]) -> List[float]:
+def process_time_data(acqu_paths: List[str], keep_absolute_time: bool = False) -> List[float]:
     """Process time data from acqus files."""
     timestamps = []
     for path in acqu_paths:
@@ -169,12 +169,15 @@ def process_time_data(acqu_paths: List[str]) -> List[float]:
         else:
             raise ValueError(f"Could not extract date from {path}")
 
+    if keep_absolute_time:
+        return timestamps
+
     time_points = [t - timestamps[0] for t in timestamps]
     return time_points
 
 
 def process_spectral_data(
-    spec_paths: List[str], time_points: List[float]
+    spec_paths: List[str], time_points: List[float], exp_numbers: List[int]
 ) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
     """Process spectral data from ascii-spec files"""
 
@@ -202,6 +205,7 @@ def process_spectral_data(
             "time": time_points,
             "intensity": intensities,
             "norm_intensity": intensities / np.max(intensities),
+            "original_exp_number": [int(_) for _ in exp_numbers],
         }
     )
 
@@ -299,30 +303,38 @@ def process_echem_data(
 
 
 def prepare_for_bokeh(
-    nmr_data: pd.DataFrame, df: pd.DataFrame, echem_df: Optional[pd.DataFrame], num_experiments: int
+    sampled_nmr_data: pd.DataFrame,
+    df: pd.DataFrame,
+    echem_df: Optional[pd.DataFrame],
+    num_experiments: int,
 ) -> Dict:
     """Prepare data for Bokeh visualization, with optional echem data."""
 
+    ppm_values = sampled_nmr_data["ppm"].values
+
     all_intensities = []
     for i in range(len(df)):
-        spectrum_intensities = nmr_data[str(i + 1)].values
+        spectrum_intensities = sampled_nmr_data[str(i + 1)].values
         all_intensities.extend(spectrum_intensities)
 
     global_max_intensity = float(max(all_intensities))
 
     result = {
         "metadata": {
-            "time_range": {"start": df["time"].min(), "end": df["time"].max()},
+            "time_range": {"start": float(df["time"].min()), "end": float(df["time"].max())},
             "num_experiments": num_experiments,
             "global_max_intensity": global_max_intensity,
         },
         "nmr_spectra": {
-            "ppm": nmr_data["ppm"].tolist(),
+            "ppm": ppm_values.tolist(),
             "spectra": [
                 {
-                    "time": float(df["time"][i]),
-                    "intensity": nmr_data[str(i + 1)].tolist(),
-                    "experiment_number": i + 1,
+                    "time": round(float(df["time"][i]), 4),
+                    "intensity": sampled_nmr_data[str(i + 1)].tolist(),
+                    "experiment_number": int(df["original_exp_number"][i])
+                    if "original_exp_number" in df.columns
+                    else i + 1,
+                    "display_index": i + 1,
                 }
                 for i in range(len(df))
             ],
@@ -381,11 +393,40 @@ def _process_data(
         nmr_dimension = check_nmr_dimension(nmr_folder_path)
 
         if nmr_dimension == "1D":
-            spec_paths, acqu_paths = setup_bruker_paths(
+            spec_paths, acqu_paths, exp_numbers = setup_bruker_paths(
                 nmr_folder_path, start_at, end_at, step, exclude_exp
             )
-            time_points = process_time_data(acqu_paths)
-            nmr_data, df, num_experiments = process_spectral_data(spec_paths, time_points)
+
+            all_acqu_paths = [
+                str(Path(nmr_folder_path) / str(i) / "acqus")
+                for i in range(1, len(list(nmr_folder_path.iterdir())) + 1)
+            ]
+            all_timestamps = []
+            for path in all_acqu_paths:
+                if Path(path).exists():
+                    date_time = extract_date_from_acqus(path)
+                    if date_time:
+                        all_timestamps.append(date_time.timestamp() / 3600)
+
+            if all_timestamps:
+                base_time = min(all_timestamps)
+                selected_timestamps = []
+                for i, exp_num in enumerate(exp_numbers):
+                    if exp_num - 1 < len(all_timestamps):
+                        selected_timestamps.append(all_timestamps[exp_num - 1])
+                    else:
+                        date_time = extract_date_from_acqus(acqu_paths[i])
+                        if date_time:
+                            selected_timestamps.append(date_time.timestamp() / 3600)
+
+                time_points = [t - base_time for t in selected_timestamps]
+
+            else:
+                time_points = process_time_data(acqu_paths, keep_absolute_time=False)
+
+            nmr_data, df, num_experiments = process_spectral_data(
+                spec_paths, time_points, exp_numbers
+            )
 
         elif nmr_dimension == "pseudo2D":
             exp_folders = [

@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import bokeh.embed
 import numpy as np
@@ -25,7 +25,18 @@ except ImportError:
     COLORS = Dark2[8]
 
 
-def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
+def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = True):
+    """Create linked insitu plots with the given plot data and PPM range.
+
+    Args:
+        plot_data: Dictionary containing prepared plot data
+        ppm_range: Tuple of (ppm1, ppm2) for the range
+        link_plots: Whether to link the plots together (can be slow)
+
+    Returns:
+        Bokeh JSON item for embedding
+
+    """
     try:
         from pydatalab.bokeh_plots import DATALAB_BOKEH_THEME
     except ImportError:
@@ -56,12 +67,17 @@ def create_linked_insitu_plots(plot_data, ppm_range, link_plots: bool = False):
     return bokeh.embed.json_item(gp, theme=DATALAB_BOKEH_THEME)
 
 
-def prepare_plot_data(nmr_data, echem_data, metadata) -> Optional[Dict[str, Any]]:
-    """
-    Extract and prepare data for plotting.
+def prepare_plot_data(nmr_data, echem_data, metadata) -> Dict[str, Any]:
+    """Extract and prepare data for plotting.
+
+    Parameters:
+        nmr_data: NMR spectral data
+        echem_data: Electrochemical data
+        metadata: Metadata containing time range and other information
+
     Returns:
-        Optional[Dict[str, Any]]: Dictionary containing prepared plot data,
-                                  or None if data extraction fails.
+        Dictionary containing prepared plot data.
+
     """
     ppm_values = np.array(nmr_data.get("ppm", []))
     if len(ppm_values) == 0:
@@ -101,12 +117,15 @@ def prepare_plot_data(nmr_data, echem_data, metadata) -> Optional[Dict[str, Any]
 def _create_shared_ranges(
     plot_data: Dict[str, Any], ppm_range: tuple[float, float]
 ) -> Dict[str, Range1d]:
-    """
-    Create shared range objects for linking multiple plots.
-    Args:
+    """Create shared range objects for linking multiple plots.
+
+    Parameters:
         plot_data: Dictionary containing prepared plot data
+        ppm_range: Tuple of (ppm1, ppm2) for the shift range
+
     Returns:
-        Dict[str, Range1d]: Dictionary of shared range objects
+        Dictionary of shared range (`Range1d`) objects
+
     """
     ppm_values = plot_data["ppm_values"]
     time_range = plot_data["time_range"]
@@ -135,13 +154,15 @@ def _create_shared_ranges(
 
 
 def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
-    """
-    Create the heatmap figure component.
-    Args:
+    """Create the heatmap figure component.
+
+    Parameters:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
+
     Returns:
-        figure: Configured Bokeh heatmap figure
+        Configured Bokeh heatmap figure
+
     """
     ppm_values = plot_data["ppm_values"]
     intensity_matrix = plot_data["intensity_matrix"]
@@ -175,7 +196,14 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
     time_points = len(intensity_matrix)
     if time_points > 0:
         times = np.linspace(time_range["start"], time_range["end"], time_points)
-        experiment_numbers = np.arange(1, time_points + 1)
+
+        spectra = plot_data.get("spectra", [])
+        if spectra:
+            experiment_numbers = [
+                spec.get("experiment_number", i + 1) for i, spec in enumerate(spectra)
+            ]
+        else:
+            experiment_numbers = np.arange(1, time_points + 1)
 
         source = ColumnDataSource(
             data={
@@ -205,7 +233,6 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
         )
 
         heatmap_figure.add_tools(hover_tool)
-
         plot_data["heatmap_source"] = source
 
     heatmap_figure.grid.grid_line_width = 0
@@ -216,13 +243,15 @@ def _create_heatmap_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]
 
 
 def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
-    """
-    Create the NMR line plot figure component.
-    Args:
+    """Create the NMR line plot figure component.
+
+    Parameters:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
+
     Returns:
-        figure: Configured Bokeh line figure with data source
+        Configured Bokeh line figure with data source
+
     """
     ppm_values = plot_data["ppm_values"]
     first_spectrum_intensities = plot_data["first_spectrum_intensities"]
@@ -282,13 +311,15 @@ def _create_nmr_line_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d
 
 
 def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) -> figure:
-    """
-    Create the electrochemical data figure component.
-    Args:
+    """Create the electrochemical data figure component.
+
+    Parameters:
         plot_data: Dictionary containing prepared plot data
         ranges: Dictionary of shared range objects
+
     Returns:
-        figure: Configured Bokeh electrochemical figure
+        Configured Bokeh electrochemical figure
+
     """
     echem_data = plot_data["echem_data"]
 
@@ -310,11 +341,23 @@ def _create_echem_figure(plot_data: Dict[str, Any], ranges: Dict[str, Range1d]) 
         voltages = np.array(echem_data["Voltage"])
 
         time_range = plot_data["time_range"]
-        time_span = time_range["end"] - time_range["start"]
-        exp_count = len(plot_data["spectra"])
 
-        exp_numbers = np.floor(((times - time_range["start"]) / time_span) * exp_count) + 1
-        exp_numbers = np.clip(exp_numbers, 1, exp_count)
+        spectra = plot_data.get("spectra", [])
+        if spectra:
+            spectra_times = np.array([spec["time"] for spec in spectra])
+            spectra_exp_nums = [spec["experiment_number"] for spec in spectra]
+
+            exp_numbers = []
+            for t in times:
+                closest_idx = np.argmin(np.abs(spectra_times - t))
+                exp_numbers.append(spectra_exp_nums[closest_idx])
+            exp_numbers = np.array(exp_numbers)
+        else:
+            exp_numbers = np.interp(
+                times,
+                [time_range["start"], time_range["end"]],
+                [1, len(plot_data.get("spectra", []))],
+            )
 
         echem_source = ColumnDataSource(
             data={"time": times, "voltage": voltages, "exp_num": exp_numbers}
@@ -348,13 +391,14 @@ def _link_plots(
     echemplot_figure: figure,
     plot_data: Dict[str, Any],
 ) -> None:
-    """
-    Link the plots together with interactive tools and callbacks.
+    """Link the plots together with interactive tools and callbacks.
+
     Args:
         heatmap_figure: The heatmap figure component
         nmrplot_figure: The NMR line plot figure component
         echemplot_figure: The electrochemical figure component
         plot_data: Dictionary containing prepared plot data
+
     """
 
     line_source = plot_data["line_source"]
@@ -379,6 +423,11 @@ def _link_plots(
             ),
             code="""
                     const geometry = cb_data['geometry'];
+
+                    if (!heatmap_source || !heatmap_source.data || !heatmap_source.data.y) {
+                        return;
+                    }
+
                     let closestIndex = 0;
                     let minDistance = Infinity;
                     for (let i = 0; i < heatmap_source.data.y.length; i++) {
@@ -389,7 +438,7 @@ def _link_plots(
                         }
                     }
                     const exp_num = heatmap_source.data.exp_num[closestIndex];
-                    const index = exp_num - 1;
+                    const index = closestIndex;
                     var data = line_source.data;
                     data['intensity'] = spectra_intensities[index];
                     line_source.change.emit();
@@ -421,25 +470,31 @@ def _link_plots(
             code="""
                     const indices = cb_obj.indices;
                     if (indices.length === 0) return;
+
                     const index = indices[0];
                     const exp_num = heatmap_source.data.exp_num[index];
+
                     const existing_indices = clicked_spectra_source.data.exp_index;
                     if (existing_indices.includes(exp_num)) return;
                     const color_index = existing_indices.length % colors.length;
+
                     const new_xs = [...clicked_spectra_source.data['δ (ppm)']];
                     const new_ys = [...clicked_spectra_source.data.intensity];
                     const new_indices = [...clicked_spectra_source.data.exp_index];
                     const new_colors = [...clicked_spectra_source.data.color];
+
                     new_xs.push(ppm_values);
                     new_ys.push(spectra_intensities[index]);
                     new_indices.push(exp_num);
                     new_colors.push(colors[color_index]);
+
                     clicked_spectra_source.data = {
                         'δ (ppm)': new_xs,
                         'intensity': new_ys,
                         'exp_index': new_indices,
                         'color': new_colors
                     };
+
                     clicked_spectra_source.change.emit();
                 """,
         )
