@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
+import pandas as pd
 from pydatalab.blocks.base import DataBlock
 
 from datalab_app_plugin_insitu._version import __version__
@@ -78,11 +79,14 @@ class InsituBlock(DataBlock):
         except Exception as e:
             raise RuntimeError(f"Error getting folders from zip file: {str(e)}")
 
-    def process_and_store_data(self, file_path: str | Path):
+    def process_and_store_data(self, file_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Process insitu NMR and electrochemical data and store results.
 
         This method validates input parameters, extracts data from the specified folders,
         and stores the processed data in the block's data attribute.
+
+        Returns:
+            A tuple containing NMR and electrochemical data as dataframes.
 
         """
         file_path = Path(file_path)
@@ -95,12 +99,23 @@ class InsituBlock(DataBlock):
         if not all([nmr_folder_name, echem_folder_name]):
             raise ValueError("Both NMR and Echem folder names must be specified")
 
+        max_exp = self.count_experiments_in_nmr_folder(file_path, nmr_folder_name)
+        self.data["max_experiments"] = max_exp
+        if not self.data.get("end_exp"):
+            self.data["end_exp"] = max_exp
+
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         end_exp = self.data.get("end_exp", self.defaults["end_exp"])
         if end_exp is not None:
             end_exp = int(end_exp)
         step_exp = self.data.get("step_exp", self.defaults["step_exp"])
-        exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
+        exclude_exp_str = self.data.get("exclude_exp", self.defaults["exclude_exp"])
+        exclude_exp = []
+        if exclude_exp_str and exclude_exp_str.strip():
+            try:
+                exclude_exp = [int(x.strip()) for x in exclude_exp_str.split(",") if x.strip()]
+            except ValueError:
+                exclude_exp = []
 
         try:
             result = process_local_data(
@@ -204,3 +219,29 @@ class InsituBlock(DataBlock):
         self.data["bokeh_plot_data"] = create_linked_insitu_plots(
             plot_data, ppm_range=(ppm1, ppm2), link_plots=link_plots
         )
+
+    def count_experiments_in_nmr_folder(self, file_path: Path, nmr_folder_name: str) -> int:
+        """Count the number of experiments in the selected NMR folder."""
+
+        max_experiments = 0
+        try:
+            with zipfile.ZipFile(file_path, "r") as zip_folder:
+                all_files = zip_folder.namelist()
+                main_folder = all_files[0].split("/")[0]
+
+                exp_pattern = f"{main_folder}/{nmr_folder_name}/"
+
+                exp_numbers = set()
+                for inner_file in all_files:
+                    if inner_file.startswith(exp_pattern):
+                        parts = inner_file[len(exp_pattern) :].split("/")
+
+                        if parts and parts[0].isdigit():
+                            exp_numbers.add(int(parts[0]))
+
+                max_experiments = len(exp_numbers)
+
+            return max_experiments
+
+        except Exception:
+            return 0
