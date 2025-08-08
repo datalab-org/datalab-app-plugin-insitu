@@ -56,6 +56,7 @@ namespaces = true
 [project.entry-points.'pydatalab.apps.plugins']
 insitu_uvvis = "datalab_app_plugin_insitu.apps.uvvis:UVVisInsituBlock"
 insitu_nmr = "datalab_app_plugin_insitu.apps.nmr:InsituBlock"
+insitu_xrd = "datalab_app_plugin_insitu.apps.xrd:XRDInsituBlock"
 
 [tool.setuptools.package-data]
 datalab_app_plugin_insitu = ["py.typed"]
@@ -89,7 +90,7 @@ dev-dependencies = [
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
     "mkdocs-awesome-pages-plugin ~= 2.9",
-    "datalab-server > 0.5.3",
+    "datalab-server[server] > 0.5.3",
     "datalab-api ~= 0.3",
 ]
 

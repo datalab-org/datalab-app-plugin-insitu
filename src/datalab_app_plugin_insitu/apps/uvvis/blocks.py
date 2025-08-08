@@ -6,7 +6,7 @@ import bokeh.embed
 
 from datalab_app_plugin_insitu.apps.uvvis.utils import process_local_uvvis_data
 from datalab_app_plugin_insitu.blocks import GenericInSituBlock
-from datalab_app_plugin_insitu.plotting_uvvis import (
+from datalab_app_plugin_insitu.plotting_xrd_uvvis import (
     create_linked_insitu_plots,
     prepare_uvvis_plot_data,
 )
@@ -26,6 +26,20 @@ class UVVisInsituBlock(GenericInSituBlock):
     uvvis_folder_name = None
     echem_folder_name = None
     folder_name = None
+    plotting_label_dict = {
+        "x_axis_label": "Wavelength (nm)",
+        "time_series_y_axis_label": "Time (s)",
+        "line_y_axis_label": "Absorbance",
+        "time_series_x_axis_label": "Voltage (V)",
+        "label_source": {
+            "label_template": "Exp. # {exp_num}, t = {time} s, V = {voltage} V",
+            "label_field_map": {
+                "exp_num": "exp_num",
+                "time": "time",
+                "voltage": "voltage",
+            },
+        },
+    }
 
     defaults = {
         "start_exp": 0,
@@ -107,9 +121,16 @@ class UVVisInsituBlock(GenericInSituBlock):
             self.data["sample_granularity"] = sample_granularity
             self.data["data_granularity"] = data_granularity
             # Subsample the 2D data and wavelength data to a maximum of 1000 samples and data points
-            data["2D_data"] = self.subsample_data(
+            data["intensity_matrix"] = self.subsample_data(
                 data["2D_data"],
                 sample_granularity=sample_granularity,
+                data_granularity=data_granularity,
+                method="linear",
+            )
+
+            data["spectra_intensities"] = self.subsample_data(
+                data["2D_data"],
+                sample_granularity=1,
                 data_granularity=data_granularity,
                 method="linear",
             )
@@ -178,17 +199,20 @@ class UVVisInsituBlock(GenericInSituBlock):
             raise ValueError("UV-Vis and Echem folder names must be set in the DataBlock")
 
         plot_data = prepare_uvvis_plot_data(
-            data["2D_data"],
+            data["intensity_matrix"],
+            data["spectra_intensities"],
             data["wavelength"],
             data["Time_series_data"],
             data["metadata"],
             data["file_num_index"],
+            data["index_df"],
         )
 
         gp = create_linked_insitu_plots(
             plot_data,
             data["Time_series_data"]["metadata"],
             data["metadata"]["time_range"],
+            plotting_label_dict=self.plotting_label_dict,
             link_plots=link_plots,
         )
 
