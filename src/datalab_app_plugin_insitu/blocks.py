@@ -10,6 +10,8 @@ from pydatalab.blocks.base import DataBlock
 
 from datalab_app_plugin_insitu._version import __version__
 
+__all__ = ("GenericInSituBlock",)
+
 
 class GenericInSituBlock(DataBlock, ABC):
     """
