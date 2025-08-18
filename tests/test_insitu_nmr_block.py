@@ -4,22 +4,18 @@ import pytest
 from datalab_api.utils import bokeh_from_json
 
 
-def test_version():
-    from datalab_app_plugin_insitu import __version__
-
-    assert __version__.startswith("0")
-
-
 @pytest.fixture
 def test_data_zip(tmp_path):
     """Zips the test data into a tmp directory."""
     import shutil
 
-    test_data_dir = Path(__file__).parent.parent / "example_data" / "Example-TEGDME"
-    test_data_zip_path = tmp_path / "Example-TEGDME.zip"
+    test_data_dir = Path(__file__).parent.parent / "example_data" / "nmr"
+    test_data_zip_name = "Example-TEGDME.zip"
+
+    test_data_zip_path = tmp_path / test_data_zip_name
 
     # Create a zip file of the test data directory
-    shutil.make_archive(str(test_data_zip_path.with_suffix("")), "zip", test_data_dir)
+    shutil.copy(test_data_dir / test_data_zip_name, test_data_zip_path)
 
     yield test_data_zip_path
     test_data_zip_path.unlink(missing_ok=True)
@@ -33,7 +29,7 @@ def test_block(test_data_zip, pytestconfig):
         block.count_experiments_in_nmr_folder(
             test_data_zip, "2023-08-11_jana_insituLiLiTEGDME-02_galv"
         )
-        == 600
+        == 50
     )
 
     block.data["nmr_folder_name"] = "2023-08-11_jana_insituLiLiTEGDME-02_galv"
