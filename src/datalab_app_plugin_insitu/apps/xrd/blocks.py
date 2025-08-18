@@ -13,13 +13,16 @@ from datalab_app_plugin_insitu.plotting import (
 
 
 class XRDInsituBlock(GenericInSituBlock):
-    blocktype = "insitu-xrd"
-    name = "XRD insitu"
-    description = """This datablock processes in situ XRD data from an input .zip file containing two specific directories:
+    """This datablock processes in situ XRD data from an input .zip file containing two specific directories:
 
     - XRD data directory: Contains multiple XRD patterns (.xy, or otherwise) measured at different times,
     - Time series directory: Contains echem data (.txt) or temperature data files (.csv).
+
     """
+
+    blocktype = "insitu-xrd"
+    name = "XRD insitu"
+    description = __doc__
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
     xrd_folder_name = None
