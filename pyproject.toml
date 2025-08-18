@@ -88,7 +88,10 @@ dev-dependencies = [
     "mkdocs ~= 1.6",
     "mkdocs-material ~= 9.5",
     "mkdocstrings[python-legacy] ~= 0.25",
+    "docstring-inheritance ~= 2.2",
+    "griffe-inherited-docstrings ~= 1.1",
     "mkdocs-awesome-pages-plugin ~= 2.9",
+    "markdown-callouts ~= 0.4",
     "datalab-server > 0.5.3",
     "datalab-api ~= 0.3",
 ]

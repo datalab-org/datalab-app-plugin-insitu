@@ -13,14 +13,16 @@ from datalab_app_plugin_insitu.plotting_uvvis import (
 
 
 class UVVisInsituBlock(GenericInSituBlock):
-    blocktype = "insitu-uvvis"
-    name = "UV-Vis insitu"
-    description = """This datablock processes in situ UV-Vis data from an input .zip file containing two specific directories:
+    """This datablock processes in situ UV-Vis data from an input .zip file containing two specific directories:
 
     - UV-Vis Data Directory: Contains multiple UV-Vis in-situ experiment datasets.
     - Echem Data Directory: Contains echem data files in `.txt` format.
 
     """
+
+    blocktype = "insitu-uvvis"
+    name = "UV-Vis insitu"
+    description = __doc__
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
     uvvis_folder_name = None
