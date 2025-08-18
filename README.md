@@ -30,7 +30,7 @@ The project was originally developed in the [Grey Group](https://www.ch.cam.ac.u
 - Support for both local files, as well as running as a plugin directly on a *datalab* instance
 
 <div align="center">
-   <img src="./docs/assets/datalab_plugin_bokeh_plot.png" width=600rem>
+   <img src="./static/datalab_plugin_bokeh_plot.png" width=600rem>
 </div>
 
 # Installation
