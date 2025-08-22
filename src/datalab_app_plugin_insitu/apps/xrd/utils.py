@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
+from pydatalab import LOGGER
+from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.utils import _find_folder_path
 
@@ -179,7 +181,18 @@ def process_xrd_data(
         try:
             pattern = XRDBlock.load_pattern(file)
             if pattern is not None:
-                all_patterns.loc[file, two_theta] = pattern[0]["intensity"].values
+                # Some files seem to be missing one or two two theta values - this will raise a warning when this happens but deal with the missing data in a reasonable fashion by interpolating and putting zeros for when the range is out of bounds
+                intensity_values = pattern[0]["intensity"].values
+                new_two_theta_values = pattern[0]["2θ (°)"].values
+                if set(new_two_theta_values) != set(two_theta):
+                    missing_values = set(two_theta) - set(new_two_theta_values)
+                    LOGGER.warning(
+                        f"Inconsistent 2θ values found in file {file}: {missing_values}."
+                    )
+                interpolater = interp1d(
+                    new_two_theta_values, intensity_values, bounds_error=False, fill_value="zero"
+                )
+                all_patterns.loc[file, two_theta] = interpolater(two_theta)
         except Exception as e:
             print(f"Error processing file {file}: {e}")
 
