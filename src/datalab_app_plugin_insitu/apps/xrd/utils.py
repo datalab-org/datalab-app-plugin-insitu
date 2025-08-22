@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pydatalab import LOGGER
+from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.utils import _find_folder_path
@@ -18,6 +18,8 @@ def process_local_xrd_data(
     log_folder_name: Path,
     start_exp: int = 1,
     exclude_exp: Union[list, None] = None,
+    time_series_source: str = "log",
+    echem_folder_name: Optional[Path] = None,
 ):
     """
     Process local XRD data from a zip file.
@@ -28,6 +30,8 @@ def process_local_xrd_data(
         log_folder_name: Path to the folder containing log data.
         start_exp: Starting experiment number.
         exclude_exp: List of experiments to exclude.
+        time_series_source: Source of time series data, either 'log' or 'echem'.
+        echem_folder_name: Optional path to the folder containing echem data. Only used if time_series_source is 'echem'.
 
     Returns:
         dict: Processed XRD data and metadata.
@@ -36,6 +40,10 @@ def process_local_xrd_data(
     # Check if the folder exists
     if not all([xrd_folder_name, log_folder_name]):
         raise ValueError("Both XRD and log folders must be specified.")
+
+    if time_series_source == "echem":
+        if not echem_folder_name:
+            raise ValueError("Echem folder name must be specified when using echem as time series source.")
 
     if isinstance(file_path, str):
         file_path = Path(file_path)
@@ -56,7 +64,7 @@ def process_local_xrd_data(
             else:
                 base_path = Path(file_path)
 
-            # Find the relative paths to the UV-Vis and reference folders
+            # Find the relative paths to the XRD and reference folders
             xrd_path = _find_folder_path(base_path, xrd_folder_name)
             log_path = _find_folder_path(base_path, log_folder_name)
 
@@ -65,7 +73,14 @@ def process_local_xrd_data(
                 raise ValueError("XRD folder and log folder must be specified.")
 
             assert isinstance(xrd_path, Path), "xrd_path must be a Path object"
-            assert isinstance(log_path, Path), "xrd_path must be a Path object"
+            assert isinstance(log_path, Path), "log_path must be a Path object"
+
+            # If echem mode perform the same checks for folder existing etc.
+            if time_series_source == "echem":
+                echem_path = _find_folder_path(base_path, echem_folder_name)
+                assert isinstance(echem_path, Path), "echem_path must be a Path object"
+                if not echem_path.exists():
+                    raise FileNotFoundError(f"Echem folder not found: {echem_path}")
 
             # Load the XRD data
             xrd_data = process_xrd_data(
@@ -92,7 +107,12 @@ def process_local_xrd_data(
                 raise FileNotFoundError(f"No log files found with extension .csv in {log_path}")
 
             try:
-                log_data = load_temperature_log_file(log_file)
+                if time_series_source == "echem":
+                    log_data = load_echem_log_file(log_file)
+                elif time_series_source == "log":
+                    log_data = load_temperature_log_file(log_file)
+                else:
+                    raise ValueError(f"Unknown time_series_source: {time_series_source}")
 
             except Exception as e:
                 raise RuntimeError(f"Failed to load log file: {str(e)}")
@@ -106,11 +126,6 @@ def process_local_xrd_data(
                     "Log file scan numbers do not match XRD data scan numbers. "
                     "Ensure the log file contains all XRD scans."
                 )
-
-            # # Replace scan numbers from the xrd_data index with the temperature from the log file
-            # xrd_data["2D_data"].index = xrd_data["2D_data"].index.map(
-            #     lambda x: log_data.loc[log_data["scan_number"] == x, "Temp"].values[0]
-            # )
 
             # Add the log data to the xrd_data dictionary
             log_data = log_data.rename(columns={"Temp": "x", "scan_number": "y"})
@@ -241,5 +256,30 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     log_df = pd.read_csv(log_file)
     if "scan_number" not in log_df.columns:
         raise ValueError("Log file must contain a 'scan_number' column.")
+
+    if "Temp" not in log_df.columns:
+        raise ValueError("Log file must contain a 'Temp' column.")
+
+    return log_df
+
+def load_echem_log_file(log_file: Path) -> pd.DataFrame:
+    """
+    Load electrochemical log file and return as a DataFrame.
+
+    Args:
+        log_file (Path): Path to the electrochemical log file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the electrochemical log data.
+    """
+    if not log_file.exists():
+        raise FileNotFoundError(f"Log file does not exist: {log_file}")
+
+    log_df = pd.read_csv(log_file)
+    if "scan_number" not in log_df.columns:
+        raise ValueError("Log file must contain a 'scan_number' column.")
+
+    if "start_time" not in log_df.columns or "end_time" not in log_df.columns:
+        raise ValueError("Log file must contain 'start_time' and 'end_time' columns.")
 
     return log_df

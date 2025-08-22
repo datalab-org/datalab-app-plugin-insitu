@@ -27,21 +27,44 @@ class XRDInsituBlock(GenericInSituBlock):
     available_folders: List[str] = []
     xrd_folder_name = None
     time_series_folder_name = None
+    echem_folder_name = None
+    time_series_source = "log"  # or "echem"
     folder_name = None
-    plotting_label_dict = {
-        "x_axis_label": "2Θ (°)",
-        "time_series_y_axis_label": "Experiment number",
-        "line_y_axis_label": "Intensity",
-        "time_series_x_axis_label": "Temperature (°C)",
-        "label_source": {
-            "label_template": "File # {file_num}, Exp. # {exp_num}, @ {temperature} °C",
-            "label_field_map": {
-                "exp_num": "exp_num",
-                "temperature": "Temperature",
-                "file_num": "file_num",
-            },
-        },
-    }
+
+    @property
+    def plotting_label_dict(self):
+        if self.time_series_source == "log":
+            return {
+                "x_axis_label": "2Θ (°)",
+                "time_series_y_axis_label": "Experiment number",
+                "line_y_axis_label": "Intensity",
+                "time_series_x_axis_label": "Temperature (°C)",
+                "label_source": {
+                    "label_template": "File # {file_num}, Exp. # {exp_num}, @ {temperature} °C",
+                    "label_field_map": {
+                        "exp_num": "exp_num",
+                        "temperature": "Temperature",
+                        "file_num": "file_num",
+                    },
+                },
+            }
+        elif self.time_series_source == "echem":
+            return {
+                "x_axis_label": "2Θ (°)",
+                "time_series_y_axis_label": "Time (s)",
+                "line_y_axis_label": "Intensity",
+                "time_series_x_axis_label": "Voltage (V)",
+                "label_source": {
+                    "label_template": "Exp. # {exp_num}, t = {time} s, V = {voltage} V",
+                    "label_field_map": {
+                        "exp_num": "exp_num",
+                        "time": "time",
+                        "voltage": "voltage",
+                    },
+                },
+            }
+        else:
+            raise ValueError(f"Unknown time_series_source: {self.time_series_source}")
 
     defaults = {
         "start_exp": 1,
@@ -83,6 +106,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 log_folder_name=time_series_folder_name,
                 start_exp=start_exp,
                 exclude_exp=exclude_exp,
+                time_series_source=self.time_series_source,
                 # Needs to be made more generic
             )
 
