@@ -9,6 +9,7 @@ import pandas as pd
 from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
+from datalab_app_plugin_insitu.echem_utils import process_echem_data
 from datalab_app_plugin_insitu.utils import _find_folder_path
 
 
@@ -43,7 +44,9 @@ def process_local_xrd_data(
 
     if time_series_source == "echem":
         if not echem_folder_name:
-            raise ValueError("Echem folder name must be specified when using echem as time series source.")
+            raise ValueError(
+                "Echem folder name must be specified when using echem as time series source."
+            )
 
     if isinstance(file_path, str):
         file_path = Path(file_path)
@@ -77,6 +80,10 @@ def process_local_xrd_data(
 
             # If echem mode perform the same checks for folder existing etc.
             if time_series_source == "echem":
+                if not echem_folder_name:
+                    raise ValueError(
+                        "Echem folder name must be specified when using echem as time series source."
+                    )
                 echem_path = _find_folder_path(base_path, echem_folder_name)
                 assert isinstance(echem_path, Path), "echem_path must be a Path object"
                 if not echem_path.exists():
@@ -127,32 +134,41 @@ def process_local_xrd_data(
                     "Ensure the log file contains all XRD scans."
                 )
 
-            # Add the log data to the xrd_data dictionary
-            log_data = log_data.rename(columns={"Temp": "x", "scan_number": "y"})
+            if time_series_source == "log":
+                # Add the log data to the xrd_data dictionary
+                log_data = log_data.rename(columns={"Temp": "x", "scan_number": "y"})
 
-            time_series_data_dict = {
-                "x": log_data["x"].values,
-                "y": log_data["y"].values,
-                "metadata": {
-                    "min_y": log_data["y"].min(),
-                    "max_y": log_data["y"].max(),
-                },
-            }
-            xrd_data["Time_series_data"] = time_series_data_dict
-
-            # Create explicit link between file num, temperature and experiment number
-            index_df = pd.DataFrame.from_dict(
-                {
-                    "file_num": xrd_data["Time_series_data"]["y"],
-                    "exp_num": np.arange(1, xrd_data["metadata"]["num_experiments"] + 1),
-                    "Temperature": xrd_data["Time_series_data"]["x"],
+                time_series_data_dict = {
+                    "x": log_data["x"].values,
+                    "y": log_data["y"].values,
+                    "metadata": {
+                        "min_y": log_data["y"].min(),
+                        "max_y": log_data["y"].max(),
+                    },
                 }
-            )
-            index_df.index.name = "index"
+                xrd_data["Time_series_data"] = time_series_data_dict
 
-            xrd_data["index_df"] = index_df
+                # Create explicit link between file num, temperature and experiment number
+                index_df = pd.DataFrame.from_dict(
+                    {
+                        "file_num": xrd_data["Time_series_data"]["y"],
+                        "exp_num": np.arange(1, xrd_data["metadata"]["num_experiments"] + 1),
+                        "Temperature": xrd_data["Time_series_data"]["x"],
+                    }
+                )
+                index_df.index.name = "index"
 
-            return xrd_data
+                xrd_data["index_df"] = index_df
+
+                return xrd_data
+
+            elif time_series_source == "echem":
+                if not isinstance(echem_path, Path):
+                    raise ValueError("Echem path must be a Path object.")
+                echem_data = process_echem_data(echem_path)
+                xrd_data["Time_series_data"] = echem_data
+                # TODO implement echem data processing
+                pass
 
     except Exception as e:
         raise RuntimeError(f"Failed to process XRD data: {str(e)}")
@@ -261,6 +277,7 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
         raise ValueError("Log file must contain a 'Temp' column.")
 
     return log_df
+
 
 def load_echem_log_file(log_file: Path) -> pd.DataFrame:
     """
