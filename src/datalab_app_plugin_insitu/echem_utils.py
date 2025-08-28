@@ -14,17 +14,20 @@ def process_echem_data(echem_folder: Path) -> Dict:
     Returns:
         Dictionary containing the processed Echem data with keys "time" and "data"
     """
+    from pydatalab.apps.echem import CycleBlock
 
+    accepted_extensions = CycleBlock.accepted_file_extensions
     if echem_folder.exists():
-        echem_files = list(echem_folder.glob("*.txt"))
+        echem_files: list[Path] = []
+        for ext in accepted_extensions:
+            echem_files.extend(echem_folder.glob(f"*{ext}"))
+
+        echem_files.sort()
         if len(echem_files) > 1:
-            raise ValueError(
-                f"Echem folder should contain exactly one file: {echem_folder}. Found {len(echem_files)} files. Files found: {echem_files}"
-            )
-            # TODO handle multiple files
+            echem_data = ec.multi_echem_file_loader(echem_files)
         elif len(echem_files) == 0:
             raise ValueError(f"Echem folder should contain at least one file: {echem_folder}")
-        else:
+        elif len(echem_files) == 1:
             echem_file = echem_files[0]
             echem_data = ec.echem_file_loader(echem_file)
 
@@ -41,6 +44,7 @@ def process_echem_data(echem_folder: Path) -> Dict:
             "min_y": min_time,
             "max_y": max_time,
         },
+        "data": echem_data,
     }
 
     return return_dict
