@@ -129,26 +129,35 @@ def prepare_xrd_plot_data(
     file_num_index,
     sample_granularity,
     index_df: pd.DataFrame,
+    time_series_source="log",
 ) -> Dict[str, Any]:
     intensity_matrix = intensity_matrix.values
     first_spectrum_intensities = spectra_intensities.values[0, :]
 
     intensity_min = np.min(intensity_matrix)
     intensity_max = np.max(intensity_matrix)
+    if time_series_source == "log":
+        time_series_data = {
+            "x": time_series_data["x"],
+            "y": np.arange(1, len(time_series_data["x"]) + 1),
+            # We aren't actually plotting by filenum for xrd data
+            "filenum": time_series_data["y"],
+        }
 
-    time_series_data = {
-        "x": time_series_data["x"],
-        "y": np.arange(1, len(time_series_data["x"]) + 1),
-        # We aren't actually plotting by filenum for xrd data
-        "filenum": time_series_data["y"],
-    }
+        y_range = {"min_y": 1, "max_y": int(max(np.arange(1, len(time_series_data["x"]) + 1)))}
+
+    elif time_series_source == "echem":
+        time_series_data = {
+            "Voltage": time_series_data["Voltage"].values,
+            "time": time_series_data["time"].values,
+        }
+
+        y_range = {"min_y": time_series_data["time"].min(), "max_y": time_series_data["time"].max()}
 
     heatmap_y_range = {
         "min_y": 1,
         "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
     }
-
-    y_range = {"min_y": 1, "max_y": int(max(np.arange(1, len(time_series_data["x"]) + 1)))}
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values

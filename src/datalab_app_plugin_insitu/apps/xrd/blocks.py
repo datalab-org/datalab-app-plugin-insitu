@@ -98,7 +98,6 @@ class XRDInsituBlock(GenericInSituBlock):
 
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
-
         try:
             data = process_local_xrd_data(
                 file_path=file_path,
@@ -107,6 +106,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 start_exp=start_exp,
                 exclude_exp=exclude_exp,
                 time_series_source=self.time_series_source,
+                echem_folder_name=self.data.get("echem_folder_name"),
                 # Needs to be made more generic
             )
 
@@ -215,6 +215,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 "sample_granularity", self.defaults["sample_granularity"]
             ),
             index_df=data["index_df"],
+            time_series_source=self.time_series_source,
         )
 
         gp = create_linked_insitu_plots(
