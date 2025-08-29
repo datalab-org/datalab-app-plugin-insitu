@@ -28,14 +28,14 @@ class XRDInsituBlock(GenericInSituBlock):
     xrd_folder_name = None
     time_series_folder_name = None
     echem_folder_name = None
-    time_series_source = "log"  # or "echem"
+    # time_series_source = "log"  # or "echem"
     folder_name = None
 
     @property
     def plotting_label_dict(self):
-        if self.time_series_source == "log":
+        if self.data["time_series_source"] == "log":
             return {
-                "x_axis_label": "2Θ (°)",
+                "x_axis_label": "2θ (°)",
                 "time_series_y_axis_label": "Experiment number",
                 "line_y_axis_label": "Intensity",
                 "time_series_x_axis_label": "Temperature (°C)",
@@ -48,9 +48,9 @@ class XRDInsituBlock(GenericInSituBlock):
                     },
                 },
             }
-        elif self.time_series_source == "echem":
+        elif self.data["time_series_source"] == "echem":
             return {
-                "x_axis_label": "2Θ (°)",
+                "x_axis_label": "2θ (°)",
                 "time_series_y_axis_label": "Time (s)",
                 "line_y_axis_label": "Intensity",
                 "time_series_x_axis_label": "Voltage (V)",
@@ -64,7 +64,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 },
             }
         else:
-            raise ValueError(f"Unknown time_series_source: {self.time_series_source}")
+            raise ValueError(f"Unknown time_series_source: {self.data['time_series_source']}")
 
     defaults = {
         "start_exp": 1,
@@ -105,7 +105,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 log_folder_name=time_series_folder_name,
                 start_exp=start_exp,
                 exclude_exp=exclude_exp,
-                time_series_source=self.time_series_source,
+                time_series_source=self.data["time_series_source"],
                 echem_folder_name=self.data.get("echem_folder_name"),
                 # Needs to be made more generic
             )
@@ -215,7 +215,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 "sample_granularity", self.defaults["sample_granularity"]
             ),
             index_df=data["index_df"],
-            time_series_source=self.time_series_source,
+            time_series_source=self.data["time_series_source"],
         )
 
         gp = create_linked_insitu_plots(
