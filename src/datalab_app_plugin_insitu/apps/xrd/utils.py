@@ -167,8 +167,37 @@ def process_local_xrd_data(
                     raise ValueError("Echem path must be a Path object.")
                 echem_data = process_echem_data(echem_path)
                 xrd_data["Time_series_data"] = echem_data
-                # TODO implement echem data processing
-                pass
+                xrd_data["log data"] = log_data
+
+                df_echem = echem_data["data"]
+                df_echem["Timestamp"] = pd.to_datetime(df_echem["Timestamp"])
+                df_echem = df_echem.rename(columns={"Timestamp": "echem_timestamp"})
+                time_deltas = df_echem.echem_timestamp - df_echem.echem_timestamp.iloc[0]
+                df_echem["elapsed_time_hours"] = [
+                    delta.total_seconds() / 3600 for delta in time_deltas
+                ]
+                df_echem["elapsed_time_seconds"] = [delta.total_seconds() for delta in time_deltas]
+                log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
+                log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
+                df_merged = pd.merge_asof(
+                    log_data,
+                    df_echem,
+                    left_on="xrd_timestamp",
+                    right_on="echem_timestamp",
+                    direction="nearest",
+                )
+
+                df_merged["exp_num"] = np.arange(1, len(df_merged) + 1)
+                df_merged = df_merged.rename(
+                    columns={
+                        "scan_number": "file_num",
+                        "Voltage": "voltage",
+                        "elapsed_time_seconds": "time",
+                    }
+                )
+                xrd_data["index_df"] = df_merged
+
+                return xrd_data
 
     except Exception as e:
         raise RuntimeError(f"Failed to process XRD data: {str(e)}")
