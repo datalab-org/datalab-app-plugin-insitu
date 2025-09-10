@@ -6,10 +6,10 @@ from navani import echem as ec
 
 def process_echem_data(echem_folder: Path) -> Dict:
     """
-    Processes Echem data from a specified file.
+    Processes Echem data from a specified file or files. Note if multiple files are present, they will be concatenated, so do not include unrelated or duplicate files in the folder.
 
     Args:
-        echem_file: Path to the Echem data file
+        echem_folder: Path to the Echem data folder containing the echem files.
 
     Returns:
         Dictionary containing the processed Echem data with keys "time" and "data"

@@ -90,7 +90,7 @@ class GenericInSituBlock(DataBlock, ABC):
             data: The data to be subsampled.
             sample_granularity: Subsampling step along rows (samples).
             data_granularity: Subsampling step along columns (features).
-            method: Subsampling method; currently supports only 'linear'.
+            method: Subsampling method; currently supports only 'linear' and 'max_pooling'.
 
         Returns:
             Subsampled data of the same type as input.

@@ -13,10 +13,11 @@ from datalab_app_plugin_insitu.plotting import (
 
 
 class XRDInsituBlock(GenericInSituBlock):
-    """This datablock processes in situ XRD data from an input .zip file containing two specific directories:
+    """This datablock processes in-situ XRD data from an input .zip file containing two or three specific directories:
 
-    - XRD data directory: Contains multiple XRD patterns (.xy, or otherwise) measured at different times,
-    - Time series directory: Contains echem data (.txt) or temperature data files (.csv).
+    - XRD data directory: Contains multiple XRD patterns (.xy, or otherwise based on datalab XRDBlock) measured at different times,
+    - Time series directory: Contains the log data (.csv) with temperature or other time of measurement metadata,
+    - (Optional) Electrochemical data directory: Contains electrochemical data with voltage vs time data.
 
     """
 
@@ -80,8 +81,8 @@ class XRDInsituBlock(GenericInSituBlock):
 
     def process_and_store_data(self, file_path: str | Path):
         """
-        Process all in situ XRD and electrochemical data and store results.
-        This method is a wrapper for processing both XRD and electrochemical data.
+        Process all in situ XRD, log and (optional) electrochemical data and store results.
+        This method is a wrapper for processing both XRD and electrochemical data and the log data.
         """
         xrd_folder_name = Path(self.data.get("xrd_folder_name"))
         if not xrd_folder_name:
@@ -173,6 +174,7 @@ class XRDInsituBlock(GenericInSituBlock):
         Parameters:
             file_path: Path to the zip file containing XRD and electrochemical data,
                 rather than looking up in the database for attached files.
+            link_plots: Boolean to indicate if the plots should be linked using bokeh js scripts.
 
         """
         if self.data.get("time_series_source") not in ("log", "echem"):
