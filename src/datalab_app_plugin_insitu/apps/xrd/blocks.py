@@ -83,10 +83,6 @@ class XRDInsituBlock(GenericInSituBlock):
         Process all in situ XRD and electrochemical data and store results.
         This method is a wrapper for processing both XRD and electrochemical data.
         """
-        file_path = Path(file_path)
-        folders = self.get_available_folders(file_path)
-        self.data["available_folders"] = folders
-
         xrd_folder_name = Path(self.data.get("xrd_folder_name"))
         if not xrd_folder_name:
             raise ValueError("XRD folder name is required")
@@ -168,9 +164,7 @@ class XRDInsituBlock(GenericInSituBlock):
 
         return data
 
-    def generate_insitu_xrd_plot(
-        self, file_path: str | Path | None = None, link_plots: bool = False
-    ):
+    def generate_insitu_xrd_plot(self, file_path: Path | None = None, link_plots: bool = False):
         """Generate combined XRD and electrochemical plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
@@ -181,10 +175,13 @@ class XRDInsituBlock(GenericInSituBlock):
                 rather than looking up in the database for attached files.
 
         """
-
+        if self.data.get("time_series_source") not in ("log", "echem"):
+            raise ValueError(
+                "time_series_source must be set to either 'log' or 'echem' in the datablock data"
+            )
         if not file_path:
             if "file_id" not in self.data:
-                raise ValueError("No file set in the DataBlock")
+                return
             try:
                 from pydatalab.file_utils import get_file_info_by_id
             except ImportError:
@@ -199,6 +196,27 @@ class XRDInsituBlock(GenericInSituBlock):
             raise ValueError(
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
+
+        folders = self.get_available_folders(file_path)
+        self.data["available_folders"] = folders
+
+        if self.data.get("time_series_source") == "log":
+            required_folders = ["xrd_folder_name", "time_series_folder_name"]
+        elif self.data.get("time_series_source") == "echem":
+            required_folders = ["xrd_folder_name", "time_series_folder_name", "echem_folder_name"]
+        else:
+            raise ValueError(
+                "time_series_source must be set to either 'log' or 'echem' in the datablock data"
+            )
+
+        if self.data.get("time_series_source") == "log":
+            for folder in required_folders:
+                if not self.data.get(folder):
+                    return
+        elif self.data.get("time_series_source") == "echem":
+            for folder in required_folders:
+                if not self.data.get(folder):
+                    return
 
         data = self.process_and_store_data(file_path)
 
