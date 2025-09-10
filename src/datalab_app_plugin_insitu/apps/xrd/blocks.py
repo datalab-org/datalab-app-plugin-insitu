@@ -131,7 +131,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 data["2D_data"],
                 sample_granularity=sample_granularity,
                 data_granularity=data_granularity,
-                method="linear",
+                method="max_pooling",
             )
 
             # Spectrai intensities is what the line plot uses - therefore keep every sample but reduce data length
@@ -140,17 +140,18 @@ class XRDInsituBlock(GenericInSituBlock):
                 data["2D_data"],
                 sample_granularity=1,
                 data_granularity=data_granularity,
-                method="linear",
+                method="max_pooling",
             )
 
             # X values for the heatmap and the line plot
+            # Linear as these are coordinates not intensities
             data["Two theta"] = self.subsample_data(
                 data["Two theta"],
                 data_granularity=data_granularity,
                 sample_granularity=1,
                 method="linear",
             )
-
+            # Linear as these are coordinates not intensities
             data["file_num_index"] = self.subsample_data(
                 data["file_num_index"],
                 sample_granularity=sample_granularity,

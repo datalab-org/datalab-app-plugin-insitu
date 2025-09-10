@@ -96,17 +96,50 @@ class GenericInSituBlock(DataBlock, ABC):
             Subsampled data of the same type as input.
         """
 
-        def max_pooling_reshape(arr, n):
-            h, w = arr.shape
-            assert h % n == 0 and w % n == 0
-            return arr.reshape(h // n, n, w // n, n).max(axis=(1, 3))
+        def pooling(mat, ksize, method="max_pooling", pad=True):
+            """Non-overlapping pooling on 2D or 3D data.
 
-        def pad_and_max_pool(arr, n):
-            h, w = arr.shape
-            pad_h = (-h) % n
-            pad_w = (-w) % n
-            arr_padded = np.pad(arr, ((0, pad_h), (0, pad_w)), constant_values=arr.min())
-            return max_pooling_reshape(arr_padded, n)
+            <mat>: ndarray, input array to pool.
+            <ksize>: tuple of 2, kernel size in (ky, kx).
+            <method>: str, 'max for max-pooling,
+                        'mean' for mean-pooling.
+            <pad>: bool, pad <mat> or not. If no pad, output has size
+                n//f, n being <mat> size, f being kernel size.
+                if pad, output has size ceil(n/f).
+
+            Return <result>: pooled matrix.
+            """
+            if mat.ndim < 2:
+                mat = mat.reshape(1, -1)
+            m, n = mat.shape[:2]
+            ky, kx = ksize
+
+            def _ceil(x, y):
+                return int(np.ceil(x / float(y)))
+
+            if pad:
+                ny = _ceil(m, ky)
+                nx = _ceil(n, kx)
+                size = (ny * ky, nx * kx) + mat.shape[2:]
+                mat_pad = np.full(size, np.nan)
+                mat_pad[:m, :n, ...] = mat
+            else:
+                ny = m // ky
+                nx = n // kx
+                mat_pad = mat[: ny * ky, : nx * kx, ...]
+
+            new_shape = (ny, ky, nx, kx) + mat.shape[2:]
+
+            if method == "max_pooling":
+                result = np.nanmax(mat_pad.reshape(new_shape), axis=(1, 3))
+            elif method == "mean_pooling":
+                result = np.nanmean(mat_pad.reshape(new_shape), axis=(1, 3))
+            else:
+                raise ValueError(
+                    f"Pooling method '{method}' not supported. Choose 'max' or 'mean'."
+                )
+
+            return result
 
         accepted_methods = ["linear", "max_pooling"]
         if method not in accepted_methods:
@@ -131,15 +164,24 @@ class GenericInSituBlock(DataBlock, ABC):
         elif method == "max_pooling":
             # 2D DataFrame
             if isinstance(data, pd.DataFrame):
-                return pd.DataFrame(
-                    pad_and_max_pool(data.values, sample_granularity),
-                    index=np.arange(0, data.shape[0], sample_granularity),
-                    columns=np.arange(0, data.shape[1], data_granularity),
+                data_array = data.to_numpy()
+                pooled_array = pooling(
+                    data_array,
+                    (sample_granularity, data_granularity),
+                    method="max_pooling",
+                    pad=True,
                 )
-
+                return pd.DataFrame(
+                    pooled_array,
+                    columns=data.columns[::data_granularity],
+                    index=data.index[::sample_granularity],
+                )
             # 2D ndarray
-            elif isinstance(data, np.ndarray) and data.ndim == 2:
-                return pad_and_max_pool(data, sample_granularity)
+            elif isinstance(data, np.ndarray):
+                pooled_array = pooling(
+                    data, (sample_granularity, data_granularity), method="max_pooling", pad=True
+                )
+                return pooled_array
 
             else:
                 raise ValueError("Input must be a 2D numpy array or a pandas DataFrame.")
