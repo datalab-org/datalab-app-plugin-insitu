@@ -28,7 +28,6 @@ class XRDInsituBlock(GenericInSituBlock):
     xrd_folder_name = None
     time_series_folder_name = None
     echem_folder_name = None
-    # time_series_source = "log"  # or "echem"
     folder_name = None
 
     @property
@@ -107,7 +106,6 @@ class XRDInsituBlock(GenericInSituBlock):
                 exclude_exp=exclude_exp,
                 time_series_source=self.data["time_series_source"],
                 echem_folder_name=self.data.get("echem_folder_name"),
-                # Needs to be made more generic
             )
 
             num_samples, data_length = data["2D_data"].shape
