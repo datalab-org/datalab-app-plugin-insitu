@@ -10,6 +10,7 @@ def test_block(pytestconfig):
         Path(__file__).parent.parent / "example_data" / "xrd" / "Example_in_situ_XRD_data.zip"
     )
     block = XRDInsituBlock(item_id="test-xrd-insitu")
+    block.data["time_series_source"] = "log"
     block.data["xrd_folder_name"] = "43_up"
     block.data["time_series_folder_name"] = "log"
     block.generate_insitu_xrd_plot(file_path=test_data_zip, link_plots=True)
