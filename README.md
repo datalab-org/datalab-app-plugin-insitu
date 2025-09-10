@@ -107,12 +107,16 @@ data_folder.zip/
 ├── <uv-vis reference folder>/
 │   └── reference.txt
 └── <echem_folder>/
-    └── <echem_file>
+    ├── <echem_file_1>
+    ├── <echem_file_2>
+    └── ...
 ```
 
-where the `<uv-vis folder>` contains the UV-Vis scans (named as `*_<n>.txt`, which will be used for sorting), the `<uv-vis reference folder>` contains the reference spectrum, and the `<echem_folder>` contains a electrochemical data file that is loadable by `navani`.
+where the `<uv-vis folder>` contains the UV-Vis scans (named as `*_<n>.txt`, which will be used for sorting), the `<uv-vis reference folder>` contains the reference spectrum, and the `<echem_folder>` contains one or more electrochemical data files loadable by [navani](https://github.com/be-smith/navani). Note if multiple files are present then navani will attempt to stitch them together, so do not upload duplicates (e.g processed and unprocessed versions of the same file).
 
 #### XRD
+
+There are two XRD plotting modes, against Temperature and against Electrochemistry, both pathways require a folder containing the xrd data and the log data as shown below, with the electrochemistry pathway requiring a third directory for the electrochemistry data.
 
 ```
 data_folder.zip/
@@ -127,17 +131,34 @@ data_folder.zip/
 │   └── <N>-scan.dat
 └── <log folder>/
     └── time_series_log.csv
+└── <echem folder>/ (optional)
+    ├── <echem_file_1>
+    ├── <echem_file_2>
+    └── ...
+
 ```
 
-where the `<xrd folder>` contains the XRD scans (named as `0000-scan.dat`, `0001-scan.dat`, etc.), and the `<log folder>` contains a time series log file in CSV format, mapping scan number to the time series data, e.g.,
+where the `<xrd folder>` contains the XRD scans (named as `0000-scan.dat`, `0001-scan.dat`, etc.), and the `<log folder>` contains a time series log file in CSV format, mapping scan number to the time series data, e.g. for the Temperature mode:
 
 ```csv
-scan_number,temperature
+scan_number,Temp
 0000, 25.0
 0001, 30.0
 0002, 35.0
 0003, 40.0
 ```
+
+And for the electrochemistry mode:
+
+```csv
+scan_number,start_time,end_time
+0000, 25.0, 2025-07-02 19:05:59.614000, 2025-07-02 19:06:56.167000
+0001, 30.0, 2025-07-02 19:15:03.582000, 2025-07-02 19:15:59.280000
+0002, 35.0, 2025-07-02 19:24:07.586000, 2025-07-02 19:25:04.074000
+0003, 40.0, 2025-07-02 19:33:12.198000, 2025-07-02 19:34:08.917000
+```
+
+The `<echem folder>` contains one or more electrochemistry files readable by [navani](https://github.com/be-smith/navani), Note if multiple files are present then navani will attempt to stitch them together, so do not upload duplicates (e.g processed and unprocessed versions of the same file). For the XRD usecase it's currently expected that the echem file has a `Timestamp` column containing date-time information for matching to the log file (e.g Neware files).
 
 ## License
 
