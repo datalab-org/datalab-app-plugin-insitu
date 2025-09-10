@@ -31,7 +31,7 @@ def process_local_xrd_data(
         log_folder_name: Path to the folder containing log data.
         start_exp: Starting experiment number.
         exclude_exp: List of experiments to exclude.
-        time_series_source: Source of time series data, either 'log' or 'echem'.
+        time_series_source: Source of time series data, either 'log' or 'echem' to select whether temperature or echem is the time series data shown.
         echem_folder_name: Optional path to the folder containing echem data. Only used if time_series_source is 'echem'.
 
     Returns:
@@ -290,7 +290,7 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     Load temperature log file and return as a DataFrame. This currently assumes the Temperature is recorded in Celsius.
 
     Args:
-        log_file (Path): Path to the temperature log file.
+        log_file (Path): Path to the temperature log file, must contain scan_number and Temp as column headers.
 
     Returns:
         pd.DataFrame: DataFrame containing the temperature log data.
@@ -313,7 +313,7 @@ def load_echem_log_file(log_file: Path) -> pd.DataFrame:
     Load electrochemical log file and return as a DataFrame.
 
     Args:
-        log_file (Path): Path to the electrochemical log file.
+        log_file (Path): Path to the electrochemical log file, must contain scan_number, start_time and end_time as column headers.
 
     Returns:
         pd.DataFrame: DataFrame containing the electrochemical log data.
