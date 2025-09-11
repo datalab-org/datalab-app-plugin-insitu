@@ -250,7 +250,7 @@ def process_xrd_data(
                         f"Inconsistent 2θ values found in file {file}: {missing_values}."
                     )
                 interpolater = interp1d(
-                    new_two_theta_values, intensity_values, bounds_error=False, fill_value="zero"
+                    new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
                 )
                 all_patterns.loc[file, two_theta] = interpolater(two_theta)
         except Exception as e:
