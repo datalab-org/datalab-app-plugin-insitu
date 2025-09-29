@@ -430,6 +430,7 @@ def _create_echem_figure(
 
         exp_numbers = echem_data["exp_num"]
 
+        # The xrd route where you have scan numbers
         if "scan_number" in echem_data:
             echem_source = ColumnDataSource(
                 data={
@@ -451,6 +452,8 @@ def _create_echem_figure(
                 mode="hline",
                 point_policy="snap_to_data",
             )
+        # The UV-Vis route where there is no scan number
+        # TODO (ben smith) add the filenumber to uvvis
         else:
             echem_source = ColumnDataSource(
                 data={
