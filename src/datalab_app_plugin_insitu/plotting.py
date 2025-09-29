@@ -150,6 +150,8 @@ def prepare_xrd_plot_data(
         time_series_data = {
             "Voltage": time_series_data["Voltage"].values,
             "time": time_series_data["time"].values,
+            "scan_number": time_series_data["scan_number"],
+            "exp_num": time_series_data["exp_num"],
         }
 
         y_range = {"min_y": time_series_data["time"].min(), "max_y": time_series_data["time"].max()}
@@ -268,6 +270,7 @@ def _create_heatmap_figure(
             "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
             "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
             "file_num": experiment_numbers,
+            "scan_number": plot_data["file_num_index"][:, 0],
         }
 
         for col in heatmap_index_df.columns:
@@ -410,11 +413,8 @@ def _create_echem_figure(
 
         time_range = plot_data["y_range"]
         time_span = time_range["max_y"] - time_range["min_y"]
-        exp_count = plot_data["num_experiments"]
 
-        exp_numbers = np.floor(((times - time_range["min_y"]) / time_span) * exp_count) + 1
-        exp_numbers = np.clip(exp_numbers, 1, exp_count)
-
+        exp_numbers = echem_data["exp_num"]
         echem_source = ColumnDataSource(
             data={
                 "y": times,
@@ -422,6 +422,7 @@ def _create_echem_figure(
                 "exp_num": exp_numbers,
                 "time": times,
                 "voltage": voltages,
+                "scan_number": np.array(echem_data["scan_number"]),
             }
         )
 
@@ -432,6 +433,7 @@ def _create_echem_figure(
                 ("Exp. #", "@exp_num{0}"),
                 ("Time (s)", "@y{0.00}"),
                 ("Voltage (V)", "@x{0.000}"),
+                ("Scan #", "@scan_number{0}"),
             ],
             mode="hline",
             point_policy="snap_to_data",
