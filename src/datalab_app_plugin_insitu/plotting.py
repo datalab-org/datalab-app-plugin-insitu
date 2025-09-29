@@ -99,9 +99,23 @@ def prepare_uvvis_plot_data(
     intensity_min = np.min(twoD_matrix)
     intensity_max = np.max(twoD_matrix)
 
+    # Assume echem_data["time"] is a numpy array
+    time = echem_data["time"].values
+    exp_count = metadata["num_experiments"]
+
+    # Create bin edges for exp_count equal bins
+    bins = np.linspace(time.min(), time.max(), exp_count + 1)
+
+    # Assign each time to a bin (experiment number)
+    exp_numbers = np.digitize(time, bins, right=False)
+
+    # Clip to valid experiment numbers (1 to exp_count)
+    exp_numbers = np.clip(exp_numbers, 1, exp_count)
+
     echem_data = {
         "Voltage": echem_data["Voltage"].values,
         "time": echem_data["time"].values,
+        "exp_num": exp_numbers,
     }
 
     return {
@@ -415,30 +429,49 @@ def _create_echem_figure(
         time_span = time_range["max_y"] - time_range["min_y"]
 
         exp_numbers = echem_data["exp_num"]
-        echem_source = ColumnDataSource(
-            data={
-                "y": times,
-                "x": voltages,
-                "exp_num": exp_numbers,
-                "time": times,
-                "voltage": voltages,
-                "scan_number": np.array(echem_data["scan_number"]),
-            }
-        )
+
+        if "scan_number" in echem_data:
+            echem_source = ColumnDataSource(
+                data={
+                    "y": times,
+                    "x": voltages,
+                    "exp_num": exp_numbers,
+                    "time": times,
+                    "voltage": voltages,
+                    "scan_number": np.array(echem_data["scan_number"]),
+                }
+            )
+            hover_tool = HoverTool(
+                tooltips=[
+                    ("Exp. #", "@exp_num{0}"),
+                    ("Time (s)", "@y{0.00}"),
+                    ("Voltage (V)", "@x{0.000}"),
+                    ("Scan #", "@scan_number{0}"),
+                ],
+                mode="hline",
+                point_policy="snap_to_data",
+            )
+        else:
+            echem_source = ColumnDataSource(
+                data={
+                    "y": times,
+                    "x": voltages,
+                    "exp_num": exp_numbers,
+                    "time": times,
+                    "voltage": voltages,
+                }
+            )
+            hover_tool = HoverTool(
+                tooltips=[
+                    ("Exp. #", "@exp_num{0}"),
+                    ("Time (s)", "@y{0.00}"),
+                    ("Voltage (V)", "@x{0.000}"),
+                ],
+                mode="hline",
+                point_policy="snap_to_data",
+            )
 
         echemplot_figure.line(x="x", y="y", source=echem_source, color=COLORS[1])
-
-        hover_tool = HoverTool(
-            tooltips=[
-                ("Exp. #", "@exp_num{0}"),
-                ("Time (s)", "@y{0.00}"),
-                ("Voltage (V)", "@x{0.000}"),
-                ("Scan #", "@scan_number{0}"),
-            ],
-            mode="hline",
-            point_policy="snap_to_data",
-        )
-
         echemplot_figure.add_tools(hover_tool)
 
     elif echem_data and "x" in echem_data and "y" in echem_data:
