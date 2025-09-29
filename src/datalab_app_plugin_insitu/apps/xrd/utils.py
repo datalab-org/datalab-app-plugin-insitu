@@ -124,7 +124,6 @@ def process_local_xrd_data(
             except Exception as e:
                 raise RuntimeError(f"Failed to load log file: {str(e)}")
 
-            # TODO alternate pathway for echem data
             # Check that the log scans are the same as the xrd scans
             log_scan_numbers = set(log_data["scan_number"].astype(int))
             xrd_scan_numbers = set(xrd_data["file_num_index"][:, 0].astype(int))
@@ -169,7 +168,8 @@ def process_local_xrd_data(
                 xrd_data["Time_series_data"] = echem_data
                 xrd_data["log data"] = log_data
 
-                df_echem = echem_data["data"]
+                df_echem = xrd_data["Time_series_data"]["data"]
+
                 df_echem["Timestamp"] = pd.to_datetime(df_echem["Timestamp"])
                 df_echem = df_echem.rename(columns={"Timestamp": "echem_timestamp"})
                 time_deltas = df_echem.echem_timestamp - df_echem.echem_timestamp.iloc[0]
@@ -187,6 +187,16 @@ def process_local_xrd_data(
                     direction="nearest",
                 )
 
+                # Adding scan_number to the echem data to be used for the lengend later.
+                echem_merged = pd.merge_asof(
+                    xrd_data["Time_series_data"]["data"],
+                    xrd_data["log data"][["xrd_timestamp", "scan_number"]],
+                    left_on="Timestamp",
+                    right_on="xrd_timestamp",
+                    direction="nearest",
+                )
+
+                xrd_data["Time_series_data"]["scan_number"] = echem_merged["scan_number"].values
                 df_merged["exp_num"] = np.arange(1, len(df_merged) + 1)
                 df_merged = df_merged.rename(
                     columns={
@@ -196,6 +206,17 @@ def process_local_xrd_data(
                     }
                 )
                 xrd_data["index_df"] = df_merged
+
+                # Create a mapping from file_num to exp_num
+                file_num_to_exp_num = dict(
+                    zip(xrd_data["index_df"]["file_num"], xrd_data["index_df"]["exp_num"])
+                )
+
+                # Map scan_number to exp_num using the dictionary
+                echem_merged["exp_num"] = echem_merged["scan_number"].map(file_num_to_exp_num)
+                xrd_data["Time_series_data"]["exp_num"] = echem_merged["exp_num"].values
+
+                xrd_data["Time_series_data"]["data"] = echem_merged
 
                 return xrd_data
 
