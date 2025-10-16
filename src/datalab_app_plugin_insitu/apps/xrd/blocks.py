@@ -168,7 +168,7 @@ class XRDInsituBlock(GenericInSituBlock):
         return data
 
     def generate_insitu_xrd_plot(self, file_path: Path | None = None, link_plots: bool = False):
-        """Generate combined XRD and electrochemical plots using the operando-style layout.
+        """Generate combined XRD and electrochemical or Temperature plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
         them into a unified visualization.
@@ -213,14 +213,9 @@ class XRDInsituBlock(GenericInSituBlock):
                 "time_series_source must be set to either 'log' or 'echem' in the datablock data"
             )
 
-        if self.data.get("time_series_source") == "log":
-            for folder in required_folders:
-                if not self.data.get(folder):
-                    return
-        elif self.data.get("time_series_source") == "echem":
-            for folder in required_folders:
-                if not self.data.get(folder):
-                    return
+        for folder in required_folders:
+            if not self.data.get(folder):
+                return
 
         data = self.process_and_store_data(file_path)
 
