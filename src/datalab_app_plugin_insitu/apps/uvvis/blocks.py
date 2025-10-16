@@ -197,13 +197,6 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         data = self.process_and_store_data(file_path)
 
-        if (
-            self.data.get("uvvis_folder_name") is None
-            or self.data.get("echem_folder_name") is None
-            or self.data.get("uvvis_reference_folder_name") is None
-        ):
-            raise ValueError("UV-Vis and Echem folder names must be set in the DataBlock")
-
         plot_data = prepare_uvvis_plot_data(
             data["intensity_matrix"],
             data["spectra_intensities"],
