@@ -67,8 +67,6 @@ class UVVisInsituBlock(GenericInSituBlock):
                 "Scan time is required for processing UV-Vis data. Should include the time between scans in seconds."
             )
         file_path = Path(file_path)
-        folders = self.get_available_folders(file_path)
-        self.data["available_folders"] = folders
 
         if not self.data.get("uvvis_folder_name"):
             raise ValueError("UV-Vis folder name is required")
@@ -158,9 +156,7 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         return data
 
-    def generate_insitu_uvvis_plot(
-        self, file_path: str | Path | None = None, link_plots: bool = False
-    ):
+    def generate_insitu_uvvis_plot(self, file_path: Path | None = None, link_plots: bool = False):
         """Generate combined UVVis and electrochemical plots using the operando-style layout.
 
         This method coordinates the creation of various plot components and combines
@@ -171,10 +167,9 @@ class UVVisInsituBlock(GenericInSituBlock):
                 rather than looking up in the database for attached files.
 
         """
-
         if not file_path:
             if "file_id" not in self.data:
-                raise ValueError("No file set in the DataBlock")
+                return
             try:
                 from pydatalab.file_utils import get_file_info_by_id
 
@@ -190,6 +185,15 @@ class UVVisInsituBlock(GenericInSituBlock):
             raise ValueError(
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
+
+        folders = self.get_available_folders(file_path)
+        self.data["available_folders"] = folders
+
+        required_folders = ["uvvis_folder_name", "echem_folder_name", "uvvis_reference_folder_name"]
+
+        for folder in required_folders:
+            if not self.data.get(folder):
+                return
 
         data = self.process_and_store_data(file_path)
 
