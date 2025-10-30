@@ -80,6 +80,7 @@ def prepare_uvvis_plot_data(
     metadata,
     file_num_index,
     index_df: pd.DataFrame,
+    scan_time: float,
 ) -> Optional[Dict[str, Any]]:
     """
     Need heatmap data in two forms:
@@ -103,11 +104,9 @@ def prepare_uvvis_plot_data(
     time = echem_data["time"].values
     exp_count = metadata["num_experiments"]
 
-    # Create bin edges for exp_count equal bins
-    bins = np.linspace(time.min(), time.max(), exp_count + 1)
-
-    # Assign each time to a bin (experiment number)
-    exp_numbers = np.digitize(time, bins, right=False)
+    # Calculate experiment numbers based on scan_time intervals
+    # Increment exp_num each time we pass a scan_time interval
+    exp_numbers = np.floor(time / scan_time).astype(int) + 1
 
     # Clip to valid experiment numbers (1 to exp_count)
     exp_numbers = np.clip(exp_numbers, 1, exp_count)
@@ -125,6 +124,7 @@ def prepare_uvvis_plot_data(
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
         "y_range": metadata["time_range"],
+        "heatmap_y_range": metadata["time_range"],  # For UVVis, heatmap uses same range as data
         "first_spectrum_intensities": first_spectrum_intensities,
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
@@ -160,6 +160,14 @@ def prepare_xrd_plot_data(
 
         y_range = {"min_y": 1, "max_y": int(max(np.arange(1, len(time_series_data["x"]) + 1)))}
 
+        # For log mode, use experiment numbers on heatmap y-axis
+        heatmap_y_range = {
+            "min_y": 1,
+            "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
+        }
+        # For log mode, use spectra_intensities index (experiment numbers)
+        heatmap_y_values = spectra_intensities.index
+
     elif time_series_source == "echem":
         time_series_data = {
             "Voltage": time_series_data["Voltage"].values,
@@ -170,14 +178,18 @@ def prepare_xrd_plot_data(
 
         y_range = {"min_y": time_series_data["time"].min(), "max_y": time_series_data["time"].max()}
 
-    heatmap_y_range = {
-        "min_y": 1,
-        "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
-    }
+        # For echem mode, use actual times from index_df for heatmap y-axis
+        # Similar to how UVVis uses spectra_intensities.index
+        heatmap_y_range = {
+            "min_y": index_df["time"].min(),
+            "max_y": index_df["time"].max(),
+        }
+        # For echem mode, use actual times from index_df, similar to UVVis
+        heatmap_y_values = index_df["time"].values
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
-        "heatmap y_values": spectra_intensities.index,  # not in ben Cs code
+        "heatmap y_values": heatmap_y_values,  # times for echem, exp numbers for log
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities.values.tolist(),
         "intensity_matrix": intensity_matrix,
@@ -243,7 +255,7 @@ def _create_heatmap_figure(
     """
     heatmap_x_values = plot_data["heatmap x_values"]
     intensity_matrix = plot_data["intensity_matrix"]
-    time_range = plot_data["y_range"]
+    heatmap_y_range = plot_data["heatmap_y_range"]
     intensity_min = plot_data["intensity_min"]
     intensity_max = plot_data["intensity_max"]
 
@@ -263,16 +275,16 @@ def _create_heatmap_figure(
     heatmap_figure.image(
         image=[intensity_matrix],
         x=min(heatmap_x_values),
-        y=time_range["min_y"],
+        y=heatmap_y_range["min_y"],
         dw=abs(max(heatmap_x_values) - min(heatmap_x_values)),
-        dh=time_range["max_y"] - time_range["min_y"],
+        dh=heatmap_y_range["max_y"] - heatmap_y_range["min_y"],
         color_mapper=color_mapper,
         level="image",
     )
 
     time_points = len(intensity_matrix)
     if time_points > 0:
-        times = np.linspace(time_range["min_y"], time_range["max_y"], time_points)
+        times = np.linspace(heatmap_y_range["min_y"], heatmap_y_range["max_y"], time_points)
         # experiment_numbers = np.arange(1, time_points + 1)
         experiment_numbers = plot_data["file_num_index"].flatten().tolist()
         heatmap_index_df = (
@@ -282,7 +294,8 @@ def _create_heatmap_figure(
             "x": [(max(heatmap_x_values) + min(heatmap_x_values)) / 2] * time_points,
             "y": times,
             "width": [abs(max(heatmap_x_values) - min(heatmap_x_values))] * time_points,
-            "height": [(time_range["max_y"] - time_range["min_y"]) / time_points] * time_points,
+            "height": [(heatmap_y_range["max_y"] - heatmap_y_range["min_y"]) / time_points]
+            * time_points,
             "file_num": experiment_numbers,
             "scan_number": plot_data["file_num_index"][:, 0],
         }
