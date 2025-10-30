@@ -197,6 +197,7 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         data = self.process_and_store_data(file_path)
 
+        scan_time = self.data.get("scan_time", self.defaults["scan_time"])
         plot_data = prepare_uvvis_plot_data(
             data["intensity_matrix"],
             data["spectra_intensities"],
@@ -205,6 +206,7 @@ class UVVisInsituBlock(GenericInSituBlock):
             data["metadata"],
             data["file_num_index"],
             data["index_df"],
+            scan_time,
         )
 
         gp = create_linked_insitu_plots(
