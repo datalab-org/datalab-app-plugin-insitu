@@ -99,19 +99,27 @@ def process_local_xrd_data(
 
             # Load the 1D data
             if log_path.exists():
-                log_files = list(log_path.glob("*.csv"))
+                # Look for both CSV and text files
+                csv_files = list(log_path.glob("*.csv"))
+                txt_files = list(log_path.glob("*.txt"))
+                log_files = csv_files + txt_files
+
                 if len(log_files) > 1:
                     raise ValueError(
-                        f"Log folder should contain exactly one CSV file: {log_path}. Found {len(log_files)} files. Files found: {log_files}"
+                        f"Log folder should contain exactly one data file: {log_path}. Found {len(log_files)} files. Files found: {log_files}"
                     )
                     # TODO handle multiple files
                 elif len(log_files) == 0:
-                    raise ValueError(f"Log folder should contain at least one CSV file: {log_path}")
+                    raise ValueError(
+                        f"Log folder should contain at least one CSV or TXT file: {log_path}"
+                    )
                 else:
                     log_file = log_files[0]
 
             else:
-                raise FileNotFoundError(f"No log files found with extension .csv in {log_path}")
+                raise FileNotFoundError(
+                    f"No log files found with extension .csv or .txt in {log_path}"
+                )
 
             try:
                 if time_series_source == "echem":
@@ -315,6 +323,8 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     """
     Load temperature log file and return as a DataFrame. This currently assumes the Temperature is recorded in Celsius.
 
+    Supports both CSV and text files with common delimiters (comma, tab, whitespace).
+
     Args:
         log_file (Path): Path to the temperature log file, must contain scan_number and Temp as column headers.
 
@@ -324,7 +334,23 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     if not log_file.exists():
         raise FileNotFoundError(f"Log file does not exist: {log_file}")
 
-    log_df = pd.read_csv(log_file)
+    # Try to read the file with different delimiters
+    try:
+        # First try comma-separated (CSV)
+        log_df = pd.read_csv(log_file, sep=",")
+    except Exception:
+        try:
+            # Try tab-separated
+            log_df = pd.read_csv(log_file, sep="\t")
+        except Exception:
+            try:
+                # Try whitespace-separated
+                log_df = pd.read_csv(log_file, sep=r"\s+")
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to parse log file {log_file}. Tried comma, tab, and whitespace delimiters. Error: {str(e)}"
+                )
+
     if "scan_number" not in log_df.columns:
         raise ValueError("Log file must contain a 'scan_number' column.")
 
@@ -338,6 +364,8 @@ def load_echem_log_file(log_file: Path) -> pd.DataFrame:
     """
     Load electrochemical log file and return as a DataFrame.
 
+    Supports both CSV and text files with common delimiters (comma, tab, whitespace).
+
     Args:
         log_file (Path): Path to the electrochemical log file, must contain scan_number, start_time and end_time as column headers.
 
@@ -347,7 +375,23 @@ def load_echem_log_file(log_file: Path) -> pd.DataFrame:
     if not log_file.exists():
         raise FileNotFoundError(f"Log file does not exist: {log_file}")
 
-    log_df = pd.read_csv(log_file)
+    # Try to read the file with different delimiters
+    try:
+        # First try comma-separated (CSV)
+        log_df = pd.read_csv(log_file, sep=",")
+    except Exception:
+        try:
+            # Try tab-separated
+            log_df = pd.read_csv(log_file, sep="\t")
+        except Exception:
+            try:
+                # Try whitespace-separated
+                log_df = pd.read_csv(log_file, sep=r"\s+")
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to parse log file {log_file}. Tried comma, tab, and whitespace delimiters. Error: {str(e)}"
+                )
+
     if "scan_number" not in log_df.columns:
         raise ValueError("Log file must contain a 'scan_number' column.")
 
