@@ -37,9 +37,19 @@ def process_echem_data(echem_folder: Path) -> Dict:
     else:
         raise ValueError(f"Echem folder not found: {echem_folder}")
 
+    # Rename timestamp column to a consistent name
     if "Timestamp" in echem_data.columns:
+        timestamp_col = "Timestamp"
+    elif "Date_Time" in echem_data.columns:
+        echem_data = echem_data.rename(columns={"Date_Time": "Timestamp"})
+        timestamp_col = "Timestamp"
+    else:
+        timestamp_col = None
+
+    if timestamp_col:
         time_deltas = echem_data["Timestamp"] - echem_data["Timestamp"].iloc[0]
         echem_data["elapsed_time_seconds"] = [delta.total_seconds() for delta in time_deltas]
+        echem_data["elapsed_time_hours"] = [delta.total_seconds() / 3600 for delta in time_deltas]
         echem_data["Time"] = echem_data["elapsed_time_seconds"]
 
     min_time = echem_data["Time"].min()
