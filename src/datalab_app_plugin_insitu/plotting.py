@@ -562,7 +562,7 @@ def _link_plots(
     echemplot_figure.add_tools(crosshair)
     hover = next((tool for tool in heatmap_figure.tools if isinstance(tool, HoverTool)), None)
     if hover:
-        index_df_source = ColumnDataSource(plot_data["index_df"].reset_index())
+        index_df_source = ColumnDataSource(plot_data["index_df"].reset_index(drop=True))
         hover.callback = CustomJS(
             args=dict(
                 line_source=line_source,
