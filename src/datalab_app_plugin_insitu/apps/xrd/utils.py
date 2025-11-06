@@ -170,13 +170,12 @@ def process_local_xrd_data(
 
                 df_echem = xrd_data["Time_series_data"]["data"]
 
+                # Rename timestamp column to echem_timestamp
+                # Note: Timestamp column is already standardized in process_echem_data()
+                # Note: elapsed_time_seconds and elapsed_time_hours are already calculated in process_echem_data()
                 df_echem["Timestamp"] = pd.to_datetime(df_echem["Timestamp"])
                 df_echem = df_echem.rename(columns={"Timestamp": "echem_timestamp"})
-                time_deltas = df_echem.echem_timestamp - df_echem.echem_timestamp.iloc[0]
-                df_echem["elapsed_time_hours"] = [
-                    delta.total_seconds() / 3600 for delta in time_deltas
-                ]
-                df_echem["elapsed_time_seconds"] = [delta.total_seconds() for delta in time_deltas]
+
                 log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
                 log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
                 df_merged = pd.merge_asof(
@@ -188,6 +187,7 @@ def process_local_xrd_data(
                 )
 
                 # Adding scan_number to the echem data to be used for the lengend later.
+                # Note: Timestamp column is already standardized to "Timestamp" in process_echem_data()
                 echem_merged = pd.merge_asof(
                     xrd_data["Time_series_data"]["data"],
                     xrd_data["log data"][["xrd_timestamp", "scan_number"]],
@@ -205,6 +205,11 @@ def process_local_xrd_data(
                         "elapsed_time_seconds": "time",
                     }
                 )
+
+                # Remove 'index' column if it exists in the data to avoid conflicts with pandas reset_index()
+                if "index" in df_merged.columns:
+                    df_merged = df_merged.drop(columns=["index"])
+
                 xrd_data["index_df"] = df_merged
 
                 # Create a mapping from file_num to exp_num
