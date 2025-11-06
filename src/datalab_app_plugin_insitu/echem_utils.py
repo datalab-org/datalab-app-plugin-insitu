@@ -48,9 +48,10 @@ def process_echem_data(echem_folder: Path) -> Dict:
 
     if timestamp_col:
         time_deltas = echem_data["Timestamp"] - echem_data["Timestamp"].iloc[0]
-        echem_data["elapsed_time_seconds"] = [delta.total_seconds() for delta in time_deltas]
-        echem_data["elapsed_time_hours"] = [delta.total_seconds() / 3600 for delta in time_deltas]
-        echem_data["Time"] = echem_data["elapsed_time_seconds"]
+        elapsed_seconds = time_deltas.dt.total_seconds()
+        echem_data["elapsed_time_seconds"] = elapsed_seconds
+        echem_data["elapsed_time_hours"] = elapsed_seconds / 3600
+        echem_data["Time"] = elapsed_seconds
 
     min_time = echem_data["Time"].min()
     max_time = echem_data["Time"].max()
