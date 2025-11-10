@@ -152,13 +152,39 @@ And for the electrochemistry mode:
 
 ```csv
 scan_number,start_time,end_time
-0000, 25.0, 2025-07-02 19:05:59.614000, 2025-07-02 19:06:56.167000
-0001, 30.0, 2025-07-02 19:15:03.582000, 2025-07-02 19:15:59.280000
-0002, 35.0, 2025-07-02 19:24:07.586000, 2025-07-02 19:25:04.074000
-0003, 40.0, 2025-07-02 19:33:12.198000, 2025-07-02 19:34:08.917000
+0000, 2025-07-02 19:05:59.614000, 2025-07-02 19:06:56.167000
+0001, 2025-07-02 19:15:03.582000, 2025-07-02 19:15:59.280000
+0002, 2025-07-02 19:24:07.586000, 2025-07-02 19:25:04.074000
+0003, 2025-07-02 19:33:12.198000, 2025-07-02 19:34:08.917000
 ```
 
 The `<echem folder>` contains one or more electrochemistry files readable by [navani](https://github.com/be-smith/navani), Note if multiple files are present then navani will attempt to stitch them together, so do not upload duplicates (e.g processed and unprocessed versions of the same file). For the XRD usecase it's currently expected that the echem file has a `Timestamp` column containing date-time information for matching to the log file (e.g Neware files).
+
+### Front-end Usage
+
+The following configuration parameters are available in the *datalab* UI:
+
+#### Required Parameters
+
+- **`scan_time`** (UV-Vis only): The time in seconds between each scan, including any rest time. This is used to calculate the time of each scan when no log file is available.
+
+#### Optional Parameters
+
+##### Performance Optimization
+
+- **`data_granularity`**: Controls sampling frequency along the x-axis (wavelength/2θ) of the heatmap to reduce rendering time. Default: automatically calculated to target ~1000 data points.
+  - XRD: Uses max-pooling interpolation
+  - UV-Vis: Uses linear interpolation
+
+- **`sample_granularity`**: Controls sampling frequency along the y-axis (time/experiment number) of the heatmap. Uses linear interpolation. Default: automatically calculated to target ~1000 samples.
+
+##### File Selection
+
+- **`glob_str`** (XRD only): A pattern to match specific files in the XRD data folder. Examples:
+  - `"summed"` → matches files containing "summed" (automatically converted to `*summed*`)
+  - `"*summed*"` → matches files containing "summed" (explicit wildcards)
+  - `"*.xy"` → matches all `.xy` files
+  - Leave empty to process all files in the folder (default behavior)
 
 ## License
 
