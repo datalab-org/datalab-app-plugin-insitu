@@ -10,7 +10,11 @@ from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.echem_utils import process_echem_data
-from datalab_app_plugin_insitu.utils import _find_folder_path, flexible_data_reader
+from datalab_app_plugin_insitu.utils import (
+    _find_folder_path,
+    flexible_data_reader,
+    should_skip_path,
+)
 
 
 def process_local_xrd_data(
@@ -21,6 +25,7 @@ def process_local_xrd_data(
     exclude_exp: Union[list, None] = None,
     time_series_source: str = "log",
     echem_folder_name: Optional[Path] = None,
+    glob_str: Optional[str] = None,
 ):
     """
     Process local XRD data from a zip file.
@@ -33,6 +38,7 @@ def process_local_xrd_data(
         exclude_exp: List of experiments to exclude.
         time_series_source: Source of time series data, either 'log' or 'echem' to select whether temperature or echem is the time series data shown.
         echem_folder_name: Optional path to the folder containing echem data. Only used if time_series_source is 'echem'.
+        glob_str: Optional glob pattern to match XRD files (e.g., "*summed*"). If None, all files in the folder are used.
 
     Returns:
         dict: Processed XRD data and metadata.
@@ -94,7 +100,7 @@ def process_local_xrd_data(
                 xrd_folder=xrd_path,
                 start_at=start_exp,
                 exclude_exp=exclude_exp,
-                glob_str="*summed*",
+                glob_str=glob_str,
             )
 
             # Load the 1D data
@@ -241,16 +247,17 @@ def process_xrd_data(
     xrd_folder: Path,
     start_at: int = 1,
     exclude_exp: Optional[List[int]] = None,
-    glob_str: str = "*summed*",
+    glob_str: Optional[str] = None,
 ) -> Dict:
     """
     Process XRD data from a specified folder.
 
     Args:
         xrd_folder: Path to the folder containing XRD data.
-        log_file: Path to the log file for storing processing results.
         start_at: Starting experiment number.
         exclude_exp: List of experiments to exclude.
+        glob_str: Optional glob pattern to match files (e.g., "*summed*", "*.xy").
+                 If None, all files in the folder are processed.
 
     Returns:
         Dict: Processed XRD data and metadata.
@@ -260,10 +267,17 @@ def process_xrd_data(
     if not xrd_folder.exists():
         raise FileNotFoundError(f"XRD folder does not exist: {xrd_folder}")
 
-    file_list = list(xrd_folder.glob(glob_str))
+    # Get list of files based on glob_str
+    if glob_str is None:
+        # Select all files in the folder (excluding directories and system files)
+        file_list = [f for f in xrd_folder.iterdir() if f.is_file() and not should_skip_path(f)]
+    else:
+        file_list = [f for f in xrd_folder.glob(glob_str) if not should_skip_path(f)]
+
     # Process the first XRD pattern file
     if not file_list:
-        raise FileNotFoundError(f"No XRD files found in {xrd_folder} with pattern {glob_str}")
+        pattern_msg = f"with pattern '{glob_str}'" if glob_str else ""
+        raise FileNotFoundError(f"No XRD files found in {xrd_folder} {pattern_msg}".strip())
 
     first_file = XRDBlock.load_pattern(file_list[0])
     two_theta = first_file[0]["2θ (°)"].values
