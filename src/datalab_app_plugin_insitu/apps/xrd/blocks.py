@@ -96,6 +96,11 @@ class XRDInsituBlock(GenericInSituBlock):
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
         glob_str = self.data.get("glob_str")  # Optional: if None, all files are used
+
+        # Auto-add wildcards if user doesn't include them
+        if glob_str and "*" not in glob_str:
+            glob_str = f"*{glob_str}*"
+
         try:
             data = process_local_xrd_data(
                 file_path=file_path,
