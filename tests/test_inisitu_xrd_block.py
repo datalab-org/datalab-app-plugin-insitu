@@ -13,6 +13,7 @@ def test_block_temperature_mode(pytestconfig):
     block.data["time_series_source"] = "log"
     block.data["xrd_folder_name"] = "43_up"
     block.data["time_series_folder_name"] = "log"
+    block.data["glob_str"] = "*summed*"
     block.generate_insitu_xrd_plot(file_path=test_data_zip, link_plots=True)
 
     assert block.data["bokeh_plot_data"] is not None
