@@ -194,7 +194,7 @@ def process_local_xrd_data(
                     direction="nearest",
                 )
 
-                # Adding scan_number to the echem data to be used for the lengend later.
+                # Adding scan_number to the echem data to be used for the legend later.
                 # Note: Timestamp column is already standardized to "Timestamp" in process_echem_data()
                 echem_merged = pd.merge_asof(
                     xrd_data["Time_series_data"]["data"],
@@ -283,10 +283,12 @@ def process_xrd_data(
                     LOGGER.warning(
                         f"Inconsistent 2θ values found in file {file}: {missing_values}."
                     )
-                interpolater = interp1d(
-                    new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
-                )
-                all_patterns.loc[file, two_theta] = interpolater(two_theta)
+                    interpolator = interp1d(
+                        new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
+                    )
+                    all_patterns.loc[file, two_theta] = interpolator(two_theta)
+                else:
+                    all_patterns.loc[file, two_theta] = intensity_values
         except Exception as e:
             print(f"Error processing file {file}: {e}")
 
