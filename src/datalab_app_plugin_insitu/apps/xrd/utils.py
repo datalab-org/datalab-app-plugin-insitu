@@ -10,7 +10,7 @@ from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.echem_utils import process_echem_data
-from datalab_app_plugin_insitu.utils import _find_folder_path
+from datalab_app_plugin_insitu.utils import _find_folder_path, flexible_data_reader
 
 
 def process_local_xrd_data(
@@ -323,39 +323,19 @@ def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
     """
     Load temperature log file and return as a DataFrame. This currently assumes the Temperature is recorded in Celsius.
 
-    Supports both CSV and text files with common delimiters (comma, tab, whitespace).
+    Supports CSV, TXT, and Excel files with automatic delimiter detection.
 
     Args:
         log_file (Path): Path to the temperature log file, must contain scan_number and Temp as column headers.
 
     Returns:
         pd.DataFrame: DataFrame containing the temperature log data.
+
+    Raises:
+        FileNotFoundError: If the log file does not exist.
+        ValueError: If the file cannot be parsed or required columns are missing.
     """
-    if not log_file.exists():
-        raise FileNotFoundError(f"Log file does not exist: {log_file}")
-
-    # Try to read the file with different delimiters
-    try:
-        # First try comma-separated (CSV)
-        log_df = pd.read_csv(log_file, sep=",")
-    except Exception:
-        try:
-            # Try tab-separated
-            log_df = pd.read_csv(log_file, sep="\t")
-        except Exception:
-            try:
-                # Try whitespace-separated
-                log_df = pd.read_csv(log_file, sep=r"\s+")
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to parse log file {log_file}. Tried comma, tab, and whitespace delimiters. Error: {str(e)}"
-                )
-
-    if "scan_number" not in log_df.columns:
-        raise ValueError("Log file must contain a 'scan_number' column.")
-
-    if "Temp" not in log_df.columns:
-        raise ValueError("Log file must contain a 'Temp' column.")
+    log_df = flexible_data_reader(log_file, required_columns=["scan_number", "Temp"])
 
     return log_df
 
@@ -364,38 +344,20 @@ def load_echem_log_file(log_file: Path) -> pd.DataFrame:
     """
     Load electrochemical log file and return as a DataFrame.
 
-    Supports both CSV and text files with common delimiters (comma, tab, whitespace).
+    Supports CSV, TXT, and Excel files with automatic delimiter detection.
 
     Args:
         log_file (Path): Path to the electrochemical log file, must contain scan_number, start_time and end_time as column headers.
 
     Returns:
         pd.DataFrame: DataFrame containing the electrochemical log data.
+
+    Raises:
+        FileNotFoundError: If the log file does not exist.
+        ValueError: If the file cannot be parsed or required columns are missing.
     """
-    if not log_file.exists():
-        raise FileNotFoundError(f"Log file does not exist: {log_file}")
-
-    # Try to read the file with different delimiters
-    try:
-        # First try comma-separated (CSV)
-        log_df = pd.read_csv(log_file, sep=",")
-    except Exception:
-        try:
-            # Try tab-separated
-            log_df = pd.read_csv(log_file, sep="\t")
-        except Exception:
-            try:
-                # Try whitespace-separated
-                log_df = pd.read_csv(log_file, sep=r"\s+")
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to parse log file {log_file}. Tried comma, tab, and whitespace delimiters. Error: {str(e)}"
-                )
-
-    if "scan_number" not in log_df.columns:
-        raise ValueError("Log file must contain a 'scan_number' column.")
-
-    if "start_time" not in log_df.columns or "end_time" not in log_df.columns:
-        raise ValueError("Log file must contain 'start_time' and 'end_time' columns.")
+    log_df = flexible_data_reader(
+        log_file, required_columns=["scan_number", "start_time", "end_time"]
+    )
 
     return log_df
