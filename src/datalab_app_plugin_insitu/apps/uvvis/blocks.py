@@ -191,6 +191,12 @@ class UVVisInsituBlock(GenericInSituBlock):
 
         required_folders = ["uvvis_folder_name", "echem_folder_name", "uvvis_reference_folder_name"]
 
+        # If there is an incorrect number of folders, raise an error
+        if len(folders) < len(required_folders):
+            raise RuntimeError(
+                f"Incorrect zip format detected: found {len(folders)} folders in the provided zip file. Expected a zip file with {len(required_folders)} folders: a UV-Vis folder (containing sample scans), an electrochemical folder, and a UV-Vis reference folder (containing the background scan). For more information see https://datalab-app-plugin-insitu.readthedocs.io/en/latest/"
+            )
+
         for folder in required_folders:
             if not self.data.get(folder):
                 return

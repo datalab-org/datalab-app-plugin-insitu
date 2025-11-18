@@ -85,13 +85,17 @@ class XRDInsituBlock(GenericInSituBlock):
         Process all in situ XRD, log and (optional) electrochemical data and store results.
         This method is a wrapper for processing both XRD and electrochemical data and the log data.
         """
-        xrd_folder_name = Path(self.data.get("xrd_folder_name"))
+        xrd_folder_name = self.data.get("xrd_folder_name")
         if not xrd_folder_name:
             raise ValueError("XRD folder name is required")
+        else:
+            xrd_folder_name = Path(xrd_folder_name)
 
-        time_series_folder_name = Path(self.data.get("time_series_folder_name"))
+        time_series_folder_name = self.data.get("time_series_folder_name")
         if not time_series_folder_name:
             raise ValueError("Log or echem folder name is required")
+        else:
+            time_series_folder_name = Path(time_series_folder_name)
 
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
@@ -213,8 +217,18 @@ class XRDInsituBlock(GenericInSituBlock):
 
         if self.data.get("time_series_source") == "log":
             required_folders = ["xrd_folder_name", "time_series_folder_name"]
+            # If there is an incorrect number of folders, raise an error
+            if len(folders) < len(required_folders):
+                raise RuntimeError(
+                    f"Incorrect zip format detected: found {len(folders)} folders in the provided zip file. Expected a zip file with {len(required_folders)} folders: an xrd folder and a log folder. For more information see https://datalab-app-plugin-insitu.readthedocs.io/en/latest/"
+                )
         elif self.data.get("time_series_source") == "echem":
             required_folders = ["xrd_folder_name", "time_series_folder_name", "echem_folder_name"]
+            # If there is an incorrect number of folders, raise an error
+            if len(folders) < len(required_folders):
+                raise RuntimeError(
+                    f"Incorrect zip format detected: found {len(folders)} folders in the provided zip file. Expected a zip file with {len(required_folders)} folders: an xrd folder, an echem folder, and a log folder. For more information see https://datalab-app-plugin-insitu.readthedocs.io/en/latest/"
+                )
         else:
             raise ValueError(
                 "time_series_source must be set to either 'log' or 'echem' in the datablock data"
