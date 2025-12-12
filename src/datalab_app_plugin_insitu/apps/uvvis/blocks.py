@@ -22,6 +22,7 @@ class UVVisInsituBlock(GenericInSituBlock):
 
     blocktype = "insitu-uvvis"
     name = "UV-Vis insitu"
+    prefers_async = True
     description = __doc__
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
