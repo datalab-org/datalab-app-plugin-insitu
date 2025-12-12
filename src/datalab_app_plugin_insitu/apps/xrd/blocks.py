@@ -23,6 +23,7 @@ class XRDInsituBlock(GenericInSituBlock):
 
     blocktype = "insitu-xrd"
     name = "XRD insitu"
+    prefers_async = True
     description = __doc__
     accepted_file_extensions = (".zip",)
     available_folders: List[str] = []
@@ -99,7 +100,8 @@ class XRDInsituBlock(GenericInSituBlock):
 
         start_exp = int(self.data.get("start_exp", self.defaults["start_exp"]))
         exclude_exp = self.data.get("exclude_exp", self.defaults["exclude_exp"])
-        glob_str = self.data.get("glob_str")  # Optional: if None, all files are used
+        # Optional: if None, all files are used
+        glob_str = self.data.get("glob_str")
 
         # Auto-add wildcards if user doesn't include them
         if glob_str and "*" not in glob_str:
