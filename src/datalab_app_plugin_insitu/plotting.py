@@ -179,7 +179,6 @@ def prepare_xrd_plot_data(
             "min_y": 1,
             "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
         }
-        # For log mode, use spectra_intensities index (experiment numbers)
         heatmap_y_values = spectra_intensities.index
 
     elif time_series_source == "echem":
@@ -215,6 +214,7 @@ def prepare_xrd_plot_data(
         "time_series_data": time_series_data,
         "file_num_index": file_num_index,
         "index_df": index_df,
+        "sample_granularity": sample_granularity,
     }
 
 
@@ -342,6 +342,7 @@ def _create_heatmap_figure(
     # Add waterfall overlay of actual pattern lines at their true y-positions
     heatmap_y_values = plot_data["heatmap y_values"]
     spectra = plot_data["spectra_intensities"]  # list of lists: raw pattern data
+    sample_granularity = plot_data.get("sample_granularity", 1) or 1
     n_patterns = len(spectra)
     if n_patterns > 0:
         y_span = heatmap_y_range["max_y"] - heatmap_y_range["min_y"]
@@ -361,7 +362,7 @@ def _create_heatmap_figure(
 
         xs = []
         ys = []
-        for i in range(n_patterns):
+        for i in range(0, n_patterns, sample_granularity):
             row = np.array(spectra[i])
             if spec_max != spec_min:
                 normalized = (row - spec_min) / (spec_max - spec_min)
