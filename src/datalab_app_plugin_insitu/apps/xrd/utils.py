@@ -1,5 +1,6 @@
 import re
 import tempfile
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -184,14 +185,23 @@ def process_local_xrd_data(
 
                 df_echem = xrd_data["Time_series_data"]["data"]
 
-                # Rename timestamp column to echem_timestamp
+                log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
+                log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
+
                 # Note: Timestamp column is already standardized in process_echem_data()
                 # Note: elapsed_time_seconds and elapsed_time_hours are already calculated in process_echem_data()
+                if "Timestamp" not in df_echem.columns:
+                    warnings.warn(
+                        "No absolute timestamp found in echem data, aligning start of echem to start of XRD."
+                    )
+                    echem_start_time = log_data["xrd_timestamp"].min()
+                    df_echem["Timestamp"] = echem_start_time + pd.to_timedelta(
+                        df_echem["time/s"], unit="s"
+                    )
+
                 df_echem["Timestamp"] = pd.to_datetime(df_echem["Timestamp"])
                 df_echem = df_echem.rename(columns={"Timestamp": "echem_timestamp"})
 
-                log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
-                log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
                 df_merged = pd.merge_asof(
                     log_data,
                     df_echem,
