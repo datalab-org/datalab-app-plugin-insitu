@@ -82,8 +82,11 @@ def process_local_xrd_data(
             if not all([xrd_path, log_path]):
                 raise ValueError("XRD folder and log folder must be specified.")
 
-            assert isinstance(xrd_path, Path), "xrd_path must be a Path object"
-            assert isinstance(log_path, Path), "log_path must be a Path object"
+            if not isinstance(xrd_path, Path):
+                raise RuntimeError("xrd_path must be a Path object")
+
+            if not isinstance(log_path, Path):
+                raise RuntimeError("log_path must be a Path object")
 
             # If echem mode perform the same checks for folder existing etc.
             if time_series_source == "echem":
@@ -92,7 +95,10 @@ def process_local_xrd_data(
                         "Echem folder name must be specified when using echem as time series source."
                     )
                 echem_path = _find_folder_path(base_path, echem_folder_name)
-                assert isinstance(echem_path, Path), "echem_path must be a Path object"
+
+                if not isinstance(echem_path, Path):
+                    raise RuntimeError("echem_path must be a Path object")
+
                 if not echem_path.exists():
                     raise FileNotFoundError(f"Echem folder not found: {echem_path}")
 
