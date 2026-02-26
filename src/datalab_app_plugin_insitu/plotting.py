@@ -215,6 +215,7 @@ def prepare_xrd_plot_data(
         "file_num_index": file_num_index,
         "index_df": index_df,
         "sample_granularity": sample_granularity,
+        "enable_waterfall": time_series_source != "log",
     }
 
 
@@ -344,7 +345,8 @@ def _create_heatmap_figure(
     spectra = plot_data["spectra_intensities"]  # list of lists: raw pattern data
     sample_granularity = plot_data.get("sample_granularity", 1) or 1
     n_patterns = len(spectra)
-    if n_patterns > 0:
+    enable_waterfall = plot_data.get("enable_waterfall", True)
+    if enable_waterfall and n_patterns > 0:
         y_span = heatmap_y_range["max_y"] - heatmap_y_range["min_y"]
         # Scale each normalized pattern to a fraction of the average y-spacing
         scale = y_span / n_patterns * 100.0
