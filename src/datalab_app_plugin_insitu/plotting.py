@@ -349,11 +349,10 @@ def _create_heatmap_figure(
     if enable_waterfall and n_patterns > 0:
         y_span = heatmap_y_range["max_y"] - heatmap_y_range["min_y"]
         # Scale each normalized pattern to a fraction of the average y-spacing
-        scale = y_span / n_patterns * 100.0
+        scale = 100 * y_span / n_patterns
 
         # Compute global min/max across all raw spectra for normalisation
         all_spectra = np.array(spectra)
-        spec_min = np.min(all_spectra)
         spec_max = np.max(all_spectra)
 
         x_list = (
@@ -366,10 +365,11 @@ def _create_heatmap_figure(
         ys = []
         for i in range(0, n_patterns, sample_granularity):
             row = np.array(spectra[i])
-            if spec_max != spec_min:
-                normalized = (row - spec_min) / (spec_max - spec_min)
+            if spec_max > 0:
+                normalized = row / spec_max
             else:
                 normalized = np.zeros_like(row)
+
             y_base = float(
                 heatmap_y_values.iloc[i]
                 if hasattr(heatmap_y_values, "iloc")
@@ -385,7 +385,7 @@ def _create_heatmap_figure(
             ys="ys",
             source=waterfall_source,
             line_color="black",
-            line_width=0.5,
+            line_width=1,
             line_alpha=0.6,
             level="glyph",
             visible=False,
