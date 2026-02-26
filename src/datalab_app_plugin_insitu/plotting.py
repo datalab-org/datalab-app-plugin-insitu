@@ -111,20 +111,31 @@ def prepare_uvvis_plot_data(
     # Clip to valid experiment numbers (1 to exp_count)
     exp_numbers = np.clip(exp_numbers, 1, exp_count)
 
+    # Convert time from seconds to hours
+    time_h = time / 3600.0
+
     echem_data = {
         "Voltage": echem_data["Voltage"].values,
-        "time": echem_data["time"].values,
+        "time": time_h,
         "exp_num": exp_numbers,
     }
 
+    time_range_h = {
+        "min_y": metadata["time_range"]["min_y"] / 3600.0,
+        "max_y": metadata["time_range"]["max_y"] / 3600.0,
+    }
+
+    # Convert heatmap y_values (spectra times) to hours
+    heatmap_y_values_h = intensity_matrix.index / 3600.0
+
     return {
         "heatmap x_values": wavelength,  # ppm_values
-        "heatmap y_values": intensity_matrix.index,  # not in ben Cs code
+        "heatmap y_values": heatmap_y_values_h,
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
-        "y_range": metadata["time_range"],
-        "heatmap_y_range": metadata["time_range"],  # For UVVis, heatmap uses same range as data
+        "y_range": time_range_h,
+        "heatmap_y_range": time_range_h,  # For UVVis, heatmap uses same range as data
         "first_spectrum_intensities": first_spectrum_intensities,
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
@@ -169,23 +180,23 @@ def prepare_xrd_plot_data(
         heatmap_y_values = spectra_intensities.index
 
     elif time_series_source == "echem":
+        # Convert time from seconds to hours
+        time_h = time_series_data["time"].values / 3600.0
         time_series_data = {
             "Voltage": time_series_data["Voltage"].values,
-            "time": time_series_data["time"].values,
+            "time": time_h,
             "scan_number": time_series_data["scan_number"],
             "exp_num": time_series_data["exp_num"],
         }
 
-        y_range = {"min_y": time_series_data["time"].min(), "max_y": time_series_data["time"].max()}
+        y_range = {"min_y": time_h.min(), "max_y": time_h.max()}
 
         # For echem mode, use actual times from index_df for heatmap y-axis
-        # Similar to how UVVis uses spectra_intensities.index
         heatmap_y_range = {
-            "min_y": index_df["Time"].min(),
-            "max_y": index_df["Time"].max(),
+            "min_y": index_df["Time"].min() / 3600.0,
+            "max_y": index_df["Time"].max() / 3600.0,
         }
-        # For echem mode, use actual times from index_df, similar to UVVis
-        heatmap_y_values = index_df["Time"].values
+        heatmap_y_values = index_df["Time"].values / 3600.0
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
@@ -458,7 +469,7 @@ def _create_echem_figure(
             hover_tool = HoverTool(
                 tooltips=[
                     ("Exp. #", "@exp_num{0}"),
-                    ("Time (s)", "@y{0.00}"),
+                    ("Time (h)", "@y{0.00}"),
                     ("Voltage (V)", "@x{0.000}"),
                     ("Scan #", "@scan_number{0}"),
                 ],
@@ -480,7 +491,7 @@ def _create_echem_figure(
             hover_tool = HoverTool(
                 tooltips=[
                     ("Exp. #", "@exp_num{0}"),
-                    ("Time (s)", "@y{0.00}"),
+                    ("Time (h)", "@y{0.00}"),
                     ("Voltage (V)", "@x{0.000}"),
                 ],
                 mode="hline",
