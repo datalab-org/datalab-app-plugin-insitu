@@ -2,6 +2,8 @@ from pathlib import Path
 
 from datalab_api.utils import bokeh_from_json
 
+from datalab_app_plugin_insitu._version import __version__
+
 
 def test_block_temperature_mode(pytestconfig):
     from datalab_app_plugin_insitu.apps.xrd.blocks import XRDInsituBlock
@@ -10,6 +12,7 @@ def test_block_temperature_mode(pytestconfig):
         Path(__file__).parent.parent / "example_data" / "xrd" / "Example_in_situ_XRD_data.zip"
     )
     block = XRDInsituBlock(item_id="test-xrd-insitu")
+    assert block.version == __version__
     block.data["time_series_source"] = "log"
     block.data["xrd_folder_name"] = "43_up"
     block.data["time_series_folder_name"] = "log"
