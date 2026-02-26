@@ -181,11 +181,11 @@ def prepare_xrd_plot_data(
         # For echem mode, use actual times from index_df for heatmap y-axis
         # Similar to how UVVis uses spectra_intensities.index
         heatmap_y_range = {
-            "min_y": index_df["time"].min(),
-            "max_y": index_df["time"].max(),
+            "min_y": index_df["Time"].min(),
+            "max_y": index_df["Time"].max(),
         }
         # For echem mode, use actual times from index_df, similar to UVVis
-        heatmap_y_values = index_df["time"].values
+        heatmap_y_values = index_df["Time"].values
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
