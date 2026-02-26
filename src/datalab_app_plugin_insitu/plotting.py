@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 from bokeh.events import DoubleTap
-from bokeh.layouts import gridplot
+from bokeh.layouts import column, gridplot
 from bokeh.models import (
     ColorBar,
     ColumnDataSource,
@@ -14,6 +14,7 @@ from bokeh.models import (
     LinearColorMapper,
     Range1d,
     TapTool,
+    Toggle,
 )
 from bokeh.plotting import figure
 
@@ -39,7 +40,7 @@ def create_linked_insitu_plots(
         x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
-    uvvisplot_figure = _create_top_line_figure(
+    signal_figure = _create_top_line_figure(
         plot_data,
         shared_ranges,
         line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"),
@@ -54,20 +55,22 @@ def create_linked_insitu_plots(
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
     )
-    uvvisplot_figure.js_on_event(
-        DoubleTap, CustomJS(args=dict(p=uvvisplot_figure), code="p.reset.emit()")
+    signal_figure.js_on_event(
+        DoubleTap, CustomJS(args=dict(p=signal_figure), code="p.reset.emit()")
     )
     echemplot_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=echemplot_figure), code="p.reset.emit()")
     )
 
     if link_plots:
-        _link_plots(
-            heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict
-        )
+        _link_plots(heatmap_figure, signal_figure, echemplot_figure, plot_data, plotting_label_dict)
 
-    grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
+    grid = [[None, signal_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
+
+    toggle = plot_data.get("_waterfall_toggle")
+    if toggle:
+        return column(toggle, gp)
 
     return gp
 
@@ -283,7 +286,7 @@ def _create_heatmap_figure(
 
     color_mapper = LinearColorMapper(palette="Viridis256", low=intensity_min, high=intensity_max)
 
-    heatmap_figure.image(
+    heatmap_renderer = heatmap_figure.image(
         image=[intensity_matrix],
         x=min(heatmap_x_values),
         y=heatmap_y_range["min_y"],
@@ -335,6 +338,74 @@ def _create_heatmap_figure(
         heatmap_figure.add_tools(hover_tool)
 
         plot_data["heatmap_source"] = source
+
+    # Add waterfall overlay of actual pattern lines at their true y-positions
+    heatmap_y_values = plot_data["heatmap y_values"]
+    spectra = plot_data["spectra_intensities"]  # list of lists: raw pattern data
+    n_patterns = len(spectra)
+    if n_patterns > 0:
+        y_span = heatmap_y_range["max_y"] - heatmap_y_range["min_y"]
+        # Scale each normalized pattern to a fraction of the average y-spacing
+        scale = y_span / n_patterns * 100.0
+
+        # Compute global min/max across all raw spectra for normalisation
+        all_spectra = np.array(spectra)
+        spec_min = np.min(all_spectra)
+        spec_max = np.max(all_spectra)
+
+        x_list = (
+            heatmap_x_values.tolist()
+            if hasattr(heatmap_x_values, "tolist")
+            else list(heatmap_x_values)
+        )
+
+        xs = []
+        ys = []
+        for i in range(n_patterns):
+            row = np.array(spectra[i])
+            if spec_max != spec_min:
+                normalized = (row - spec_min) / (spec_max - spec_min)
+            else:
+                normalized = np.zeros_like(row)
+            y_base = float(
+                heatmap_y_values.iloc[i]
+                if hasattr(heatmap_y_values, "iloc")
+                else heatmap_y_values[i]
+            )
+            y_line = y_base + normalized * scale
+            xs.append(x_list)
+            ys.append(y_line.tolist())
+
+        waterfall_source = ColumnDataSource(data={"xs": xs, "ys": ys})
+        waterfall_renderer = heatmap_figure.multi_line(
+            xs="xs",
+            ys="ys",
+            source=waterfall_source,
+            line_color="black",
+            line_width=0.5,
+            line_alpha=0.6,
+            level="glyph",
+            visible=False,
+        )
+
+        # Toggle to switch between heatmap and waterfall views
+        toggle = Toggle(label="Show waterfall", active=False, width=150)
+        toggle.js_on_change(
+            "active",
+            CustomJS(
+                args=dict(
+                    heatmap=heatmap_renderer,
+                    waterfall=waterfall_renderer,
+                    toggle=toggle,
+                ),
+                code="""
+                    heatmap.visible = !toggle.active;
+                    waterfall.visible = toggle.active;
+                    toggle.label = toggle.active ? "Show heatmap" : "Show waterfall";
+                """,
+            ),
+        )
+        plot_data["_waterfall_toggle"] = toggle
 
     heatmap_figure.grid.grid_line_width = 0
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12)
