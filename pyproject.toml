@@ -36,10 +36,9 @@ dependencies = [
     "scipy>=1.14.1",
     "nmrglue>=0.11",
     "navani>=0.1.11",
-    "datalab-server >= 0.5.3",
 ]
 [project.optional-dependencies]
-local = ["datalab-api ~= 0.3"]
+local = ["datalab-api ~= 0.3", "datalab-server[apps] >= 0.6"]
 
 [project.urls]
 homepage = "https://datalab-org.github.io/datalab-app-plugin-insitu/"
