@@ -6,11 +6,30 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from pydantic import Field, validator
 from pydatalab.blocks.base import DataBlock
+from pydatalab.models.blocks import DataBlockResponse
 
-from datalab_app_plugin_insitu._version import __version__
+from datalab_app_plugin_insitu._version import __version__ as __plugin_version__
 
 __all__ = ("GenericInSituBlock",)
+
+
+class InsituBlockResponse(DataBlockResponse):
+    """Response model extensions for the in situ data block operations."""
+
+    processed: dict | None = Field(
+        datalab_exclude_from_db=True,
+        datalab_exclude_from_load=True,
+        datalab_exclude_from_response=True,
+    )
+
+    @validator("processed", pre=True, always=True)
+    def set_processed_default(cls, v):
+        """Always null this field on load and response, as it's meant to be used only in-memory.
+
+        This is a bit of a temporary hack to allow testing of processed data."""
+        return {}
 
 
 class GenericInSituBlock(DataBlock, ABC):
@@ -19,12 +38,13 @@ class GenericInSituBlock(DataBlock, ABC):
     Manages data loading, processing, parameter handling, and plotting.
     """
 
+    block_db_model = InsituBlockResponse
     blocktype: str = "generic-insitu"
     name: str = "Generic Data Block"
     description: str = "A base class for in-situ data processing blocks."
     accepted_file_extensions: Tuple[str, ...] = (".zip",)
     defaults: Dict[str, Any] = {}
-    version: str = __version__
+    version: str = __plugin_version__
 
     @abstractmethod
     def _plot_function(self, file_path: str | Path | None = None, link_plots: bool = False):

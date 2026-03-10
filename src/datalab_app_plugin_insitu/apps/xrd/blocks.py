@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import List
 
@@ -51,11 +52,11 @@ class XRDInsituBlock(GenericInSituBlock):
         elif self.data["time_series_source"] == "echem":
             return {
                 "x_axis_label": "2θ (°)",
-                "time_series_y_axis_label": "Time (s)",
+                "time_series_y_axis_label": "Time (h)",
                 "line_y_axis_label": "Intensity",
                 "time_series_x_axis_label": "Voltage (V)",
                 "label_source": {
-                    "label_template": "File # {scan_number}, Exp. # {exp_num}, t = {time} s, V = {voltage} V",
+                    "label_template": "File # {scan_number}, Exp. # {exp_num}, t = {time} h, V = {voltage} V",
                     "label_field_map": {
                         "exp_num": "exp_num",
                         "time": "time",
@@ -87,13 +88,15 @@ class XRDInsituBlock(GenericInSituBlock):
         """
         xrd_folder_name = self.data.get("xrd_folder_name")
         if not xrd_folder_name:
-            raise ValueError("XRD folder name is required")
+            warnings.warn("XRD folder name is required")
+            return None
         else:
             xrd_folder_name = Path(xrd_folder_name)
 
         time_series_folder_name = self.data.get("time_series_folder_name")
         if not time_series_folder_name:
-            raise ValueError("Log or echem folder name is required")
+            warnings.warn("Log or echem folder name is required")
+            return None
         else:
             time_series_folder_name = Path(time_series_folder_name)
 
@@ -146,8 +149,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 method="max_pooling",
             )
 
-            # Spectrai intensities is what the line plot uses - therefore keep every sample but reduce data length
-            # TODO (ben smith) discuss is this best approach?
+            # Spectra intensities is what the line plot uses - therefore keep every sample but reduce data length
             data["spectra_intensities"] = self.subsample_data(
                 data["2D_data"],
                 sample_granularity=1,
@@ -173,8 +175,6 @@ class XRDInsituBlock(GenericInSituBlock):
 
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Folder not found: {str(e)}")
-        except Exception as e:
-            raise RuntimeError(f"Error processing data: {str(e)}")
 
         return data
 
@@ -191,9 +191,10 @@ class XRDInsituBlock(GenericInSituBlock):
 
         """
         if self.data.get("time_series_source") not in ("log", "echem"):
-            raise ValueError(
+            warnings.warn(
                 "time_series_source must be set to either 'log' or 'echem' in the datablock data"
             )
+            return None
         if not file_path:
             if "file_id" not in self.data:
                 return
@@ -239,6 +240,10 @@ class XRDInsituBlock(GenericInSituBlock):
                 return
 
         data = self.process_and_store_data(file_path)
+        if not data:
+            return None
+
+        self.data["processed"] = data
 
         plot_data = prepare_xrd_plot_data(
             intensity_matrix=data["intensity_matrix"],

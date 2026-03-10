@@ -1,12 +1,12 @@
 import re
 import tempfile
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.echem_utils import process_echem_data
@@ -81,8 +81,11 @@ def process_local_xrd_data(
             if not all([xrd_path, log_path]):
                 raise ValueError("XRD folder and log folder must be specified.")
 
-            assert isinstance(xrd_path, Path), "xrd_path must be a Path object"
-            assert isinstance(log_path, Path), "log_path must be a Path object"
+            if not isinstance(xrd_path, Path):
+                raise RuntimeError("xrd_path must be a Path object")
+
+            if not isinstance(log_path, Path):
+                raise RuntimeError("log_path must be a Path object")
 
             # If echem mode perform the same checks for folder existing etc.
             if time_series_source == "echem":
@@ -91,7 +94,10 @@ def process_local_xrd_data(
                         "Echem folder name must be specified when using echem as time series source."
                     )
                 echem_path = _find_folder_path(base_path, echem_folder_name)
-                assert isinstance(echem_path, Path), "echem_path must be a Path object"
+
+                if not isinstance(echem_path, Path):
+                    raise RuntimeError("echem_path must be a Path object")
+
                 if not echem_path.exists():
                     raise FileNotFoundError(f"Echem folder not found: {echem_path}")
 
@@ -184,14 +190,23 @@ def process_local_xrd_data(
 
                 df_echem = xrd_data["Time_series_data"]["data"]
 
-                # Rename timestamp column to echem_timestamp
+                log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
+                log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
+
                 # Note: Timestamp column is already standardized in process_echem_data()
                 # Note: elapsed_time_seconds and elapsed_time_hours are already calculated in process_echem_data()
+                if "Timestamp" not in df_echem.columns:
+                    warnings.warn(
+                        "No absolute timestamp found in echem data, aligning start of echem to start of XRD."
+                    )
+                    echem_start_time = log_data["xrd_timestamp"].min()
+                    df_echem["Timestamp"] = echem_start_time + pd.to_timedelta(
+                        df_echem["time/s"], unit="s"
+                    )
+
                 df_echem["Timestamp"] = pd.to_datetime(df_echem["Timestamp"])
                 df_echem = df_echem.rename(columns={"Timestamp": "echem_timestamp"})
 
-                log_data.rename(columns={"start_time": "xrd_timestamp"}, inplace=True)
-                log_data["xrd_timestamp"] = pd.to_datetime(log_data["xrd_timestamp"])
                 df_merged = pd.merge_asof(
                     log_data,
                     df_echem,
@@ -286,25 +301,21 @@ def process_xrd_data(
     all_patterns = pd.DataFrame(index=file_list, columns=two_theta)
 
     for file in file_list:
-        try:
-            pattern = XRDBlock.load_pattern(file)
-            if pattern is not None:
-                # Some files seem to be missing one or two two theta values - this will raise a warning when this happens but deal with the missing data in a reasonable fashion by interpolating and putting zeros for when the range is out of bounds
-                intensity_values = pattern[0]["intensity"].values
-                new_two_theta_values = pattern[0]["2θ (°)"].values
-                if set(new_two_theta_values) != set(two_theta):
-                    missing_values = set(two_theta) - set(new_two_theta_values)
-                    LOGGER.warning(
-                        f"Inconsistent 2θ values found in file {file}: {missing_values}."
-                    )
-                    interpolator = interp1d(
-                        new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
-                    )
-                    all_patterns.loc[file, two_theta] = interpolator(two_theta)
-                else:
-                    all_patterns.loc[file, two_theta] = intensity_values
-        except Exception as e:
-            print(f"Error processing file {file}: {e}")
+        pattern = XRDBlock.load_pattern(file)
+        if pattern is not None:
+            # Some files seem to be missing one or two two theta values - this will raise a warning when this happens but deal with the missing data in a reasonable fashion by interpolating and putting zeros for when the range is out of bounds
+            intensity_values = pattern[0]["intensity"].values
+            new_two_theta_values = pattern[0]["2θ (°)"].values
+            if set(new_two_theta_values) != set(two_theta):
+                warnings.warn(
+                    f"Inconsistent 2θ values found in file {file}; interpolated missing values."
+                )
+                interpolator = interp1d(
+                    new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
+                )
+                all_patterns.loc[file, two_theta] = interpolator(two_theta)
+            else:
+                all_patterns.loc[file, two_theta] = intensity_values
 
     # Sort the dataframe based on the scan_number extracted from the filename of the format: 1058063-mythen_summed.dat
     # TODO make this more robust to different file naming conventions

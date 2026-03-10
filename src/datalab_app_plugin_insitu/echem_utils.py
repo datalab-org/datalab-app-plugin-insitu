@@ -40,6 +40,9 @@ def process_echem_data(echem_folder: Path) -> Dict:
     # Rename timestamp column to a consistent name
     if "Timestamp" in echem_data.columns:
         timestamp_col = "Timestamp"
+    elif "timestamp" in echem_data.columns:
+        timestamp_col = "Timestamp"
+        echem_data = echem_data.rename(columns={"timestamp": "Timestamp"})
     elif "Date_Time" in echem_data.columns:
         echem_data = echem_data.rename(columns={"Date_Time": "Timestamp"})
         timestamp_col = "Timestamp"

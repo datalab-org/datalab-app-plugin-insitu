@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 from bokeh.events import DoubleTap
-from bokeh.layouts import gridplot
+from bokeh.layouts import column, gridplot
 from bokeh.models import (
     ColorBar,
     ColumnDataSource,
@@ -14,6 +14,7 @@ from bokeh.models import (
     LinearColorMapper,
     Range1d,
     TapTool,
+    Toggle,
 )
 from bokeh.plotting import figure
 
@@ -39,7 +40,7 @@ def create_linked_insitu_plots(
         x_axis_label=plotting_label_dict.get("x_axis_label", "Wavelength (nm)"),
         time_series_y_axis_label=plotting_label_dict.get("time_series_y_axis_label", "Time (h)"),
     )
-    uvvisplot_figure = _create_top_line_figure(
+    signal_figure = _create_top_line_figure(
         plot_data,
         shared_ranges,
         line_y_axis_label=plotting_label_dict.get("line_y_axis_label", "Intensity (a.u.)"),
@@ -54,20 +55,22 @@ def create_linked_insitu_plots(
     heatmap_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=heatmap_figure), code="p.reset.emit()")
     )
-    uvvisplot_figure.js_on_event(
-        DoubleTap, CustomJS(args=dict(p=uvvisplot_figure), code="p.reset.emit()")
+    signal_figure.js_on_event(
+        DoubleTap, CustomJS(args=dict(p=signal_figure), code="p.reset.emit()")
     )
     echemplot_figure.js_on_event(
         DoubleTap, CustomJS(args=dict(p=echemplot_figure), code="p.reset.emit()")
     )
 
     if link_plots:
-        _link_plots(
-            heatmap_figure, uvvisplot_figure, echemplot_figure, plot_data, plotting_label_dict
-        )
+        _link_plots(heatmap_figure, signal_figure, echemplot_figure, plot_data, plotting_label_dict)
 
-    grid = [[None, uvvisplot_figure], [echemplot_figure, heatmap_figure]]
+    grid = [[None, signal_figure], [echemplot_figure, heatmap_figure]]
     gp = gridplot(grid, merge_tools=True)
+
+    toggle = plot_data.get("_waterfall_toggle")
+    if toggle:
+        return column(toggle, gp)
 
     return gp
 
@@ -111,20 +114,31 @@ def prepare_uvvis_plot_data(
     # Clip to valid experiment numbers (1 to exp_count)
     exp_numbers = np.clip(exp_numbers, 1, exp_count)
 
+    # Convert time from seconds to hours
+    time_h = time / 3600.0
+
     echem_data = {
         "Voltage": echem_data["Voltage"].values,
-        "time": echem_data["time"].values,
+        "time": time_h,
         "exp_num": exp_numbers,
     }
 
+    time_range_h = {
+        "min_y": metadata["time_range"]["min_y"] / 3600.0,
+        "max_y": metadata["time_range"]["max_y"] / 3600.0,
+    }
+
+    # Convert heatmap y_values (spectra times) to hours
+    heatmap_y_values_h = intensity_matrix.index / 3600.0
+
     return {
         "heatmap x_values": wavelength,  # ppm_values
-        "heatmap y_values": intensity_matrix.index,  # not in ben Cs code
+        "heatmap y_values": heatmap_y_values_h,
         "num_experiments": metadata["num_experiments"],
         "spectra_intensities": spectra_intensities,
         "intensity_matrix": twoD_matrix,
-        "y_range": metadata["time_range"],
-        "heatmap_y_range": metadata["time_range"],  # For UVVis, heatmap uses same range as data
+        "y_range": time_range_h,
+        "heatmap_y_range": time_range_h,  # For UVVis, heatmap uses same range as data
         "first_spectrum_intensities": first_spectrum_intensities,
         "intensity_min": intensity_min,
         "intensity_max": intensity_max,
@@ -165,27 +179,26 @@ def prepare_xrd_plot_data(
             "min_y": 1,
             "max_y": np.arange(1, len(spectra_intensities) + 1).max(),
         }
-        # For log mode, use spectra_intensities index (experiment numbers)
         heatmap_y_values = spectra_intensities.index
 
     elif time_series_source == "echem":
+        # Convert time from seconds to hours
+        time_h = time_series_data["time"].values / 3600.0
         time_series_data = {
             "Voltage": time_series_data["Voltage"].values,
-            "time": time_series_data["time"].values,
+            "time": time_h,
             "scan_number": time_series_data["scan_number"],
             "exp_num": time_series_data["exp_num"],
         }
 
-        y_range = {"min_y": time_series_data["time"].min(), "max_y": time_series_data["time"].max()}
+        y_range = {"min_y": time_h.min(), "max_y": time_h.max()}
 
         # For echem mode, use actual times from index_df for heatmap y-axis
-        # Similar to how UVVis uses spectra_intensities.index
         heatmap_y_range = {
-            "min_y": index_df["time"].min(),
-            "max_y": index_df["time"].max(),
+            "min_y": index_df["Time"].min() / 3600.0,
+            "max_y": index_df["Time"].max() / 3600.0,
         }
-        # For echem mode, use actual times from index_df, similar to UVVis
-        heatmap_y_values = index_df["time"].values
+        heatmap_y_values = index_df["Time"].values / 3600.0
 
     return {
         "heatmap x_values": heatmap_x_values,  # ppm_values
@@ -201,6 +214,8 @@ def prepare_xrd_plot_data(
         "time_series_data": time_series_data,
         "file_num_index": file_num_index,
         "index_df": index_df,
+        "sample_granularity": sample_granularity,
+        "enable_waterfall": time_series_source != "log",
     }
 
 
@@ -272,7 +287,7 @@ def _create_heatmap_figure(
 
     color_mapper = LinearColorMapper(palette="Viridis256", low=intensity_min, high=intensity_max)
 
-    heatmap_figure.image(
+    heatmap_renderer = heatmap_figure.image(
         image=[intensity_matrix],
         x=min(heatmap_x_values),
         y=heatmap_y_range["min_y"],
@@ -324,6 +339,76 @@ def _create_heatmap_figure(
         heatmap_figure.add_tools(hover_tool)
 
         plot_data["heatmap_source"] = source
+
+    # Add waterfall overlay of actual pattern lines at their true y-positions
+    heatmap_y_values = plot_data["heatmap y_values"]
+    spectra = plot_data["spectra_intensities"]  # list of lists: raw pattern data
+    sample_granularity = plot_data.get("sample_granularity", 1) or 1
+    n_patterns = len(spectra)
+    enable_waterfall = plot_data.get("enable_waterfall", True)
+    if enable_waterfall and n_patterns > 0:
+        y_span = heatmap_y_range["max_y"] - heatmap_y_range["min_y"]
+        # Scale each normalized pattern to a fraction of the average y-spacing
+        scale = 100 * y_span / n_patterns
+
+        # Compute global min/max across all raw spectra for normalisation
+        all_spectra = np.array(spectra)
+        spec_max = np.max(all_spectra)
+
+        x_list = (
+            heatmap_x_values.tolist()
+            if hasattr(heatmap_x_values, "tolist")
+            else list(heatmap_x_values)
+        )
+
+        xs = []
+        ys = []
+        for i in range(0, n_patterns, sample_granularity):
+            row = np.array(spectra[i])
+            if spec_max > 0:
+                normalized = row / spec_max
+            else:
+                normalized = np.zeros_like(row)
+
+            y_base = float(
+                heatmap_y_values.iloc[i]
+                if hasattr(heatmap_y_values, "iloc")
+                else heatmap_y_values[i]
+            )
+            y_line = y_base + normalized * scale
+            xs.append(x_list)
+            ys.append(y_line.tolist())
+
+        waterfall_source = ColumnDataSource(data={"xs": xs, "ys": ys})
+        waterfall_renderer = heatmap_figure.multi_line(
+            xs="xs",
+            ys="ys",
+            source=waterfall_source,
+            line_color="black",
+            line_width=1,
+            line_alpha=0.6,
+            level="glyph",
+            visible=False,
+        )
+
+        # Toggle to switch between heatmap and waterfall views
+        toggle = Toggle(label="Show waterfall", active=False, width=150)
+        toggle.js_on_change(
+            "active",
+            CustomJS(
+                args=dict(
+                    heatmap=heatmap_renderer,
+                    waterfall=waterfall_renderer,
+                    toggle=toggle,
+                ),
+                code="""
+                    heatmap.visible = !toggle.active;
+                    waterfall.visible = toggle.active;
+                    toggle.label = toggle.active ? "Show heatmap" : "Show waterfall";
+                """,
+            ),
+        )
+        plot_data["_waterfall_toggle"] = toggle
 
     heatmap_figure.grid.grid_line_width = 0
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12)
@@ -458,7 +543,7 @@ def _create_echem_figure(
             hover_tool = HoverTool(
                 tooltips=[
                     ("Exp. #", "@exp_num{0}"),
-                    ("Time (s)", "@y{0.00}"),
+                    ("Time (h)", "@y{0.00}"),
                     ("Voltage (V)", "@x{0.000}"),
                     ("Scan #", "@scan_number{0}"),
                 ],
@@ -480,7 +565,7 @@ def _create_echem_figure(
             hover_tool = HoverTool(
                 tooltips=[
                     ("Exp. #", "@exp_num{0}"),
-                    ("Time (s)", "@y{0.00}"),
+                    ("Time (h)", "@y{0.00}"),
                     ("Voltage (V)", "@x{0.000}"),
                 ],
                 mode="hline",
