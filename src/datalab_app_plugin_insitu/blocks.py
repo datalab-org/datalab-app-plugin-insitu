@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pydantic import Field
+from pydantic import Field, validator
 from pydatalab.blocks.base import DataBlock
 from pydatalab.models.blocks import DataBlockResponse
 
@@ -21,7 +21,15 @@ class InsituBlockResponse(DataBlockResponse):
     processed: dict | None = Field(
         datalab_exclude_from_db=True,
         datalab_exclude_from_load=True,
+        datalab_exclude_from_response=True,
     )
+
+    @validator("processed", pre=True, always=True)
+    def set_processed_default(cls, v):
+        """Always null this field on load and response, as it's meant to be used only in-memory.
+
+        This is a bit of a temporary hack to allow testing of processed data."""
+        return {}
 
 
 class GenericInSituBlock(DataBlock, ABC):
