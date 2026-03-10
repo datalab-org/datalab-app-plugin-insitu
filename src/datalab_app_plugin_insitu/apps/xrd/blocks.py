@@ -149,11 +149,11 @@ class XRDInsituBlock(GenericInSituBlock):
                 method="max_pooling",
             )
 
-            # Spectrai intensities is what the line plot uses - therefore keep every sample but reduce data length
+            # Spectra intensities is what the line plot uses - therefore keep every sample but reduce data length
             data["spectra_intensities"] = self.subsample_data(
                 data["2D_data"],
                 sample_granularity=1,
-                data_granularity=1,
+                data_granularity=data_granularity,
                 method="max_pooling",
             )
 
