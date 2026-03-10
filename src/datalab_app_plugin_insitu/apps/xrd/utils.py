@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pydatalab.logger import LOGGER
 from scipy.interpolate import interp1d
 
 from datalab_app_plugin_insitu.echem_utils import process_echem_data
@@ -295,32 +294,28 @@ def process_xrd_data(
         pattern_msg = f"with pattern '{glob_str}'" if glob_str else ""
         raise FileNotFoundError(f"No XRD files found in {xrd_folder} {pattern_msg}".strip())
 
-    first_file = XRDBlock.load_pattern(file_list[0])
+    first_file = XRDBlock.load_pattern(file_list[0], debug=False)
     two_theta = first_file[0]["2θ (°)"].values
 
     # Initialize a DataFrame to store all patterns
     all_patterns = pd.DataFrame(index=file_list, columns=two_theta)
 
     for file in file_list:
-        try:
-            pattern = XRDBlock.load_pattern(file)
-            if pattern is not None:
-                # Some files seem to be missing one or two two theta values - this will raise a warning when this happens but deal with the missing data in a reasonable fashion by interpolating and putting zeros for when the range is out of bounds
-                intensity_values = pattern[0]["intensity"].values
-                new_two_theta_values = pattern[0]["2θ (°)"].values
-                if set(new_two_theta_values) != set(two_theta):
-                    missing_values = set(two_theta) - set(new_two_theta_values)
-                    LOGGER.warning(
-                        f"Inconsistent 2θ values found in file {file}: {missing_values}."
-                    )
-                    interpolator = interp1d(
-                        new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
-                    )
-                    all_patterns.loc[file, two_theta] = interpolator(two_theta)
-                else:
-                    all_patterns.loc[file, two_theta] = intensity_values
-        except Exception as e:
-            print(f"Error processing file {file}: {e}")
+        pattern = XRDBlock.load_pattern(file, debug=False)
+        if pattern is not None:
+            # Some files seem to be missing one or two two theta values - this will raise a warning when this happens but deal with the missing data in a reasonable fashion by interpolating and putting zeros for when the range is out of bounds
+            intensity_values = pattern[0]["intensity"].values
+            new_two_theta_values = pattern[0]["2θ (°)"].values
+            if set(new_two_theta_values) != set(two_theta):
+                warnings.warn(
+                    f"Inconsistent 2θ values found in file {file}; interpolated missing values."
+                )
+                interpolator = interp1d(
+                    new_two_theta_values, intensity_values, bounds_error=False, fill_value=0
+                )
+                all_patterns.loc[file, two_theta] = interpolator(two_theta)
+            else:
+                all_patterns.loc[file, two_theta] = intensity_values
 
     # Sort the dataframe based on the scan_number extracted from the filename of the format: 1058063-mythen_summed.dat
     # TODO make this more robust to different file naming conventions
