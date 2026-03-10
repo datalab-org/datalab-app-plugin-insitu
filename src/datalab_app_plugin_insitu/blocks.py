@@ -6,11 +6,22 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from pydantic import Field
 from pydatalab.blocks.base import DataBlock
+from pydatalab.models.blocks import DataBlockResponse
 
 from datalab_app_plugin_insitu._version import __version__ as __plugin_version__
 
 __all__ = ("GenericInSituBlock",)
+
+
+class InsituBlockResponse(DataBlockResponse):
+    """Response model extensions for the in situ data block operations."""
+
+    processed: dict | None = Field(
+        datalab_exclude_from_db=True,
+        datalab_exclude_from_load=True,
+    )
 
 
 class GenericInSituBlock(DataBlock, ABC):
@@ -19,6 +30,7 @@ class GenericInSituBlock(DataBlock, ABC):
     Manages data loading, processing, parameter handling, and plotting.
     """
 
+    block_db_model = InsituBlockResponse
     blocktype: str = "generic-insitu"
     name: str = "Generic Data Block"
     description: str = "A base class for in-situ data processing blocks."
