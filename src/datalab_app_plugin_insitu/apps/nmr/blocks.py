@@ -27,6 +27,7 @@ class InsituBlock(DataBlock):
 
     blocktype = "insitu-nmr"
     name = "NMR insitu"
+    _prefers_async = True
     description = __doc__
     version: str = __version__
 
