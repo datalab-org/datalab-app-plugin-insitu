@@ -27,7 +27,7 @@ class InsituBlock(DataBlock):
 
     blocktype = "insitu-nmr"
     name = "NMR insitu"
-    prefers_async = True
+    _prefers_async = True
     description = __doc__
     version: str = __version__
 
@@ -197,8 +197,7 @@ class InsituBlock(DataBlock):
 
         file_path = Path(file_path)
         extension: str = file_path.suffix.lower()
-        # type: ignore[union-attr]
-        if extension not in self.accepted_file_extensions:
+        if extension not in self.accepted_file_extensions:  # type: ignore[union-attr]
             raise ValueError(
                 f"Unsupported file extension (must be one of {self.accepted_file_extensions})"
             )
