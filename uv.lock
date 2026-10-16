@@ -874,12 +874,13 @@ dependencies = [
 [package.optional-dependencies]
 local = [
     { name = "datalab-api" },
+    { name = "datalab-server", extra = ["apps"] },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "datalab-api" },
-    { name = "datalab-server", extra = ["apps", "server"] },
+    { name = "datalab-server", extra = ["server"] },
     { name = "docstring-inheritance" },
     { name = "griffe-inherited-docstrings" },
     { name = "markdown-callouts" },
@@ -894,7 +895,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datalab-api", marker = "extra == 'local'", specifier = "~=0.6" },
+    { name = "datalab-api", marker = "extra == 'local'", specifier = "~=0.3" },
+    { name = "datalab-server", extras = ["apps"], marker = "extra == 'local'", specifier = ">=0.6" },
     { name = "lmfit", specifier = ">=1.3.2" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "navani", specifier = ">=0.1.16" },
@@ -908,7 +910,7 @@ provides-extras = ["local"]
 [package.metadata.requires-dev]
 dev = [
     { name = "datalab-api", specifier = "~=0.6" },
-    { name = "datalab-server", extras = ["apps", "server"], specifier = "~=0.7" },
+    { name = "datalab-server", extras = ["server"], specifier = "~=0.7" },
     { name = "docstring-inheritance", specifier = "~=2.2" },
     { name = "griffe-inherited-docstrings", specifier = "~=1.1" },
     { name = "markdown-callouts", specifier = "~=0.4" },
