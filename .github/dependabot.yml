@@ -1,0 +1,51 @@
+version: 2
+updates:
+- package-ecosystem: uv
+  directory: "/"
+  schedule:
+    interval: monthly
+    day: monday
+    time: "05:43"
+  target-branch: main
+  labels:
+  - dependency_updates
+  - Python
+  versioning-strategy: "increase-if-necessary"
+  # Major bumps of production deps fall outside these groups, so each
+  # gets its own PR; the limit is raised so they aren't starved out.
+  open-pull-requests-limit: 30
+  groups:
+    python-production:
+      applies-to: version-updates
+      dependency-type: production
+      update-types:
+        - minor
+        - patch
+    python-security:
+      applies-to: security-updates
+      patterns: ["*"]
+    python-development:
+      applies-to: version-updates
+      dependency-type: development
+      update-types:
+        - major
+        - minor
+        - patch
+  ignore:
+    - dependency-name: "bokeh"
+      versions: [ ">=3" ]
+# Updates GH actions versions as often as needed
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    day: monday
+    interval: monthly
+    time: "05:33"
+  target-branch: main
+  labels:
+  - dependency_updates
+  - CI
+  groups:
+    github-actions:
+      applies-to: version-updates
+      dependency-type: production

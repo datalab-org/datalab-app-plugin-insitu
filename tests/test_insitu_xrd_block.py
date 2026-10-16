@@ -130,11 +130,11 @@ def test_block_echem_mode(pytestconfig):
         two_theta_num_values_reduced,
     )
 
-    assert processed_data["index_df"].shape == (num_experiments, 24)
-    assert all(
-        k in list(processed_data["index_df"].columns)
-        for k in ["file_num", "exp_num", "Cycle", "xrd_timestamp"]
-    )
+    # Only check the columns this plugin relies on; the full set depends on the
+    # echem parser (navani) version, which may add extra columns
+    assert processed_data["index_df"].shape[0] == num_experiments
+    required_columns = {"file_num", "exp_num", "Cycle", "xrd_timestamp", "Time", "time", "voltage"}
+    assert required_columns <= set(processed_data["index_df"].columns)
     assert processed_data["intensity_matrix"].shape == (
         num_experiments,
         two_theta_num_values_reduced,
