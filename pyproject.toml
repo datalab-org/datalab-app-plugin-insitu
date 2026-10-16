@@ -8,15 +8,13 @@ authors = [
     { name = "datalab development team", email = "dev@datalab-org.io" },
 ]
 name = "datalab-app-plugin-insitu"
-description = "Datalab plugin for In Situ data, primarily NMR"
+description = "datalab plugin for in situ measurements, primarily XRD, NMR and UV-Vis"
 readme = "README.md"
 keywords = []
 license = { text = "MIT" }
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Development Status :: 5 - Production/Stable",
@@ -27,14 +25,14 @@ classifiers = [
     "Topic :: Other/Nonlisted Topic",
     "Topic :: Scientific/Engineering",
 ]
-requires-python = ">=3.10"
+requires-python = ">= 3.11"
 dependencies = [
-    "pandas>=2.2.3",
-    "numpy>=1.26.4,<2",
-    "matplotlib>=3.9.2",
-    "lmfit>=1.3.2",
-    "scipy>=1.14.1",
-    "nmrglue>=0.11",
+    "pandas >= 2.2.3",
+    "numpy >= 1.26.4, < 2",
+    "matplotlib >= 3.9.2",
+    "lmfit >= 1.3.2",
+    "scipy >= 1.14.1",
+    "nmrglue >= 0.11",
     "navani >= 0.1.16",
 ]
 [project.optional-dependencies]
@@ -69,7 +67,7 @@ follow_imports = "skip"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "Q"]
@@ -92,8 +90,8 @@ dev-dependencies = [
     "griffe-inherited-docstrings ~= 1.1",
     "mkdocs-awesome-pages-plugin ~= 2.9",
     "markdown-callouts ~= 0.4",
-    "datalab-server[server] > 0.5.3",
-    "datalab-api ~= 0.3",
+    "datalab-server[server] ~= 0.7",
+    "datalab-api ~= 0.6",
 ]
 
 [tool.pytest.ini_options]
