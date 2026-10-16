@@ -109,6 +109,9 @@ class XRDInsituBlock(GenericInSituBlock):
         if glob_str and "*" not in glob_str:
             glob_str = f"*{glob_str}*"
 
+        # Optional: regex to extract scan numbers from filenames; if None, detected automatically
+        scan_number_pattern = self.data.get("scan_number_pattern") or None
+
         try:
             data = process_local_xrd_data(
                 file_path=file_path,
@@ -119,6 +122,7 @@ class XRDInsituBlock(GenericInSituBlock):
                 time_series_source=self.data["time_series_source"],
                 echem_folder_name=self.data.get("echem_folder_name"),
                 glob_str=glob_str,
+                scan_number_pattern=scan_number_pattern,
             )
 
             num_samples, data_length = data["2D_data"].shape
