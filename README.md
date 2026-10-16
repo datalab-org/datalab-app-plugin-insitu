@@ -138,7 +138,7 @@ data_folder.zip/
 
 ```
 
-where the `<xrd folder>` contains the XRD scans (named as `0000-scan.dat`, `0001-scan.dat`, etc.), and the `<log folder>` contains a time series log file in CSV format, mapping scan number to the time series data, e.g. for the Temperature mode:
+where the `<xrd folder>` contains the XRD scans, each with a scan number in its filename (e.g., `0000-scan.dat`, `0001-scan.dat`, `scan_1.xy`, `1058063-mythen_summed.dat`; any amount of zero-padding, or none, is accepted). The scan number is detected automatically as the run of digits that is unique to each file, ignoring digits shared between files (e.g., the `3` in `1355639_summed_mythen3.xye`) and those in the file extension. If this detection picks the wrong number, the `scan_number_pattern` parameter can be used instead (see below). The `<log folder>` contains the `<log folder>` contains a time series log file in CSV format, mapping scan number to the time series data, e.g. for the Temperature mode:
 
 ```csv
 scan_number,Temp
@@ -185,6 +185,11 @@ The following configuration parameters are available in the *datalab* UI:
   - `"*summed*"` → matches files containing "summed" (explicit wildcards)
   - `"*.xy"` → matches all `.xy` files
   - Leave empty to process all files in the folder (default behavior)
+
+- **`scan_number_pattern`** (XRD only): An optional regular expression used to extract the scan number from each XRD filename, overriding the automatic detection. The first capturing group (or the whole match, if there are no groups) must contain the scan number, which must be unique for each file. Examples:
+  - `"scan_(\d+)"` → `run5_scan_0012.xy` gives scan number 12
+  - `"^(\d+)-"` → `1058063-mythen_summed.dat` gives scan number 1058063
+  - Leave empty to detect scan numbers automatically (default behavior)
 
 ## License
 

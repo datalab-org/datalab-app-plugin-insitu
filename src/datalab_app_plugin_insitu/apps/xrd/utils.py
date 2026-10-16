@@ -26,6 +26,7 @@ def process_local_xrd_data(
     time_series_source: str = "log",
     echem_folder_name: Optional[Path] = None,
     glob_str: Optional[str] = None,
+    scan_number_pattern: Optional[str] = None,
 ):
     """
     Process local XRD data from a zip file.
@@ -39,6 +40,8 @@ def process_local_xrd_data(
         time_series_source: Source of time series data, either 'log' or 'echem' to select whether temperature or echem is the time series data shown.
         echem_folder_name: Optional path to the folder containing echem data. Only used if time_series_source is 'echem'.
         glob_str: Optional glob pattern to match XRD files (e.g., "*summed*"). If None, all files in the folder are used.
+        scan_number_pattern: Optional regular expression used to extract the scan number from
+            each XRD filename. If None, the scan number is detected automatically.
 
     Returns:
         dict: Processed XRD data and metadata.
@@ -107,6 +110,7 @@ def process_local_xrd_data(
                 start_at=start_exp,
                 exclude_exp=exclude_exp,
                 glob_str=glob_str,
+                scan_number_pattern=scan_number_pattern,
             )
 
             # Load the 1D data
@@ -263,6 +267,7 @@ def process_xrd_data(
     start_at: int = 1,
     exclude_exp: Optional[List[int]] = None,
     glob_str: Optional[str] = None,
+    scan_number_pattern: Optional[str] = None,
 ) -> Dict:
     """
     Process XRD data from a specified folder.
@@ -273,6 +278,9 @@ def process_xrd_data(
         exclude_exp: List of experiments to exclude.
         glob_str: Optional glob pattern to match files (e.g., "*summed*", "*.xy").
                  If None, all files in the folder are processed.
+        scan_number_pattern: Optional regular expression used to extract the scan number
+            from each filename (see `extract_scan_numbers`). If None, the scan number is
+            detected automatically.
 
     Returns:
         Dict: Processed XRD data and metadata.
@@ -317,16 +325,10 @@ def process_xrd_data(
             else:
                 all_patterns.loc[file, two_theta] = intensity_values
 
-    # Sort the dataframe based on the scan_number extracted from the filename of the format: 1058063-mythen_summed.dat
-    # TODO make this more robust to different file naming conventions
-    def extract_number(filename, pattern=r"(?<!\d)(\d{6,8})(?!\d)"):
-        match = re.search(pattern, filename)
-        if match:
-            return int(match.group(1))
-        return None
-
-    filename_pattern = r"(?<!\d)(\d{6,8})(?!\d)"
-    all_patterns.index = all_patterns.index.map(lambda x: extract_number(x.name, filename_pattern))
+    # Sort the dataframe based on the scan number extracted from each filename
+    all_patterns.index = pd.Index(
+        extract_scan_numbers([f.name for f in all_patterns.index], pattern=scan_number_pattern)
+    )
     all_patterns.sort_index(inplace=True)
 
     file_num_index = all_patterns.index.values.reshape(-1, 1)
@@ -344,6 +346,105 @@ def process_xrd_data(
         "metadata": metadata,
         "file_num_index": file_num_index,
     }
+
+
+def extract_scan_numbers(filenames: List[str], pattern: Optional[str] = None) -> List[int]:
+    """Extract the scan number from each filename in a set of in situ XRD scans.
+
+    If a `pattern` is provided, it is used as a regular expression searched against each
+    filename; the first capturing group (or the whole match, if there are no groups) must
+    contain the scan number.
+
+    Otherwise, the scan number is detected automatically from the runs of digits in each
+    filename (with any extension removed), so that any zero-padding (or none) is supported,
+    e.g., `scan_1.xy`, `0001-scan.dat`, `1058063-mythen_summed.dat` or
+    `1355639_summed_mythen3.xye`:
+
+    - If every filename has the same number of digit runs, the run (by position) whose
+      values are unique across all files is used, ignoring runs that are constant
+      (e.g., the `3` in `mythen3`) or repeated (e.g., a date).
+      If several positions are unique, the one with the most digits is used, preferring
+      the last in the filename in case of a tie.
+    - Otherwise, the longest run of digits in each filename is used, preferring the last
+      in the filename in case of a tie.
+
+    Parameters:
+        filenames: The filenames (not full paths) of the scans.
+        pattern: Optional regular expression to extract the scan number.
+
+    Returns:
+        The scan number of each file, in the same order as `filenames`.
+
+    Raises:
+        ValueError: If a scan number cannot be found for every file, or if the
+            extracted scan numbers are not unique.
+
+    """
+    if not filenames:
+        return []
+
+    if pattern is not None:
+        regex = re.compile(pattern)
+        scan_numbers = []
+        for filename in filenames:
+            match = regex.search(filename)
+            if not match:
+                raise ValueError(
+                    f"Could not find a scan number matching pattern {pattern!r} in filename {filename!r}"
+                )
+            try:
+                scan_numbers.append(int(match.group(1) if regex.groups else match.group(0)))
+            except ValueError:
+                raise ValueError(
+                    f"Scan number pattern {pattern!r} matched non-integer text in filename {filename!r}"
+                )
+
+    else:
+        digit_runs = [re.findall(r"\d+", Path(filename).stem) for filename in filenames]
+        missing = [f for f, runs in zip(filenames, digit_runs) if not runs]
+        if missing:
+            raise ValueError(
+                f"Could not find a scan number in the following filename(s): {missing[:5]}"
+                + (f" (and {len(missing) - 5} more)" if len(missing) > 5 else "")
+            )
+
+        def _longest_last(runs: List[str]) -> str:
+            # max returns the first of equal-length runs, so search the reversed list
+            return max(reversed(runs), key=len)
+
+        position = None
+        num_runs = {len(runs) for runs in digit_runs}
+        if len(num_runs) == 1:
+            n = num_runs.pop()
+            unique_positions = [
+                i for i in range(n) if len({int(runs[i]) for runs in digit_runs}) == len(filenames)
+            ]
+            if unique_positions:
+                position = max(
+                    reversed(unique_positions),
+                    key=lambda i: max(len(runs[i]) for runs in digit_runs),
+                )
+
+        if position is not None:
+            scan_numbers = [int(runs[position]) for runs in digit_runs]
+        else:
+            scan_numbers = [int(_longest_last(runs)) for runs in digit_runs]
+
+    if len(set(scan_numbers)) != len(scan_numbers):
+        seen: Dict[int, str] = {}
+        duplicates = []
+        for filename, number in zip(filenames, scan_numbers):
+            if number in seen:
+                duplicates.append((seen[number], filename, number))
+            else:
+                seen[number] = filename
+        raise ValueError(
+            "Scan numbers extracted from the XRD filenames are not unique, e.g., "
+            + ", ".join(f"{a!r} and {b!r} (scan {n})" for a, b, n in duplicates[:3])
+            + ". Use a more specific glob pattern to select the files, or provide a scan number pattern."
+        )
+
+    return scan_numbers
 
 
 def load_temperature_log_file(log_file: Path) -> pd.DataFrame:
