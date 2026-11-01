@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.11.*"
 
 [[package]]
@@ -363,15 +363,15 @@ wheels = [
 
 [[package]]
 name = "datalab-api"
-version = "0.6.1"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/ec/f66e94500d9987353c05e39b70eeb4d3eedaba8da2239c164a9fa786f394/datalab_api-0.6.1.tar.gz", hash = "sha256:e6064f52a52d4062824e059b16e4aa0fb8ddae6594ab1c456d8002d6a3ea46e8", size = 25515, upload-time = "2026-09-15T12:27:56.216Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/f4/b62a7a42e793f9d6bf23d1349bb620e754243bbda4b02036472e0142f4c0/datalab_api-0.7.0.tar.gz", hash = "sha256:0deef7e034630d79f11c8af710128188218f6a77e23098de688974db9e95b510", size = 25491, upload-time = "2026-10-21T15:12:06.226Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/5a/2e03450447d5aa9d74a6a9d2c203c591489ff28d46b838e8fa4bccb7aa87/datalab_api-0.6.1-py3-none-any.whl", hash = "sha256:35bf9a8ac5a6df386951d6e3201bf5c3967e5cbbd7a0a461ae01675fe975ce9b", size = 20706, upload-time = "2026-09-15T12:27:54.92Z" },
+    { url = "https://files.pythonhosted.org/packages/88/c2/828893a3b37b4368e2e06fbc38521f602b060b361cd27e306a920f36eeb6/datalab_api-0.7.0-py3-none-any.whl", hash = "sha256:31ea915fc966b93bed533aeadf68f45c9a3c23e58d4db033a23cd939677ee0a3", size = 20701, upload-time = "2026-10-21T15:12:04.728Z" },
 ]
 
 [[package]]
